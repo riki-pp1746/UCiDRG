@@ -203,6 +203,7 @@ function parseRow(cols: string[]): PatientRecord | null {
     deskripsi_inacbg: get(COLUMN_MAP.DESKRIPSI_INACBG),
     tarif_inacbg: parseNum(get(COLUMN_MAP.TARIF_INACBG)),
     total_tarif: parseNum(get(COLUMN_MAP.TOTAL_TARIF)),
+    tarif_rs: parseNum(get(COLUMN_MAP.TARIF_RS)),
     idrg,
     billing,
     payor_id: get(COLUMN_MAP.PAYOR_ID),

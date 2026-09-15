@@ -83,8 +83,11 @@ export interface PatientRecord {
   // INACBG
   inacbg: string;
   deskripsi_inacbg: string;
-  tarif_inacbg: number;
-  total_tarif: number;   // Tarif RS total
+  tarif_inacbg: number;  // Base INACBG
+  total_tarif: number;   // Total INACBG
+  
+  // Tarif RS (Klaim)
+  tarif_rs: number;
   
   // iDRG
   idrg: IDRGInfo;

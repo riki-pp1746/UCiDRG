@@ -75,9 +75,8 @@ export function calcPatientUnitCost(
     biayaLangsung = record.tarif_inacbg;
   }
 
-  // Jika billing kosong, gunakan tarif RS
   if (biayaLangsung === 0) {
-    biayaLangsung = record.total_tarif;
+    biayaLangsung = record.tarif_rs;
   }
 
   const totalOverheadFactor =
@@ -97,7 +96,7 @@ export function calcPatientResult(
   record: PatientRecord,
   config: OverheadConfig = DEFAULT_OVERHEAD_CONFIG
 ): PatientCostResult {
-  const biayaLangsung = calcBiayaLangsung(record.billing) || record.total_tarif;
+  const biayaLangsung = calcBiayaLangsung(record.billing) || record.tarif_rs;
   const totalOverheadFactor =
     config.overheadFactor +
     config.administrasiFactor +
@@ -106,7 +105,7 @@ export function calcPatientResult(
   const biayaTidakLangsung = biayaLangsung * totalOverheadFactor;
   const unitCostDihitung = biayaLangsung + biayaTidakLangsung;
 
-  const tarifINACBG = record.tarif_inacbg || 0;
+  const tarifINACBG = record.total_tarif || record.tarif_inacbg || 0;
   const tarifIDRG = record.idrg.total_tarif || 0;
   
   const selisihINACBG = unitCostDihitung - tarifINACBG;
@@ -163,7 +162,7 @@ export function aggregateByDRG(
     const totalUnitCost = groupResults.reduce((s, r) => s + r.unitCostDihitung, 0);
     const totalINACBG = groupResults.reduce((s, r) => s + r.tarifINACBG, 0);
     const totalIDRG = groupResults.reduce((s, r) => s + r.tarifIDRG, 0);
-    const totalBiayaRS = groupResults.reduce((s, r) => s + r.patient.total_tarif, 0);
+    const totalBiayaRS = groupResults.reduce((s, r) => s + r.patient.tarif_rs, 0);
     const totalCostWeight = groupResults.reduce((s, r) => s + r.patient.idrg.total_cost_weight, 0);
 
     const rataUnitCost = totalUnitCost / n;
