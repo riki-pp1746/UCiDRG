@@ -165,7 +165,7 @@ export function useFilteredDRGResults() {
 
   return React.useMemo(() => {
     let results = drgResults;
-    if (filterStatus) {
+    if (filterStatus && filterStatus !== 'ALL') {
       results = results.filter(r => r.statusINACBG === filterStatus);
     }
     if (filterMDC) {
@@ -192,7 +192,7 @@ export function useFilteredPatientResults() {
 
   return React.useMemo(() => {
     let results = patientResults;
-    if (filterStatus) {
+    if (filterStatus && filterStatus !== 'ALL') {
       results = results.filter(r => r.statusINACBG === filterStatus);
     }
     if (searchTerm) {
