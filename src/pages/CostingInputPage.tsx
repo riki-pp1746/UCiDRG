@@ -160,7 +160,7 @@ export default function CostingInputPage() {
           <h1 className="text-2xl font-bold text-gray-900">Input Biaya Rumah Sakit</h1>
           <p className="text-gray-500 text-sm mt-1">Step-Down Costing — Overhead → Penunjang → Layanan</p>
         </div>
-        <div className="sm:ml-auto flex gap-2">
+        <div className="sm:ml-auto flex gap-3">
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -171,21 +171,21 @@ export default function CostingInputPage() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 text-sm font-medium transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#041E42] border border-gray-200 rounded-2xl hover:bg-gray-50 hover:border-gray-300 text-sm font-semibold transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)] disabled:opacity-50"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            {isImporting ? 'Importing...' : 'Import Template Excel'}
+            <FileSpreadsheet className="w-4 h-4 text-teal-600" />
+            {isImporting ? 'Mengimpor...' : 'Import Template Excel'}
           </button>
           <button
             onClick={() => { if (window.confirm('Reset semua data ke template default?')) resetToDefault(); }}
-            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-500 border border-gray-200 rounded-2xl hover:bg-gray-50 text-sm font-semibold transition-all shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
           >
             <RotateCcw className="w-4 h-4" />
             Reset
           </button>
           <button
             onClick={handleCalculate}
-            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium"
+            className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 text-sm font-semibold shadow-[0_4px_14px_rgba(0,177,169,0.3)] transition-all transform active:scale-95"
           >
             <Calculator className="w-4 h-4" />
             Hitung Unit Cost
@@ -195,26 +195,30 @@ export default function CostingInputPage() {
 
       {/* Status */}
       {config.isCalculated && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-green-500" />
-          <p className="text-sm text-green-700">
-            Perhitungan terakhir: {new Date(config.lastCalculatedAt).toLocaleString('id-ID')}
-            {' '}· Total Biaya RS: <strong>{formatRupiah(config.totalFinalCost)}</strong>
-          </p>
+        <div className="bg-white border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] rounded-[24px] p-4 flex items-center gap-4">
+          <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center flex-shrink-0">
+            <CheckCircle className="w-6 h-6 text-teal-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-[#041E42]">Perhitungan Selesai</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Terakhir dihitung: {new Date(config.lastCalculatedAt).toLocaleString('id-ID')} · Total Biaya RS: <span className="font-bold text-teal-600">{formatRupiah(config.totalFinalCost)}</span>
+            </p>
+          </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+      <div className="flex gap-2 bg-white/60 p-1.5 rounded-[20px] overflow-x-auto border border-gray-200/50 backdrop-blur-md">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={clsx(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition',
+              'flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold whitespace-nowrap transition-all duration-200',
               activeTab === tab.id
-                ? 'bg-white text-blue-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-800'
+                ? 'bg-teal-600 text-white shadow-md shadow-teal-500/20'
+                : 'text-gray-500 hover:text-[#041E42] hover:bg-gray-100'
             )}
           >
             <span>{tab.icon}</span>
@@ -297,7 +301,7 @@ export default function CostingInputPage() {
           </div>
 
           {config.overheadCenters.map((center) => (
-            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               {/* Row Header */}
               <div
                 className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50"
@@ -406,7 +410,7 @@ export default function CostingInputPage() {
           </div>
 
           {config.intermediateCenters.map((center) => (
-            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
                 <span className="w-6 h-6 bg-violet-100 text-violet-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {center.nomor}
@@ -499,7 +503,7 @@ export default function CostingInputPage() {
           </div>
 
           {config.finalCenters.map((center) => (
-            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
                 <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
                   {center.nomor}
@@ -678,19 +682,29 @@ export default function CostingInputPage() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 rounded-xl p-5 border border-amber-200 text-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-                <div>
-                  <p className="font-semibold text-amber-800 mb-1">💡 Cara Integrasi dengan Data Pasien (INA-CBG):</p>
-                  <ul className="space-y-1 text-amber-700 list-disc list-inside">
-                    <li>Rasio overhead dari tabel di atas dapat disinkronkan langsung ke sistem kalkulasi pasien.</li>
-                    <li>Sistem akan menggunakan rasio overhead aktual ini (bukan asumsi statis) terhadap tagihan rawat tiap pasien.</li>
+              <div className="bg-white rounded-[24px] p-6 border border-teal-100 shadow-[0_4px_24px_rgba(0,177,169,0.05)] flex flex-col sm:flex-row gap-5 justify-between items-start sm:items-center relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-teal-50 rounded-full -translate-y-16 translate-x-16 blur-2xl opacity-50 pointer-events-none" />
+                <div className="relative z-10">
+                  <p className="font-bold text-[#041E42] mb-1.5 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-teal-600" />
+                    Integrasi Data Patient Level (INA-CBG)
+                  </p>
+                  <ul className="space-y-1.5 text-gray-500 list-none text-sm">
+                    <li className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0" />
+                      Rasio overhead dari struktur keuangan di atas dapat disinkronkan langsung ke kalkulator pasien.
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-teal-400 mt-1.5 flex-shrink-0" />
+                      Sistem akan menggunakan rasio overhead aktual ini (bukan asumsi statis) terhadap tagihan tiap pasien.
+                    </li>
                   </ul>
                 </div>
                 <button
                   onClick={handleSyncToPatientLevel}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 shadow-sm whitespace-nowrap"
+                  className="relative z-10 px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-600 text-white rounded-2xl font-semibold hover:from-teal-600 hover:to-cyan-700 shadow-[0_4px_16px_rgba(0,177,169,0.3)] hover:shadow-[0_8px_24px_rgba(0,177,169,0.4)] whitespace-nowrap transition-all transform active:scale-95"
                 >
-                  Sinkronkan ke Patient Level
+                  Sinkronkan ke Engine Mikro
                 </button>
               </div>
             </>

@@ -119,43 +119,55 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Periode data: {summary.periodeData}</p>
+        <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <KPICard
-          title="Total Kasus"
-          value={formatNumber(summary.totalKasus)}
-          sub="Klaim JKN"
-          icon={Users}
-          color="bg-blue-500"
-        />
-        <KPICard
-          title="Total Biaya RS"
-          value={formatRupiah(summary.totalBiayaRS)}
-          sub="Setelah overhead"
-          icon={DollarSign}
-          color="bg-indigo-500"
-          trend={summary.totalSelisih > 0 ? 'up' : 'down'}
-        />
-        <KPICard
-          title="Total Tarif iDRG"
-          value={formatRupiah(summary.totalTarifIDRG)}
-          sub="Dari INACBG"
-          icon={FileBarChart2}
-          color="bg-violet-500"
-        />
-        <KPICard
-          title="Case Mix Index"
-          value={summary.cmi.toFixed(3)}
-          sub="Cost Weight rata-rata"
-          icon={Activity}
-          color={summary.cmi > 1 ? 'bg-green-500' : 'bg-orange-500'}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
+          <div className="bg-teal-50/80 p-3 rounded-2xl">
+            <Users className="w-6 h-6 text-teal-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-500">Total Kasus</p>
+            <p className="text-2xl font-bold text-[#041E42] mt-0.5 truncate">{formatNumber(summary.totalKasus)}</p>
+            <p className="text-xs text-gray-400 mt-1">Klaim JKN</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
+          <div className="bg-blue-50/80 p-3 rounded-2xl">
+            <DollarSign className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-500">Total Biaya RS</p>
+            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalBiayaRS)}</p>
+            <p className="text-xs text-gray-400 mt-1">Setelah overhead</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
+          <div className="bg-indigo-50/80 p-3 rounded-2xl">
+            <FileBarChart2 className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-500">Tarif iDRG</p>
+            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalTarifIDRG)}</p>
+            <p className="text-xs text-gray-400 mt-1">Pendapatan INACBG</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
+          <div className="bg-amber-50/80 p-3 rounded-2xl">
+            <Activity className="w-6 h-6 text-amber-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
+            <p className="text-2xl font-bold text-[#041E42] mt-0.5 truncate">{summary.cmi.toFixed(3)}</p>
+            <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
+          </div>
+        </div>
       </div>
 
       {/* Selisih Alert */}
