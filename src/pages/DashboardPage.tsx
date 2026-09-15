@@ -144,7 +144,7 @@ export default function DashboardPage() {
             <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>
               {summary.crr.toFixed(1)}%
             </p>
-            <p className="text-xs text-gray-400 mt-2">Tarif INA-CBG / Unit Cost RS</p>
+            <p className="text-xs text-gray-400 mt-2">Tarif {viewMode} / Unit Cost RS</p>
           </div>
         </div>
 
