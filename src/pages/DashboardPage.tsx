@@ -53,8 +53,9 @@ function KPICard({
 }
 
 export default function DashboardPage() {
-  const summary = useCostingStore(s => s.summary);
-  const drgResults = useCostingStore(s => s.drgResults);
+  const viewMode = useCostingStore(s => s.viewMode);
+  const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
+  const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
   const navigate = useNavigate();
@@ -114,8 +115,8 @@ export default function DashboardPage() {
     name: d.group_code,
     label: d.group_description.slice(0, 30) + '...',
     'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
-    'Tarif INA-CBG': Math.round(d.rataINACBG / 1000),
-    status: d.statusINACBG,
+    'Tarif': Math.round(d.rataTarif / 1000),
+    status: d.status,
   })), [drgResults]);
 
   return (
@@ -171,7 +172,7 @@ export default function DashboardPage() {
         {/* COMPARISON: RS vs INA-CBG */}
         <div className="md:col-span-4 lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
           <div className="flex justify-between items-center mb-6">
-            <p className="text-sm font-medium text-gray-500">Unit Cost vs Tarif INA-CBG</p>
+            <p className="text-sm font-medium text-gray-500">Unit Cost vs Tarif {viewMode}</p>
             <FileBarChart2 className="w-5 h-5 text-gray-400" />
           </div>
           <div className="space-y-4">
@@ -181,16 +182,16 @@ export default function DashboardPage() {
                 <span className="font-mono text-gray-900">{formatRupiah(summary.totalBiayaRS)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-rose-500 h-2 rounded-full" style={{ width: summary.totalBiayaRS > summary.totalTarifINACBG ? '100%' : `${(summary.totalBiayaRS / summary.totalTarifINACBG) * 100}%` }}></div>
+                <div className="bg-rose-500 h-2 rounded-full" style={{ width: summary.totalBiayaRS > summary.totalTarif ? '100%' : `${(summary.totalBiayaRS / summary.totalTarif) * 100}%` }}></div>
               </div>
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-indigo-600 font-semibold">Total Klaim INA-CBG</span>
-                <span className="font-mono text-gray-900">{formatRupiah(summary.totalTarifINACBG)}</span>
+                <span className="text-indigo-600 font-semibold">Total Klaim {viewMode}</span>
+                <span className="font-mono text-gray-900">{formatRupiah(summary.totalTarif)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: summary.totalTarifINACBG > summary.totalBiayaRS ? '100%' : `${(summary.totalTarifINACBG / summary.totalBiayaRS) * 100}%` }}></div>
+                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: summary.totalTarif > summary.totalBiayaRS ? '100%' : `${(summary.totalTarif / summary.totalBiayaRS) * 100}%` }}></div>
               </div>
             </div>
           </div>
@@ -200,18 +201,18 @@ export default function DashboardPage() {
       {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
-        summary.totalSelisihINACBG > 0
+        summary.totalSelisih > 0
           ? 'bg-red-50 border border-red-200'
           : 'bg-green-50 border border-green-200'
       )}>
-        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisihINACBG > 0 ? 'text-red-500' : 'text-green-500')} />
+        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisih > 0 ? 'text-red-500' : 'text-green-500')} />
         <div>
-          <p className={clsx('font-semibold', summary.totalSelisihINACBG > 0 ? 'text-red-700' : 'text-green-700')}>
-            {summary.totalSelisihINACBG > 0 ? '⚠ Total Unit Cost LEBIH TINGGI dari Tarif INA-CBG' : '✓ Total Unit Cost LEBIH RENDAH dari Tarif INA-CBG'}
+          <p className={clsx('font-semibold', summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700')}>
+            {summary.totalSelisih > 0 ? `⚠ Total Unit Cost LEBIH TINGGI dari Tarif ${viewMode}` : `✓ Total Unit Cost LEBIH RENDAH dari Tarif ${viewMode}`}
           </p>
-          <p className={clsx('text-sm', summary.totalSelisihINACBG > 0 ? 'text-red-600' : 'text-green-600')}>
-            Selisih: {formatRupiah(Math.abs(summary.totalSelisihINACBG))} 
-            {summary.totalSelisihINACBG > 0 ? ' (RS merugi)' : ' (RS untung)'}
+          <p className={clsx('text-sm', summary.totalSelisih > 0 ? 'text-red-600' : 'text-green-600')}>
+            Selisih: {formatRupiah(Math.abs(summary.totalSelisih))} 
+            {summary.totalSelisih > 0 ? ' (RS merugi)' : ' (RS untung)'}
           </p>
         </div>
       </div>
@@ -244,7 +245,7 @@ export default function DashboardPage() {
 
         {/* Top DRG Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
           <ResponsiveContainer width="99%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -259,7 +260,7 @@ export default function DashboardPage() {
               <Legend />
               <ReferenceLine y={0} stroke="#666" />
               <Bar dataKey="Unit Cost RS" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Tarif INA-CBG" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Tarif" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -282,7 +283,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                  +{formatRupiah(drg.selisihINACBG)}
+                  +{formatRupiah(drg.selisih)}
                 </span>
               </div>
             ))}
@@ -307,7 +308,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-green-600 whitespace-nowrap">
-                  {formatRupiah(drg.selisihINACBG)}
+                  {formatRupiah(drg.selisih)}
                 </span>
               </div>
             ))}

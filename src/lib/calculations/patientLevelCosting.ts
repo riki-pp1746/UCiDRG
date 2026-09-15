@@ -165,81 +165,82 @@ export function runRVUAllocation(
 // ============================================================
 // Agregasi per DRG Group
 // ============================================================
-export function aggregateByDRG(
-  results: PatientCostResult[]
-): DRGGroupResult[] {
-  const groups = new Map<string, PatientCostResult[]>();
+export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroupResult[], idrg: DRGGroupResult[] } {
+  const inacbgMap = new Map<string, PatientCostResult[]>();
+  const idrgMap = new Map<string, PatientCostResult[]>();
 
   for (const r of results) {
-    const key = `${r.patient.inacbg || 'N/A'}|${r.patient.idrg?.drg_code || 'N/A'}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(r);
+    // Group by INA-CBG
+    const inacbgKey = r.patient.inacbg || 'UNKNOWN_INACBG';
+    if (!inacbgMap.has(inacbgKey)) inacbgMap.set(inacbgKey, []);
+    inacbgMap.get(inacbgKey)!.push(r);
+
+    // Group by iDRG
+    const idrgKey = r.patient.idrg?.drg_code || 'UNKNOWN_IDRG';
+    if (!idrgMap.has(idrgKey)) idrgMap.set(idrgKey, []);
+    idrgMap.get(idrgKey)!.push(r);
   }
 
-  const drgResults: DRGGroupResult[] = [];
+  const buildGroups = (map: Map<string, PatientCostResult[]>, type: 'INACBG' | 'IDRG') => {
+    const groups: DRGGroupResult[] = [];
+    map.forEach((groupResults, groupCode) => {
+      const first = groupResults[0];
+      const n = groupResults.length;
 
-  groups.forEach((groupResults, groupCode) => {
-    const first = groupResults[0];
-    const n = groupResults.length;
+      const totalUnitCost = groupResults.reduce((s, r) => s + r.unitCostDihitung, 0);
+      const totalINACBG = groupResults.reduce((s, r) => s + r.tarifINACBG, 0);
+      const totalIDRG = groupResults.reduce((s, r) => s + r.tarifIDRG, 0);
+      const totalCostWeight = groupResults.reduce((s, r) => s + r.patient.idrg?.total_cost_weight || 0, 0);
 
-    const totalUnitCost = groupResults.reduce((s, r) => s + r.unitCostDihitung, 0);
-    const totalINACBG = groupResults.reduce((s, r) => s + r.tarifINACBG, 0);
-    const totalIDRG = groupResults.reduce((s, r) => s + r.tarifIDRG, 0);
-    const totalBiayaRS = groupResults.reduce((s, r) => s + r.patient.tarif_rs, 0);
-    const totalCostWeight = groupResults.reduce((s, r) => s + r.patient.idrg.total_cost_weight, 0);
+      const rataUnitCost = totalUnitCost / n;
+      const rataINACBG = totalINACBG / n;
+      const rataIDRG = totalIDRG / n;
 
-    const rataUnitCost = totalUnitCost / n;
-    const rataINACBG = totalINACBG / n;
-    const rataIDRG = totalIDRG / n;
-    
-    const selisihINACBG = rataUnitCost - rataINACBG;
-    const selisihIDRG = rataUnitCost - rataIDRG;
-    
-    const selisihPersenINACBG = rataINACBG > 0 ? (selisihINACBG / rataINACBG) * 100 : 0;
-    const selisihPersenIDRG = rataIDRG > 0 ? (selisihIDRG / rataIDRG) * 100 : 0;
-    const crr = rataUnitCost > 0 ? (rataINACBG / rataUnitCost) * 100 : 0;
+      const selisihINACBG = rataUnitCost - rataINACBG;
+      const selisihIDRG = rataUnitCost - rataIDRG;
 
-    const getStatus = (selisih: number) => {
-      if (selisih < -50000) return 'UNTUNG';
-      if (selisih > 50000) return 'RUGI';
-      return 'IMPAS';
-    };
+      const selisihPersenINACBG = rataINACBG === 0 ? 0 : (selisihINACBG / rataINACBG) * 100;
+      const selisihPersenIDRG = rataIDRG === 0 ? 0 : (selisihIDRG / rataIDRG) * 100;
+      
+      const crr = rataINACBG === 0 ? 0 : (rataUnitCost / rataINACBG) * 100;
 
-    drgResults.push({
-      group_code: first.patient.inacbg || 'N/A', // keep backward compatibility
-      group_description: first.patient.deskripsi_inacbg || 'N/A',
-      inacbg_code: first.patient.inacbg || 'N/A',
-      inacbg_description: first.patient.deskripsi_inacbg || 'N/A',
-      idrg_code: first.patient.idrg?.drg_code || 'N/A',
-      idrg_description: first.patient.idrg?.drg_description || 'N/A',
-      
-      ptd: first.patient.ptd,
-      
-      mdc_number: first.patient.idrg?.mdc_number,
-      mdc_description: first.patient.idrg?.mdc_description,
-      
-      jumlahKasus: n,
-      
-      rataUnitCost,
-      rataINACBG,
-      rataIDRG,
-      
-      totalBiayaRS,
-      totalTarifINACBG: totalINACBG,
-      totalTarifIDRG: totalIDRG,
-      
-      selisihINACBG,
-      selisihIDRG,
-      selisihPersenINACBG,
-      selisihPersenIDRG,
-      crr,
-      
-      avgCostWeight: totalCostWeight / n,
-      statusINACBG: getStatus(selisihINACBG),
+      let statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
+      if (rataUnitCost < rataINACBG) statusINACBG = 'UNTUNG';
+      if (rataUnitCost > rataINACBG) statusINACBG = 'RUGI';
+
+      let statusIDRG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
+      if (rataUnitCost < rataIDRG) statusIDRG = 'UNTUNG';
+      if (rataUnitCost > rataIDRG) statusIDRG = 'RUGI';
+
+      groups.push({
+        group_code: groupCode,
+        group_description: type === 'INACBG' ? (first.patient.deskripsi_inacbg || 'N/A') : (first.patient.idrg?.drg_description || 'N/A'),
+        inacbg_code: first.patient.inacbg || 'N/A',
+        inacbg_description: first.patient.deskripsi_inacbg || 'N/A',
+        idrg_code: first.patient.idrg?.drg_code || 'N/A',
+        idrg_description: first.patient.idrg?.drg_description || 'N/A',
+        ptd: first.patient.ptd,
+        mdc_number: first.patient.idrg?.mdc_number,
+        mdc_description: first.patient.idrg?.mdc_description,
+        jumlahKasus: n,
+        rataUnitCost,
+        rataTarif: type === 'INACBG' ? rataINACBG : rataIDRG,
+        totalBiayaRS: groupResults.reduce((s, r) => s + r.patient.tarif_rs, 0),
+        totalTarif: type === 'INACBG' ? totalINACBG : totalIDRG,
+        selisih: type === 'INACBG' ? selisihINACBG : selisihIDRG,
+        selisihPersen: type === 'INACBG' ? selisihPersenINACBG : selisihPersenIDRG,
+        crr,
+        avgCostWeight: totalCostWeight / n,
+        status: type === 'INACBG' ? statusINACBG : statusIDRG
+      });
     });
-  });
+    return groups.sort((a, b) => b.jumlahKasus - a.jumlahKasus);
+  };
 
-  return drgResults.sort((a, b) => b.jumlahKasus - a.jumlahKasus);
+  return {
+    inacbg: buildGroups(inacbgMap, 'INACBG'),
+    idrg: buildGroups(idrgMap, 'IDRG')
+  };
 }
 
 // ============================================================
@@ -260,17 +261,16 @@ export function calcCMI(records: PatientRecord[]): number {
 // ============================================================
 export function generateSummary(
   results: PatientCostResult[],
-  drgResults: DRGGroupResult[]
+  drgResults: DRGGroupResult[],
+  type: 'INACBG' | 'IDRG'
 ): CostingSummary {
   if (results.length === 0) {
     return {
       periodeData: '-',
       totalKasus: 0,
       totalBiayaRS: 0,
-      totalTarifINACBG: 0,
-      totalTarifIDRG: 0,
-      totalSelisihINACBG: 0,
-      totalSelisihIDRG: 0,
+      totalTarif: 0,
+      totalSelisih: 0,
       crr: 0,
       cmi: 0,
       jumlahDRGUntung: 0,
@@ -284,18 +284,16 @@ export function generateSummary(
   }
 
   const totalBiayaRS = results.reduce((s, r) => s + r.unitCostDihitung, 0);
-  const totalTarifINACBG = results.reduce((s, r) => s + r.tarifINACBG, 0);
-  const totalTarifIDRG = results.reduce((s, r) => s + r.tarifIDRG, 0);
+  const totalTarif = results.reduce((s, r) => s + (type === 'INACBG' ? r.tarifINACBG : r.tarifIDRG), 0);
   
-  const totalSelisihINACBG = totalBiayaRS - totalTarifINACBG;
-  const totalSelisihIDRG = totalBiayaRS - totalTarifIDRG;
+  const totalSelisih = totalBiayaRS - totalTarif;
   
   const cmi = calcCMI(results.map(r => r.patient));
-  const crr = totalBiayaRS > 0 ? (totalTarifINACBG / totalBiayaRS) * 100 : 0;
+  const crr = totalBiayaRS > 0 ? (totalTarif / totalBiayaRS) * 100 : 0;
 
-  const drgUntung = drgResults.filter(d => d.statusINACBG === 'UNTUNG');
-  const drgImpas = drgResults.filter(d => d.statusINACBG === 'IMPAS');
-  const drgRugi = drgResults.filter(d => d.statusINACBG === 'RUGI');
+  const drgUntung = drgResults.filter(d => d.status === 'UNTUNG');
+  const drgImpas = drgResults.filter(d => d.status === 'IMPAS');
+  const drgRugi = drgResults.filter(d => d.status === 'RUGI');
 
   // Determine periode from data
   const dates = results
@@ -311,19 +309,17 @@ export function generateSummary(
     periodeData,
     totalKasus: results.length,
     totalBiayaRS,
-    totalTarifINACBG,
-    totalTarifIDRG,
-    totalSelisihINACBG,
-    totalSelisihIDRG,
-    cmi,
+    totalTarif,
+    totalSelisih,
     crr,
+    cmi,
     jumlahDRGUntung: drgUntung.length,
     jumlahDRGImpas: drgImpas.length,
     jumlahDRGRugi: drgRugi.length,
-    persenRugi: (drgRugi.length / drgResults.length) * 100 || 0,
-    persenUntung: (drgUntung.length / drgResults.length) * 100 || 0,
-    top10Rugi: drgRugi.sort((a, b) => b.selisihINACBG - a.selisihINACBG).slice(0, 10),
-    top10Untung: drgUntung.sort((a, b) => a.selisihINACBG - b.selisihINACBG).slice(0, 10),
+    persenRugi: (drgRugi.length / (drgResults.length || 1)) * 100,
+    persenUntung: (drgUntung.length / (drgResults.length || 1)) * 100,
+    top10Rugi: drgRugi.sort((a, b) => b.selisih - a.selisih).slice(0, 10),
+    top10Untung: drgUntung.sort((a, b) => a.selisih - b.selisih).slice(0, 10),
   };
 }
 

@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useCostingStore } from '../../stores/costingStore';
 import {
   Activity,
   LayoutDashboard,
@@ -119,12 +120,38 @@ export default function AppLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Header - Solid Clean */}
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            
+            {/* View Mode Toggle */}
+            <div className="hidden sm:flex bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => useCostingStore.getState().toggleViewMode('INACBG')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  useCostingStore((s: any) => s.viewMode) === 'INACBG'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                INA-CBG
+              </button>
+              <button
+                onClick={() => useCostingStore.getState().toggleViewMode('IDRG')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
+                  useCostingStore((s: any) => s.viewMode) === 'IDRG'
+                    ? 'bg-white text-indigo-700 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                iDRG
+              </button>
+            </div>
+          </div>
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">

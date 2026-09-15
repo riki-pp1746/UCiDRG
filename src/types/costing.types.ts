@@ -189,25 +189,21 @@ export interface DRGGroupResult {
   
   // Rata-rata biaya
   rataUnitCost: number;
-  rataINACBG: number;
-  rataIDRG: number;
+  rataTarif: number;
   
   // Total
   totalBiayaRS: number;
-  totalTarifINACBG: number;
-  totalTarifIDRG: number;
+  totalTarif: number;
   
   // Selisih
-  selisihINACBG: number;
-  selisihIDRG: number;
-  selisihPersenINACBG: number;
-  selisihPersenIDRG: number;
+  selisih: number;
+  selisihPersen: number;
   crr: number;
   
   // Cost Weight
   avgCostWeight: number;
   
-  statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI';
+  status: 'UNTUNG' | 'IMPAS' | 'RUGI';
 }
 
 // ============================================================
@@ -217,10 +213,8 @@ export interface CostingSummary {
   periodeData: string;
   totalKasus: number;
   totalBiayaRS: number;
-  totalTarifINACBG: number;
-  totalTarifIDRG: number;
-  totalSelisihINACBG: number;
-  totalSelisihIDRG: number;
+  totalTarif: number;
+  totalSelisih: number;
   crr: number;
   
   cmi: number;  // Case Mix Index

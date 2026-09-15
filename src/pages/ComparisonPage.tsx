@@ -19,12 +19,13 @@ const STATUS_BADGE = {
   RUGI: 'bg-red-100 text-red-700 border-red-200',
 };
 
-type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataINACBG' | 'selisihINACBG' | 'selisihPersenINACBG';
+type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen';
 
 export default function ComparisonPage() {
   const drgResults = useFilteredDRGResults();
+  const viewMode = useCostingStore(s => s.viewMode);
   const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
-  const summary = useCostingStore(s => s.summary);
+  const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
 
   const [sortKey, setSortKey] = useState<SortKey>('jumlahKasus');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -34,10 +35,11 @@ export default function ComparisonPage() {
 
   // Get unique MDC for filter
   const mdcOptions = useMemo(() => {
-    const all = useCostingStore.getState().drgResults;
+    const state = useCostingStore.getState();
+    const all = state.viewMode === 'INACBG' ? state.inacbgResults : state.idrgResults;
     const uniq = [...new Set(all.map(d => `${d.mdc_number}|${d.mdc_description}`))].sort();
     return uniq;
-  }, []);
+  }, [viewMode]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -69,7 +71,7 @@ export default function ComparisonPage() {
     code: d.group_code,
     name: d.group_description.slice(0, 25),
     'Unit Cost (Rp Rb)': Math.round(d.rataUnitCost / 1000),
-    'Tarif INA-CBG (Rp Rb)': Math.round(d.rataINACBG / 1000),
+    'Tarif (Rp Rb)': Math.round(d.rataTarif / 1000),
     Kasus: d.jumlahKasus,
   })), [sorted]);
 
@@ -175,15 +177,12 @@ export default function ComparisonPage() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {[
-                      { key: 'inacbg_code', label: 'Kode INA-CBG' },
-                      { key: 'idrg_code', label: 'Kode iDRG' },
+                      { key: 'group_code', label: `Kode ${viewMode}` },
                       { key: null, label: 'Deskripsi / MDC' },
                       { key: 'jumlahKasus', label: 'Kasus' },
                       { key: 'rataUnitCost', label: 'Unit Cost RS' },
-                      { key: 'rataINACBG', label: 'Tarif INA-CBG' },
-                      { key: 'rataIDRG', label: 'Tarif iDRG' },
-                      { key: 'selisihINACBG', label: 'Selisih INA-CBG' },
-                      { key: 'selisihIDRG', label: 'Selisih iDRG' },
+                      { key: 'rataTarif', label: `Tarif ${viewMode}` },
+                      { key: 'selisih', label: 'Selisih' },
                       { key: null, label: 'Status' },
                     ].map(col => (
                       <th
@@ -204,17 +203,13 @@ export default function ComparisonPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {paginated.map((drg, i) => (
-                      <tr key={i} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">
-                          {drg.inacbg_code}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs font-semibold text-indigo-700 whitespace-nowrap">
-                          {drg.idrg_code}
-                        </td>
-                        <td className="px-4 py-3 max-w-xs">
-                          <p className="text-gray-800 font-medium leading-tight text-xs">{drg.inacbg_description}</p>
-                          <p className="text-gray-500 font-medium leading-tight text-[10px] mt-1 line-clamp-1">{drg.idrg_description}</p>
-                        </td>
+                    <tr key={i} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">
+                        {drg.group_code}
+                      </td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <p className="text-gray-800 font-medium leading-tight text-xs">{drg.group_description}</p>
+                      </td>
                       <td className="px-4 py-3 text-center font-semibold text-gray-700">
                         {formatNumber(drg.jumlahKasus)}
                       </td>
@@ -222,36 +217,27 @@ export default function ComparisonPage() {
                         {formatRupiah(drg.rataUnitCost)}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 whitespace-nowrap">
-                        {formatRupiah(drg.rataINACBG)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 whitespace-nowrap border-r border-gray-100">
-                        {formatRupiah(drg.rataIDRG)}
+                        {formatRupiah(drg.rataTarif)}
                       </td>
                       <td className={clsx(
                         'px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap',
-                        drg.selisihINACBG > 0 ? 'text-red-600' : drg.selisihINACBG < 0 ? 'text-green-600' : 'text-gray-500'
+                        drg.selisih > 0 ? 'text-red-600' : drg.selisih < 0 ? 'text-green-600' : 'text-gray-500'
                       )}>
-                        {drg.selisihINACBG >= 0 ? '+' : ''}{formatRupiah(drg.selisihINACBG)}
-                      </td>
-                      <td className={clsx(
-                        'px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap',
-                        drg.selisihIDRG > 0 ? 'text-red-600' : drg.selisihIDRG < 0 ? 'text-green-600' : 'text-gray-500'
-                      )}>
-                        {drg.selisihIDRG >= 0 ? '+' : ''}{formatRupiah(drg.selisihIDRG)}
+                        {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(
                           'inline-block px-2 py-0.5 rounded-full text-xs font-semibold border',
-                          STATUS_BADGE[drg.statusINACBG]
+                          STATUS_BADGE[drg.status]
                         )}>
-                          {drg.statusINACBG}
+                          {drg.status}
                         </span>
                       </td>
                     </tr>
                   ))}
                   {paginated.length === 0 && (
                     <tr>
-                      <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                      <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                         Tidak ada data yang sesuai filter
                       </td>
                     </tr>

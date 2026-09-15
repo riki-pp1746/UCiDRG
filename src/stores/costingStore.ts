@@ -32,8 +32,11 @@ interface CostingState {
   
   // Calculated results
   patientResults: PatientCostResult[];
-  drgResults: DRGGroupResult[];
-  summary: CostingSummary | null;
+  inacbgResults: DRGGroupResult[];
+  idrgResults: DRGGroupResult[];
+  summaryINACBG: CostingSummary | null;
+  summaryIDRG: CostingSummary | null;
+  viewMode: 'INACBG' | 'IDRG';
   overheadConfig: OverheadConfig;
   rvuGlobalCosts?: RVUGlobalCosts;
   
@@ -54,6 +57,7 @@ interface CostingState {
   setFilter: (key: string, value: any) => void;
   clearData: () => void;
   setActiveSession: (id: string) => void;
+  toggleViewMode: (mode: 'INACBG' | 'IDRG') => void;
 }
 
 export const useCostingStore = create<CostingState>()(
@@ -63,8 +67,11 @@ export const useCostingStore = create<CostingState>()(
       activeSessionId: null,
       rawRecords: [],
       patientResults: [],
-      drgResults: [],
-      summary: null,
+      inacbgResults: [],
+      idrgResults: [],
+      summaryINACBG: null,
+      summaryIDRG: null,
+      viewMode: 'INACBG',
       overheadConfig: DEFAULT_OVERHEAD_CONFIG,
       isProcessing: false,
       processProgress: 0,
@@ -82,8 +89,10 @@ export const useCostingStore = create<CostingState>()(
           sessions: newSessions,
           activeSessionId: session.id,
           patientResults: [],
-          drgResults: [],
-          summary: null,
+          inacbgResults: [],
+          idrgResults: [],
+          summaryINACBG: null,
+          summaryIDRG: null,
         });
         // Auto-process
         setTimeout(() => get().processData(), 100);
@@ -105,16 +114,19 @@ export const useCostingStore = create<CostingState>()(
           
           set({ processProgress: 50 });
           
-          const drgResults = aggregateByDRG(results);
+          const { inacbg, idrg } = aggregateByDRG(results);
           
           set({ processProgress: 80 });
           
-          const summary = generateSummary(results, drgResults);
+          const summaryINACBG = generateSummary(results, inacbg, 'INACBG');
+          const summaryIDRG = generateSummary(results, idrg, 'IDRG');
           
           set({
             patientResults: results,
-            drgResults,
-            summary,
+            inacbgResults: inacbg,
+            idrgResults: idrg,
+            summaryINACBG,
+            summaryIDRG,
             isProcessing: false,
             processProgress: 100,
           });
@@ -138,14 +150,17 @@ export const useCostingStore = create<CostingState>()(
         set({
           rawRecords: [],
           patientResults: [],
-          drgResults: [],
-          summary: null,
+          inacbgResults: [],
+          idrgResults: [],
+          summaryINACBG: null,
+          summaryIDRG: null,
           sessions: [],
           activeSessionId: null,
         });
       },
 
       setActiveSession: (id) => set({ activeSessionId: id }),
+      toggleViewMode: (mode) => set({ viewMode: mode }),
     }),
     {
       name: 'unitcost-costing-store',
@@ -160,7 +175,8 @@ export const useCostingStore = create<CostingState>()(
 
 // Hook untuk filtered DRG results (menggunakan useMemo agar tidak infinite loop di Zustand)
 export function useFilteredDRGResults() {
-  const drgResults = useCostingStore(s => s.drgResults);
+  const viewMode = useCostingStore(s => s.viewMode);
+  const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
   const filterStatus = useCostingStore(s => s.filterStatus);
   const filterMDC = useCostingStore(s => s.filterMDC);
   const filterPTD = useCostingStore(s => s.filterPTD);
@@ -169,7 +185,7 @@ export function useFilteredDRGResults() {
   return React.useMemo(() => {
     let results = drgResults;
     if (filterStatus && filterStatus !== 'ALL') {
-      results = results.filter(r => r.statusINACBG === filterStatus);
+      results = results.filter(r => r.status === filterStatus);
     }
     if (filterMDC) {
       results = results.filter(r => String(r.mdc_number) === filterMDC);
@@ -193,6 +209,7 @@ export function useFilteredDRGResults() {
 // Hook untuk filtered patient results
 export function useFilteredPatientResults() {
   const patientResults = useCostingStore(s => s.patientResults);
+  const viewMode = useCostingStore(s => s.viewMode);
   const filterStatus = useCostingStore(s => s.filterStatus);
   const filterPTD = useCostingStore(s => s.filterPTD);
   const searchTerm = useCostingStore(s => s.searchTerm);
@@ -200,7 +217,7 @@ export function useFilteredPatientResults() {
   return React.useMemo(() => {
     let results = patientResults;
     if (filterStatus && filterStatus !== 'ALL') {
-      results = results.filter(r => r.statusINACBG === filterStatus);
+      results = results.filter(r => (viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG) === filterStatus);
     }
     if (filterPTD) {
       results = results.filter(r => String(r.patient.ptd) === filterPTD);
@@ -215,5 +232,5 @@ export function useFilteredPatientResults() {
       );
     }
     return results;
-  }, [patientResults, filterStatus, filterPTD, searchTerm]);
+  }, [patientResults, viewMode, filterStatus, filterPTD, searchTerm]);
 }
