@@ -234,11 +234,11 @@ export default function CostingInputPage() {
             Reset
           </button>
           <button
-            onClick={handleCalculate}
+            onClick={() => setActiveTab('hasil')}
             className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 text-sm font-semibold shadow-[0_4px_14px_rgba(0,177,169,0.3)] transition-all transform active:scale-95"
           >
             <Calculator className="w-4 h-4" />
-            Hitung Unit Cost
+            Lihat Hasil
           </button>
         </div>
       </div>
@@ -331,7 +331,7 @@ export default function CostingInputPage() {
               <li><strong>Tab A (Overhead)</strong>: Input biaya pusat biaya non-layanan (Manajemen, IT, Cleaning, dll)</li>
               <li><strong>Tab B (Penunjang)</strong>: Input biaya unit penunjang medis (Lab, Radiologi, Farmasi, dll)</li>
               <li><strong>Tab C (Layanan)</strong>: Input biaya unit layanan langsung (Rawat Inap, IGD, Bedah, dll)</li>
-              <li>Klik <strong>"Hitung Unit Cost"</strong> untuk menjalankan step-down allocation</li>
+              <li>Klik <strong>"Lihat Hasil"</strong> untuk menjalankan step-down allocation</li>
             </ol>
           </div>
         </div>
@@ -692,18 +692,8 @@ export default function CostingInputPage() {
 
       {activeTab === 'hasil' && (
         <div className="space-y-4">
-          {!config.isCalculated ? (
-            <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
-              <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
-              <p className="text-gray-600 font-medium">Belum ada hasil perhitungan</p>
-              <p className="text-gray-400 text-sm mt-1">Klik "Hitung Unit Cost" untuk menjalankan step-down allocation</p>
-              <button onClick={handleCalculate} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium flex items-center gap-2 mx-auto">
-                <Calculator className="w-4 h-4" /> Hitung Sekarang
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Summary Cards */}
+          <>
+            {/* Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { label: 'Total Biaya Overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700' },
@@ -787,7 +777,6 @@ export default function CostingInputPage() {
                 </button>
               </div>
             </>
-          )}
         </div>
       )}
     </div>

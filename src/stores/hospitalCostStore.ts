@@ -169,18 +169,17 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       config: makeDefaultConfig(),
 
       updateInfo: (info) => {
-        set(s => ({ config: { ...s.config, ...info, isCalculated: false } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, ...info }) }));
       },
 
       updateOverhead: (id, data) => {
         set(s => ({
-          config: {
+          config: runStepDownCalculation({
             ...s.config,
-            isCalculated: false,
             overheadCenters: s.config.overheadCenters.map(c =>
               c.id === id ? { ...c, ...data } : c
             ),
-          },
+          }),
         }));
       },
 
@@ -197,22 +196,21 @@ export const useHospitalCostStore = create<HospitalCostState>()(
           biayaOperasional: 0, hargaPeralatan5Tahun: 0, biayaInvestasiGedung: 0,
           depresiasiPeralatan: 0, depresiasiGedung: 0, totalCost: 0,
         };
-        set(s => ({ config: { ...s.config, overheadCenters: [...s.config.overheadCenters, newCenter] } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, overheadCenters: [...s.config.overheadCenters, newCenter] }) }));
       },
 
       removeOverhead: (id) => {
-        set(s => ({ config: { ...s.config, overheadCenters: s.config.overheadCenters.filter(c => c.id !== id) } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, overheadCenters: s.config.overheadCenters.filter(c => c.id !== id) }) }));
       },
 
       updateIntermediate: (id, data) => {
         set(s => ({
-          config: {
+          config: runStepDownCalculation({
             ...s.config,
-            isCalculated: false,
             intermediateCenters: s.config.intermediateCenters.map(c =>
               c.id === id ? { ...c, ...data } : c
             ),
-          },
+          }),
         }));
       },
 
@@ -228,22 +226,21 @@ export const useHospitalCostStore = create<HospitalCostState>()(
           biayaOperasional: 0, hargaPeralatan5Tahun: 0, biayaInvestasiGedung: 0,
           depresiasiPeralatan: 0, depresiasiGedung: 0, totalCostDirect: 0, totalCostAfterOverhead: 0,
         };
-        set(s => ({ config: { ...s.config, intermediateCenters: [...s.config.intermediateCenters, newCenter] } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, intermediateCenters: [...s.config.intermediateCenters, newCenter] }) }));
       },
 
       removeIntermediate: (id) => {
-        set(s => ({ config: { ...s.config, intermediateCenters: s.config.intermediateCenters.filter(c => c.id !== id) } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, intermediateCenters: s.config.intermediateCenters.filter(c => c.id !== id) }) }));
       },
 
       updateFinal: (id, data) => {
         set(s => ({
-          config: {
+          config: runStepDownCalculation({
             ...s.config,
-            isCalculated: false,
             finalCenters: s.config.finalCenters.map(c =>
               c.id === id ? { ...c, ...data } : c
             ),
-          },
+          }),
         }));
       },
 
@@ -263,11 +260,11 @@ export const useHospitalCostStore = create<HospitalCostState>()(
           totalCostDirect: 0, totalCostAfterOverhead: 0, totalCostAfterIntermediate: 0,
           unitCostPerHariRawat: 0, unitCostPerKunjungan: 0, unitCostPerPasien: 0,
         };
-        set(s => ({ config: { ...s.config, finalCenters: [...s.config.finalCenters, newCenter] } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, finalCenters: [...s.config.finalCenters, newCenter] }) }));
       },
 
       removeFinal: (id) => {
-        set(s => ({ config: { ...s.config, finalCenters: s.config.finalCenters.filter(c => c.id !== id) } }));
+        set(s => ({ config: runStepDownCalculation({ ...s.config, finalCenters: s.config.finalCenters.filter(c => c.id !== id) }) }));
       },
 
       calculate: () => {
