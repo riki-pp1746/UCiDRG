@@ -1,77 +1,127 @@
-// ============================================================
-// PAGE: UploadPage.tsx
-// Upload & Parse file TXT INACBG
-// ============================================================
-
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
+import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
+import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { UploadSession } from '../types/costing.types';
-import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
 
 type UploadState = 'idle' | 'dragging' | 'parsing' | 'done' | 'error';
 
+interface ProcessResult {
+  txtFiles: string[];
+  excelFiles: string[];
+  totalTxtRows: number;
+  totalParsedTxtRows: number;
+  errors: string[];
+}
+
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { setRawRecords, sessions, isProcessing } = useCostingStore();
+  const { setRawRecords, rawRecords } = useCostingStore();
+  const { config: hospitalConfig } = useHospitalCostStore();
 
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
-  const [result, setResult] = useState<{
-    filename: string;
-    totalRows: number;
-    parsedRows: number;
-    errors: string[];
-  } | null>(null);
+  const [result, setResult] = useState<ProcessResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFile = useCallback(async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.txt') && !file.name.toLowerCase().endsWith('.csv')) {
-      setErrorMsg('Hanya file .TXT yang didukung');
-      setUploadState('error');
-      return;
-    }
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
 
     setUploadState('parsing');
     setProgress(10);
     setResult(null);
     setErrorMsg('');
 
+    const txtFiles = fileArray.filter(f => f.name.toLowerCase().endsWith('.txt') || f.name.toLowerCase().endsWith('.csv'));
+    const excelFiles = fileArray.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
+
+    if (txtFiles.length === 0 && excelFiles.length === 0) {
+      setErrorMsg('Format file tidak didukung. Mohon unggah file .TXT (INA-CBG) atau .XLSX (Template Costing).');
+      setUploadState('error');
+      return;
+    }
+
     try {
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setProgress(p => Math.min(p + 5, 85));
-      }, 200);
+      }, 300);
 
-      const parseResult = await parseINACBGFile(file);
+      const processResult: ProcessResult = {
+        txtFiles: [],
+        excelFiles: [],
+        totalTxtRows: 0,
+        totalParsedTxtRows: 0,
+        errors: [],
+      };
+
+      // 1. Process Excel Files
+      for (const file of excelFiles) {
+        try {
+          const parsedData = await parseExcelTemplate(file);
+          useHospitalCostStore.setState(s => ({
+            config: {
+              ...s.config,
+              overheadCenters: parsedData.overheadCenters || s.config.overheadCenters,
+              intermediateCenters: parsedData.intermediateCenters || s.config.intermediateCenters,
+              finalCenters: parsedData.finalCenters || s.config.finalCenters,
+              isCalculated: false
+            }
+          }));
+          processResult.excelFiles.push(file.name);
+        } catch (e: any) {
+          processResult.errors.push(`Gagal memproses Excel ${file.name}: ${e.message}`);
+        }
+      }
+
+      // 2. Process TXT Files
+      let combinedTxtRecords: any[] = [];
+      for (const file of txtFiles) {
+        try {
+          const parseResult = await parseINACBGFile(file);
+          combinedTxtRecords = [...combinedTxtRecords, ...parseResult.records];
+          processResult.txtFiles.push(file.name);
+          processResult.totalTxtRows += parseResult.totalRows;
+          processResult.totalParsedTxtRows += parseResult.parsedRows;
+          if (parseResult.errors.length > 0) {
+            processResult.errors.push(`[${file.name}] ${parseResult.errors.length} baris gagal diparsing.`);
+          }
+        } catch (e: any) {
+          processResult.errors.push(`Gagal memproses TXT ${file.name}: ${String(e)}`);
+        }
+      }
+
       clearInterval(progressInterval);
       setProgress(100);
 
-      if (parseResult.parsedRows === 0) {
-        setErrorMsg('Tidak ada data yang berhasil diparsing. Periksa format file TXT.');
-        setUploadState('error');
-        return;
+      // Save TXT to store if any
+      if (combinedTxtRecords.length > 0) {
+        const sessionName = processResult.txtFiles.length > 1 
+          ? `Multi-file upload (${processResult.txtFiles.length} files)` 
+          : processResult.txtFiles[0];
+
+        const session: UploadSession = {
+          id: Date.now().toString(),
+          filename: sessionName,
+          uploadedAt: new Date().toISOString(),
+          totalRows: processResult.totalTxtRows,
+          parsedRows: processResult.totalParsedTxtRows,
+          status: 'done',
+        };
+        
+        setRawRecords(combinedTxtRecords, session);
+      } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
+        processResult.errors.push('Tidak ada baris data INA-CBG yang valid ditemukan dalam file TXT.');
       }
 
-      const session: UploadSession = {
-        id: Date.now().toString(),
-        filename: file.name,
-        uploadedAt: new Date().toISOString(),
-        totalRows: parseResult.totalRows,
-        parsedRows: parseResult.parsedRows,
-        status: 'done',
-      };
-
-      setRawRecords(parseResult.records, session);
-      setResult({
-        filename: file.name,
-        totalRows: parseResult.totalRows,
-        parsedRows: parseResult.parsedRows,
-        errors: parseResult.errors,
-      });
+      setResult(processResult);
       setUploadState('done');
+
     } catch (e) {
       setErrorMsg(String(e));
       setUploadState('error');
@@ -81,13 +131,21 @@ export default function UploadPage() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setUploadState('idle');
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
-  }, [handleFile]);
+    if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+  }, [handleFiles]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (uploadState !== 'dragging') setUploadState('dragging');
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setUploadState('idle');
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFile(file);
+    if (e.target.files) handleFiles(e.target.files);
   };
 
   const reset = () => {
@@ -95,182 +153,190 @@ export default function UploadPage() {
     setResult(null);
     setErrorMsg('');
     setProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Upload Data INACBG</h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Upload file TXT dari SIMRS/VCLAIM yang berisi data klaim INACBG/iDRG
-        </p>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Upload Center</h1>
+          <p className="text-gray-500 mt-1">Unggah beberapa file TXT INA-CBG dan Excel Template sekaligus.</p>
+        </div>
+        {rawRecords.length > 0 && (
+          <button
+            onClick={() => navigate('/comparison')}
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#041E42] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
+          >
+            Lihat Hasil Sebelumnya <ArrowRight className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
-      {/* Upload Zone */}
-      {uploadState === 'idle' || uploadState === 'dragging' ? (
-        <div
-          onDragOver={e => { e.preventDefault(); setUploadState('dragging'); }}
-          onDragLeave={() => setUploadState('idle')}
-          onDrop={handleDrop}
-          className={clsx(
-            'border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-200 cursor-pointer',
-            uploadState === 'dragging'
-              ? 'border-blue-400 bg-blue-50'
-              : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/50'
-          )}
-          onClick={() => document.getElementById('file-input')?.click()}
-        >
-          <input
-            id="file-input"
-            type="file"
-            accept=".txt,.TXT"
-            className="hidden"
-            onChange={handleInputChange}
-          />
-          <div className="flex flex-col items-center gap-4">
-            <div className={clsx(
-              'w-16 h-16 rounded-full flex items-center justify-center',
-              uploadState === 'dragging' ? 'bg-blue-100' : 'bg-gray-100'
-            )}>
-              <Upload className={clsx('w-8 h-8', uploadState === 'dragging' ? 'text-blue-500' : 'text-gray-400')} />
+      {uploadState === 'done' && result ? (
+        <div className="bg-white rounded-[24px] border border-green-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
+          <div className="bg-green-50 px-6 py-8 text-center">
+            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8" />
             </div>
-            <div>
-              <p className="text-lg font-semibold text-gray-700">
-                {uploadState === 'dragging' ? 'Lepaskan file di sini' : 'Drag & drop file TXT'}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">
-                atau <span className="text-blue-500 underline">klik untuk browse</span>
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                Format: Tab-delimited TXT (AGUSTUS 2026.TXT, RAJALAGUSTUS2026+DETAIL+IDRG.TXT, dll)
-              </p>
-            </div>
+            <h2 className="text-xl font-bold text-green-800">Proses Unggah Berhasil</h2>
+            <p className="text-green-600 mt-1">Semua file Anda telah berhasil dibaca dan diproses oleh sistem.</p>
           </div>
-        </div>
-      ) : null}
-
-      {/* Parsing Progress */}
-      {uploadState === 'parsing' && (
-        <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm text-center">
-          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-8 h-8 text-blue-500 animate-pulse" />
-          </div>
-          <p className="font-semibold text-gray-800 mb-4">Memproses file...</p>
-          <div className="w-full bg-gray-100 rounded-full h-2 mb-2">
-            <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-sm text-gray-400">{progress}%</p>
-        </div>
-      )}
-
-      {/* Success */}
-      {uploadState === 'done' && result && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="bg-green-50 p-6 border-b border-green-100">
-            <div className="flex items-center gap-3 mb-3">
-              <CheckCircle className="w-8 h-8 text-green-500" />
-              <div>
-                <p className="font-bold text-green-800">File Berhasil Diproses</p>
-                <p className="text-green-600 text-sm">{result.filename}</p>
+          
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
+                <div className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
+                  <FileText className="w-5 h-5 text-blue-500" />
+                  Data INA-CBG (.TXT)
+                </div>
+                {result.txtFiles.length > 0 ? (
+                  <>
+                    <p className="text-sm text-gray-600">Berhasil menggabungkan <strong>{result.txtFiles.length} file</strong></p>
+                    <p className="text-2xl font-bold text-[#041E42] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">Tidak ada file TXT yang diunggah.</p>
+                )}
               </div>
-              <button onClick={reset} className="ml-auto text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
+
+              <div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
+                <div className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
+                  <FileSpreadsheet className="w-5 h-5 text-teal-500" />
+                  Template Costing (.XLSX)
+                </div>
+                {result.excelFiles.length > 0 ? (
+                  <>
+                    <p className="text-sm text-gray-600">Berhasil memproses <strong>{result.excelFiles.length} file</strong></p>
+                    <p className="text-sm text-teal-700 font-medium mt-1">Struktur pusat biaya otomatis tersimpan di memori.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500 italic">Tidak ada file Excel yang diunggah.</p>
+                )}
+              </div>
+            </div>
+
+            {result.errors.length > 0 && (
+              <div className="mb-6 p-4 bg-amber-50 text-amber-700 text-sm rounded-xl border border-amber-200">
+                <p className="font-semibold mb-1 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Beberapa catatan:</p>
+                <ul className="list-disc list-inside space-y-1 ml-1 text-amber-600">
+                  {result.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={reset}
+                className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-semibold transition-all text-sm"
+              >
+                Upload File Lain
               </button>
+              {result.txtFiles.length > 0 && (
+                <button
+                  onClick={() => navigate('/comparison')}
+                  className="px-6 py-3 bg-[#041E42] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
+                >
+                  Lihat Hasil Kalkulasi <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
+              {result.excelFiles.length > 0 && (
+                <button
+                  onClick={() => navigate('/input-biaya')}
+                  className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-semibold transition-all shadow-md shadow-teal-500/20 text-sm flex items-center gap-2"
+                >
+                  Cek Input Biaya RS <ArrowRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="text-center bg-white/60 rounded-xl p-3">
-                <p className="text-2xl font-bold text-gray-800">{result.totalRows.toLocaleString('id-ID')}</p>
-                <p className="text-xs text-gray-500">Total Baris</p>
-              </div>
-              <div className="text-center bg-white/60 rounded-xl p-3">
-                <p className="text-2xl font-bold text-green-700">{result.parsedRows.toLocaleString('id-ID')}</p>
-                <p className="text-xs text-gray-500">Berhasil Parse</p>
-              </div>
-              <div className="text-center bg-white/60 rounded-xl p-3">
-                <p className="text-2xl font-bold text-red-500">{result.errors.length}</p>
-                <p className="text-xs text-gray-500">Error Baris</p>
-              </div>
-            </div>
-          </div>
-
-          {result.errors.length > 0 && (
-            <div className="p-4 bg-amber-50 border-b border-amber-100">
-              <p className="text-xs font-semibold text-amber-700 mb-2">⚠ Peringatan (maks 10 error ditampilkan):</p>
-              {result.errors.slice(0, 5).map((err, i) => (
-                <p key={i} className="text-xs text-amber-600 font-mono">{err}</p>
-              ))}
-            </div>
-          )}
-
-          <div className="p-4 flex gap-3 justify-end">
-            <button onClick={reset} className="px-4 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm">
-              Upload File Lain
-            </button>
-            <button
-              onClick={() => navigate('/comparison')}
-              className="px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium flex items-center gap-2"
-            >
-              {isProcessing ? 'Menghitung...' : 'Lihat Perbandingan'}
-              <ArrowRight className="w-4 h-4" />
-            </button>
           </div>
         </div>
-      )}
-
-      {/* Error */}
-      {uploadState === 'error' && (
-        <div className="bg-red-50 rounded-2xl border border-red-200 p-6 flex items-start gap-4">
-          <AlertCircle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold text-red-700">Gagal Memproses File</p>
-            <p className="text-red-600 text-sm mt-1">{errorMsg}</p>
+      ) : uploadState === 'error' ? (
+        <div className="bg-red-50 border border-red-200 rounded-[24px] p-8 text-center shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8" />
           </div>
-          <button onClick={reset} className="text-red-400 hover:text-red-600">
-            <X className="w-5 h-5" />
+          <h2 className="text-xl font-bold text-red-800">Proses Gagal</h2>
+          <p className="text-red-600 mt-2 mb-6 max-w-lg mx-auto">{errorMsg}</p>
+          <button
+            onClick={reset}
+            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-all"
+          >
+            Coba Lagi
           </button>
         </div>
-      )}
-
-      {/* Previous Sessions */}
-      {sessions.length > 0 && (
-        <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Riwayat Upload</h3>
-          <div className="space-y-2">
-            {sessions.map(s => (
-              <div key={s.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-700 truncate">{s.filename}</p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(s.uploadedAt).toLocaleString('id-ID')} · {s.parsedRows.toLocaleString('id-ID')} kasus
-                  </p>
-                </div>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                  Done
-                </span>
+      ) : (
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={clsx(
+            'border-2 border-dashed rounded-[32px] p-12 text-center transition-all duration-300 relative overflow-hidden bg-white shadow-[0_4px_24px_rgba(0,0,0,0.02)]',
+            uploadState === 'dragging' 
+              ? 'border-teal-500 bg-teal-50/50 scale-[1.02]' 
+              : 'border-gray-200 hover:border-teal-400 hover:bg-gray-50'
+          )}
+        >
+          {uploadState === 'parsing' && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+              <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
+              <p className="text-gray-900 font-semibold mb-2">Memproses File Anda...</p>
+              <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-teal-400 to-teal-600 transition-all duration-300 rounded-full"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
-            ))}
+            </div>
+          )}
+
+          <div className="w-24 h-24 bg-[#F5F5F7] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-white">
+            <Upload className="w-10 h-10 text-teal-600" />
+          </div>
+          <h2 className="text-xl font-bold text-[#041E42]">Tarik & Lepas File Di Sini</h2>
+          <p className="text-gray-500 mt-2 mb-8 max-w-md mx-auto leading-relaxed">
+            Mendukung upload lebih dari 1 file sekaligus.<br/>
+            Format <strong>.TXT</strong> (Data Pasien INA-CBG) dan <strong>.XLSX</strong> (Template Keuangan).
+          </p>
+          
+          <input
+            type="file"
+            accept=".txt,.csv,.xlsx,.xls"
+            onChange={handleInputChange}
+            className="hidden"
+            id="file-upload"
+            ref={fileInputRef}
+            multiple
+          />
+          <label
+            htmlFor="file-upload"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#041E42] text-white rounded-2xl hover:bg-[#062a5c] font-semibold cursor-pointer transition-all shadow-[0_4px_16px_rgba(4,30,66,0.2)] hover:shadow-[0_8px_24px_rgba(4,30,66,0.3)] transform active:scale-95"
+          >
+            Pilih File Dari Komputer
+          </label>
+        </div>
+      )}
+      
+      {uploadState === 'idle' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+          <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5"/></div>
+            <div>
+              <p className="font-semibold text-[#041E42]">Data INA-CBG (.TXT)</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Upload banyak bulan sekaligus, sistem akan menggabungkannya otomatis.</p>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
+            <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><FileSpreadsheet className="w-5 h-5"/></div>
+            <div>
+              <p className="font-semibold text-[#041E42]">Template Costing (.XLSX)</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke Step-Down Costing.</p>
+            </div>
           </div>
         </div>
       )}
-
-      {/* Format Info */}
-      <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100">
-        <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-          <FileText className="w-4 h-4" />
-          Format File yang Didukung
-        </h3>
-        <div className="space-y-2 text-sm text-blue-700">
-          <p>✓ <strong>Tab-delimited TXT</strong> dari SIMRS (93 kolom)</p>
-          <p>✓ Encoding UTF-8 atau ISO-8859-1</p>
-          <p>✓ Dengan atau tanpa baris header (KODE_RS, KELAS_RS, ...)</p>
-          <p>✓ Kolom iDRG terintegrasi (flat columns + JSON)</p>
-          <p>✓ Contoh: <code className="bg-blue-100 px-1 rounded">AGUSTUS 2026.TXT</code>, <code className="bg-blue-100 px-1 rounded">RAJALAGUSTUS2026+DETAIL+IDRG.TXT</code></p>
-        </div>
-      </div>
     </div>
   );
 }
