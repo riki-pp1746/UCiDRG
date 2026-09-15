@@ -129,8 +129,8 @@ export function RVUInputForm() {
         <p className="text-3xl font-bold text-[#041E42] mb-6 truncate">{formatRupiah(totalCost)}</p>
 
         {chartData.length > 0 ? (
-          <div className="h-[180px] w-full mb-6">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[180px] w-full mb-6 relative">
+            <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value">
                   {chartData.map((entry, index) => (
