@@ -6,7 +6,7 @@
 // ============================================================
 
 import React, { useState, useRef } from 'react';
-import { useHospitalCostStore } from '../stores/hospitalCostStore';
+import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
@@ -215,19 +215,86 @@ export default function CostingInputPage() {
     if (!file) return;
     try {
       const parsedData = await parseExcelTemplate(file);
-      useHospitalCostStore.setState(s => ({
-        config: {
+
+      // Jalankan step-down calculation setelah import agar unit cost langsung terhitung
+      useHospitalCostStore.setState(s => {
+        const newConfig = runStepDownCalculation({
           ...s.config,
-          overheadCenters: parsedData.overheadCenters || s.config.overheadCenters,
-          intermediateCenters: parsedData.intermediateCenters || s.config.intermediateCenters,
-          finalCenters: parsedData.finalCenters || s.config.finalCenters,
-        },
-      }));
-      alert('✅ Template berhasil diimport!');
+          overheadCenters: (parsedData.overheadCenters && parsedData.overheadCenters.length > 0)
+            ? parsedData.overheadCenters
+            : s.config.overheadCenters,
+          intermediateCenters: (parsedData.intermediateCenters && parsedData.intermediateCenters.length > 0)
+            ? parsedData.intermediateCenters
+            : s.config.intermediateCenters,
+          finalCenters: (parsedData.finalCenters && parsedData.finalCenters.length > 0)
+            ? parsedData.finalCenters
+            : s.config.finalCenters,
+        });
+        return { config: newConfig };
+      });
+
+      const importedSummary = [
+        parsedData.overheadCenters?.length ? `${parsedData.overheadCenters.length} Overhead` : '',
+        parsedData.intermediateCenters?.length ? `${parsedData.intermediateCenters.length} Penunjang` : '',
+        parsedData.finalCenters?.length ? `${parsedData.finalCenters.length} Layanan` : '',
+      ].filter(Boolean).join(', ');
+
+      alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nUnit Cost sudah dikalkulasi otomatis. Buka Tab "Hasil" untuk melihat hasilnya.`);
     } catch (err) {
-      alert('❌ Gagal membaca file Excel. Pastikan menggunakan template yang benar.');
+      console.error(err);
+      alert('❌ Gagal membaca file Excel. Pastikan format kolom sesuai template.');
     }
     e.target.value = '';
+  };
+
+  // ── Download Template Excel sesuai format parser ──
+  const handleDownloadTemplate = async () => {
+    const XLSX = await import('xlsx');
+
+    // Header kolom: No | Nama Unit | Dasar Alokasi | Jml Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | Jml TT | Biaya Gaji | Jasa Medis | Jasa Medis Lain | Biaya Operasional | Nilai Alat (5th) | Investasi Gedung | - | - | Luas Lantai
+    const COLS = ['No', 'Nama Unit / Pusat Biaya', 'Dasar Alokasi', 'Jumlah Staf', 'Hari Rawat', 'Pasien Pulang', 'Jml Kunjungan', 'ALOS', 'Jml Tempat Tidur', 'Biaya Gaji', 'Biaya Jasa Medis', 'Biaya Jasa Medis Lain', 'Biaya Operasional', 'Nilai Alat (5th)', 'Investasi Gedung', '-', '-', 'Luas Lantai (m2)'];
+
+    const overheadRows = config.overheadCenters.map((c, i) => [
+      i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, 0, 0, 0, 0, 0,
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+    ]);
+
+    const intermediateRows = config.intermediateCenters.map((c, i) => [
+      i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, 0, 0, c.jumlahKunjungan, 0, 0,
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+    ]);
+
+    const finalRows = config.finalCenters.map((c, i) => [
+      i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, c.jumlahHariRawat, c.jumlahPasienPulang, c.jumlahKunjungan, c.alos, c.jumlahTempat,
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+    ]);
+
+    const sheetData = [
+      ['TEMPLATE INPUT DATA COSTING RS', '', '', '', '', '', '', '', '', config.namaRS || ''],
+      ['Tahun Data:', config.tahunData || new Date().getFullYear(), '', '', '', '', '', '', '', 'Tipe RS:', config.tipeRS || 'B', '', 'Kepemilikan:', config.kepemilikan || ''],
+      [],
+      ['A. PUSAT BIAYA PENUNJANG UMUM (OVERHEAD)'],
+      COLS,
+      ...overheadRows,
+      [],
+      ['B. PUSAT BIAYA PENUNJANG MEDIS (INTERMEDIATE)'],
+      COLS,
+      ...intermediateRows,
+      [],
+      ['C. PUSAT BIAYA UTAMA (LAYANAN PASIEN)'],
+      COLS,
+      ...finalRows,
+      [],
+      ['CATATAN:'],
+      ['Kolom "Dasar Alokasi" isi dengan: jumlah_staf / luas_lantai / hari_rawat / jumlah_kunjungan / jumlah_pasien'],
+      ['Semua biaya dalam satuan RUPIAH (tanpa titik/koma)'],
+      ['Data harus bersumber dari Laporan Keuangan yang sudah DIAUDIT'],
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Costing Template');
+    XLSX.writeFile(wb, `Template_Costing_${config.namaRS || 'RS'}_${config.tahunData || new Date().getFullYear()}.xlsx`);
   };
 
   return (
@@ -243,6 +310,12 @@ export default function CostingInputPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
+          <button
+            onClick={handleDownloadTemplate}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-green-600 border border-green-200 rounded-xl hover:bg-green-50 text-sm font-semibold transition-all"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Download Template
+          </button>
           <button
             onClick={() => fileRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 text-sm font-semibold transition-all"
