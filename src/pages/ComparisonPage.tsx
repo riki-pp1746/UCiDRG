@@ -1,6 +1,6 @@
 // ============================================================
 // PAGE: ComparisonPage.tsx
-// Tabel & grafik perbandingan Unit Cost vs iDRG
+// Tabel & grafik perbandingan Unit Cost vs INA-CBG
 // ============================================================
 
 import { useState, useMemo } from 'react';
@@ -19,7 +19,7 @@ const STATUS_BADGE = {
   RUGI: 'bg-red-100 text-red-700 border-red-200',
 };
 
-type SortKey = 'drg_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataIDRG' | 'selisihNominal' | 'selisihPersen';
+type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataINACBG' | 'selisihINACBG' | 'selisihPersenINACBG';
 
 export default function ComparisonPage() {
   const drgResults = useFilteredDRGResults();
@@ -66,10 +66,10 @@ export default function ComparisonPage() {
 
   // Chart data (top 15)
   const chartData = sorted.slice(0, 15).map(d => ({
-    code: d.drg_code,
-    name: d.drg_description.slice(0, 25),
+    code: d.group_code,
+    name: d.group_description.slice(0, 25),
     'Unit Cost (Rp Rb)': Math.round(d.rataUnitCost / 1000),
-    'Tarif iDRG (Rp Rb)': Math.round(d.rataIDRG / 1000),
+    'Tarif INA-CBG (Rp Rb)': Math.round(d.rataINACBG / 1000),
     Kasus: d.jumlahKasus,
   }));
 
@@ -93,7 +93,7 @@ export default function ComparisonPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs iDRG</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs INA-CBG</h1>
           <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
@@ -141,7 +141,7 @@ export default function ComparisonPage() {
 
       {activeTab === 'chart' ? (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif iDRG (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
           <ResponsiveContainer width="100%" height={400}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -150,7 +150,7 @@ export default function ComparisonPage() {
               <Tooltip formatter={(v, name) => [formatRupiah((v as number) * 1000), name as string]} />
               <Legend />
               <Bar dataKey="Unit Cost (Rp Rb)" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="Tarif iDRG (Rp Rb)" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="Tarif INA-CBG (Rp Rb)" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -163,14 +163,15 @@ export default function ComparisonPage() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {[
-                      { key: 'drg_code', label: 'Kode DRG' },
+                      { key: 'group_code', label: 'Kode DRG' },
                       { key: null, label: 'Nama DRG / MDC' },
                       { key: 'jumlahKasus', label: 'Kasus' },
                       { key: 'rataUnitCost', label: 'Unit Cost RS' },
-                      { key: 'rataIDRG', label: 'Tarif iDRG' },
-                      { key: 'selisihNominal', label: 'Selisih (Rp)' },
-                      { key: 'selisihPersen', label: 'Selisih (%)' },
-                      { key: null, label: 'Status' },
+                      { key: 'rataINACBG', label: 'Tarif INA-CBG' },
+                      { key: 'rataIDRG', label: 'Tarif INA-CBG' },
+                      { key: 'selisihINACBG', label: 'Selisih INA-CBG (Rp)' },
+                      { key: 'selisihIDRG', label: 'Selisih iDRG (Rp)' },
+                      { key: null, label: 'Status (INA-CBG)' },
                     ].map(col => (
                       <th
                         key={col.label}
@@ -192,11 +193,10 @@ export default function ComparisonPage() {
                   {paginated.map((drg, i) => (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">
-                        {drg.drg_code}
+                        {drg.group_code}
                       </td>
                       <td className="px-4 py-3 max-w-xs">
-                        <p className="text-gray-800 font-medium leading-tight text-xs">{drg.drg_description}</p>
-                        <p className="text-gray-400 text-xs mt-0.5">MDC {drg.mdc_number}: {drg.mdc_description.slice(0, 40)}</p>
+                        <p className="text-gray-800 font-medium leading-tight text-xs">{drg.group_description}</p>
                       </td>
                       <td className="px-4 py-3 text-center font-semibold text-gray-700">
                         {formatNumber(drg.jumlahKasus)}
@@ -205,26 +205,29 @@ export default function ComparisonPage() {
                         {formatRupiah(drg.rataUnitCost)}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 whitespace-nowrap">
+                        {formatRupiah(drg.rataINACBG)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-xs text-gray-700 whitespace-nowrap border-r border-gray-100">
                         {formatRupiah(drg.rataIDRG)}
                       </td>
                       <td className={clsx(
                         'px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap',
-                        drg.selisihNominal > 0 ? 'text-red-600' : drg.selisihNominal < 0 ? 'text-green-600' : 'text-gray-500'
+                        drg.selisihINACBG > 0 ? 'text-red-600' : drg.selisihINACBG < 0 ? 'text-green-600' : 'text-gray-500'
                       )}>
-                        {drg.selisihNominal >= 0 ? '+' : ''}{formatRupiah(drg.selisihNominal)}
+                        {drg.selisihINACBG >= 0 ? '+' : ''}{formatRupiah(drg.selisihINACBG)}
                       </td>
                       <td className={clsx(
-                        'px-4 py-3 text-right font-mono text-xs whitespace-nowrap',
-                        drg.selisihPersen > 0 ? 'text-red-500' : drg.selisihPersen < 0 ? 'text-green-500' : 'text-gray-400'
+                        'px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap',
+                        drg.selisihIDRG > 0 ? 'text-red-600' : drg.selisihIDRG < 0 ? 'text-green-600' : 'text-gray-500'
                       )}>
-                        {drg.selisihPersen >= 0 ? '+' : ''}{drg.selisihPersen.toFixed(1)}%
+                        {drg.selisihIDRG >= 0 ? '+' : ''}{formatRupiah(drg.selisihIDRG)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(
                           'inline-block px-2 py-0.5 rounded-full text-xs font-semibold border',
-                          STATUS_BADGE[drg.status]
+                          STATUS_BADGE[drg.statusINACBG]
                         )}>
-                          {drg.status}
+                          {drg.statusINACBG}
                         </span>
                       </td>
                     </tr>

@@ -164,7 +164,7 @@ export function useFilteredDRGResults() {
   return useCostingStore(state => {
     let results = state.drgResults;
     if (state.filterStatus) {
-      results = results.filter(r => r.status === state.filterStatus);
+      results = results.filter(r => r.statusINACBG === state.filterStatus);
     }
     if (state.filterMDC) {
       results = results.filter(r => String(r.mdc_number) === state.filterMDC);
@@ -173,9 +173,9 @@ export function useFilteredDRGResults() {
       const term = state.searchTerm.toLowerCase();
       results = results.filter(
         r =>
-          r.drg_description.toLowerCase().includes(term) ||
-          r.drg_code.toLowerCase().includes(term) ||
-          r.mdc_description.toLowerCase().includes(term)
+          r.group_description.toLowerCase().includes(term) ||
+          r.group_code.toLowerCase().includes(term) ||
+          (r.mdc_description || "").toLowerCase().includes(term)
       );
     }
     return results;
@@ -187,7 +187,7 @@ export function useFilteredPatientResults() {
   return useCostingStore(state => {
     let results = state.patientResults;
     if (state.filterStatus) {
-      results = results.filter(r => r.status === state.filterStatus);
+      results = results.filter(r => r.statusINACBG === state.filterStatus);
     }
     if (state.searchTerm) {
       const term = state.searchTerm.toLowerCase();

@@ -147,40 +147,52 @@ export interface PatientCostResult {
   biayaLangsung: number;
   biayaTidakLangsung: number;
   
-  // iDRG comparison
+  // Perbandingan
+  tarifINACBG: number;
   tarifIDRG: number;
-  selisihNominal: number;      // unitCostDihitung - tarifIDRG
-  selisihPersen: number;       // selisihNominal / tarifIDRG * 100
-  status: 'UNTUNG' | 'IMPAS' | 'RUGI';
+  
+  selisihINACBG: number;       // unitCostDihitung - tarifINACBG
+  selisihIDRG: number;         // unitCostDihitung - tarifIDRG
+  
+  selisihPersenINACBG: number;
+  selisihPersenIDRG: number;
+  
+  statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI';
+  statusIDRG: 'UNTUNG' | 'IMPAS' | 'RUGI';
 }
 
 // ============================================================
 // Agregat per DRG Group
 // ============================================================
 export interface DRGGroupResult {
-  drg_code: string;
-  drg_description: string;
-  mdc_number: number;
-  mdc_description: string;
+  group_code: string;
+  group_description: string;
+  
+  mdc_number?: number;
+  mdc_description?: string;
   
   jumlahKasus: number;
   
   // Rata-rata biaya
   rataUnitCost: number;
+  rataINACBG: number;
   rataIDRG: number;
   
   // Total
   totalBiayaRS: number;
+  totalTarifINACBG: number;
   totalTarifIDRG: number;
   
   // Selisih
-  selisihNominal: number;
-  selisihPersen: number;
+  selisihINACBG: number;
+  selisihIDRG: number;
+  selisihPersenINACBG: number;
+  selisihPersenIDRG: number;
   
   // Cost Weight
   avgCostWeight: number;
   
-  status: 'UNTUNG' | 'IMPAS' | 'RUGI';
+  statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI';
 }
 
 // ============================================================
@@ -190,8 +202,10 @@ export interface CostingSummary {
   periodeData: string;
   totalKasus: number;
   totalBiayaRS: number;
+  totalTarifINACBG: number;
   totalTarifIDRG: number;
-  totalSelisih: number;
+  totalSelisihINACBG: number;
+  totalSelisihIDRG: number;
   
   cmi: number;  // Case Mix Index
   

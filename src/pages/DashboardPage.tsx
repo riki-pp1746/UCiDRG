@@ -67,7 +67,7 @@ export default function DashboardPage() {
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-3">Belum Ada Data</h2>
         <p className="text-gray-500 max-w-md mb-6">
-          Upload file TXT INACBG/iDRG untuk memulai analisis unit cost dan perbandingan tarif.
+          Upload file TXT INA-CBG untuk memulai analisis unit cost dan perbandingan tarif.
         </p>
         <button
           onClick={() => navigate('/upload')}
@@ -110,11 +110,11 @@ export default function DashboardPage() {
 
   // Top DRG for bar chart (top 10 by kasus)
   const top10DRG = drgResults.slice(0, 10).map(d => ({
-    name: d.drg_code,
-    label: d.drg_description.slice(0, 30) + '...',
+    name: d.group_code,
+    label: d.group_description.slice(0, 30) + '...',
     'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
-    'Tarif iDRG': Math.round(d.rataIDRG / 1000),
-    status: d.status,
+    'Tarif INA-CBG': Math.round(d.rataINACBG / 1000),
+    status: d.statusINACBG,
   }));
 
   return (
@@ -152,8 +152,8 @@ export default function DashboardPage() {
             <FileBarChart2 className="w-6 h-6 text-indigo-600" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">Tarif iDRG</p>
-            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalTarifIDRG)}</p>
+            <p className="text-sm font-medium text-gray-500">Tarif INA-CBG</p>
+            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalTarifINACBG)}</p>
             <p className="text-xs text-gray-400 mt-1">Pendapatan INACBG</p>
           </div>
         </div>
@@ -173,18 +173,18 @@ export default function DashboardPage() {
       {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
-        summary.totalSelisih > 0
+        summary.totalSelisihINACBG > 0
           ? 'bg-red-50 border border-red-200'
           : 'bg-green-50 border border-green-200'
       )}>
-        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisih > 0 ? 'text-red-500' : 'text-green-500')} />
+        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisihINACBG > 0 ? 'text-red-500' : 'text-green-500')} />
         <div>
-          <p className={clsx('font-semibold', summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700')}>
-            {summary.totalSelisih > 0 ? '⚠ Total Unit Cost LEBIH TINGGI dari Tarif iDRG' : '✓ Total Unit Cost LEBIH RENDAH dari Tarif iDRG'}
+          <p className={clsx('font-semibold', summary.totalSelisihINACBG > 0 ? 'text-red-700' : 'text-green-700')}>
+            {summary.totalSelisihINACBG > 0 ? '⚠ Total Unit Cost LEBIH TINGGI dari Tarif INA-CBG' : '✓ Total Unit Cost LEBIH RENDAH dari Tarif INA-CBG'}
           </p>
-          <p className={clsx('text-sm', summary.totalSelisih > 0 ? 'text-red-600' : 'text-green-600')}>
-            Selisih: {formatRupiah(Math.abs(summary.totalSelisih))} 
-            {summary.totalSelisih > 0 ? ' (RS merugi)' : ' (RS untung)'}
+          <p className={clsx('text-sm', summary.totalSelisihINACBG > 0 ? 'text-red-600' : 'text-green-600')}>
+            Selisih: {formatRupiah(Math.abs(summary.totalSelisihINACBG))} 
+            {summary.totalSelisihINACBG > 0 ? ' (RS merugi)' : ' (RS untung)'}
           </p>
         </div>
       </div>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
 
         {/* Top DRG Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif iDRG (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -232,7 +232,7 @@ export default function DashboardPage() {
               <Legend />
               <ReferenceLine y={0} stroke="#666" />
               <Bar dataKey="Unit Cost RS" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Tarif iDRG" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Tarif INA-CBG" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -251,11 +251,11 @@ export default function DashboardPage() {
               <div key={i} className="flex items-center gap-3 p-2 bg-red-50 rounded-lg">
                 <span className="text-xs font-bold text-red-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.drg_description}</p>
-                  <p className="text-xs text-gray-500">{drg.drg_code} · {drg.jumlahKasus} kasus</p>
+                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
+                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                  +{formatRupiah(drg.selisihNominal)}
+                  +{formatRupiah(drg.selisihINACBG)}
                 </span>
               </div>
             ))}
@@ -276,11 +276,11 @@ export default function DashboardPage() {
               <div key={i} className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
                 <span className="text-xs font-bold text-green-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.drg_description}</p>
-                  <p className="text-xs text-gray-500">{drg.drg_code} · {drg.jumlahKasus} kasus</p>
+                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
+                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-green-600 whitespace-nowrap">
-                  {formatRupiah(drg.selisihNominal)}
+                  {formatRupiah(drg.selisihINACBG)}
                 </span>
               </div>
             ))}

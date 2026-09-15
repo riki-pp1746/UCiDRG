@@ -46,8 +46,8 @@ export default function ReportPage() {
       ['RINGKASAN EKSEKUTIF'],
       ['Total Kasus', summary.totalKasus],
       ['Total Unit Cost RS', summary.totalBiayaRS],
-      ['Total Tarif iDRG', summary.totalTarifIDRG],
-      ['Total Selisih', summary.totalSelisih],
+      ['Total Tarif INA-CBG', summary.totalTarifINACBG],
+      ['Total Selisih', summary.totalSelisihINACBG],
       ['Case Mix Index (CMI)', summary.cmi.toFixed(3)],
       ['% DRG Rugi', summary.persenRugi.toFixed(1) + '%'],
       ['% DRG Untung', summary.persenUntung.toFixed(1) + '%'],
@@ -57,15 +57,15 @@ export default function ReportPage() {
 
     // Sheet 2: DRG Comparison
     const drgHeader = [
-      'Kode DRG', 'Nama DRG', 'MDC', 'Deskripsi MDC',
-      'Jumlah Kasus', 'Avg Unit Cost RS', 'Avg Tarif iDRG',
-      'Selisih (Rp)', 'Selisih (%)', 'Total Biaya RS', 'Total Tarif iDRG', 'Status'
+      'Kode Grup', 'Nama Grup', 'MDC', 'Deskripsi MDC',
+      'Jumlah Kasus', 'Avg Unit Cost RS', 'Avg Tarif INA-CBG', 'Avg Tarif iDRG',
+      'Selisih INA-CBG (Rp)', 'Selisih INA-CBG (%)', 'Selisih iDRG (Rp)', 'Total Biaya RS', 'Total Tarif INA-CBG', 'Total Tarif iDRG', 'Status'
     ];
     const drgData = drgResults.map(d => [
-      d.drg_code, d.drg_description, d.mdc_number, d.mdc_description,
-      d.jumlahKasus, d.rataUnitCost, d.rataIDRG,
-      d.selisihNominal, d.selisihPersen.toFixed(1) + '%',
-      d.totalBiayaRS, d.totalTarifIDRG, d.status
+      d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || '-',
+      d.jumlahKasus, d.rataUnitCost, d.rataINACBG, d.rataIDRG,
+      d.selisihINACBG, d.selisihPersenINACBG.toFixed(1) + '%', d.selisihIDRG,
+      d.totalBiayaRS, d.totalTarifINACBG, d.totalTarifIDRG, d.statusINACBG
     ]);
     const ws2 = XLSX.utils.aoa_to_sheet([drgHeader, ...drgData]);
     XLSX.utils.book_append_sheet(wb, ws2, 'DRG Comparison');
@@ -76,7 +76,7 @@ export default function ReportPage() {
       'Kelas Rawat', 'Kode DRG', 'Deskripsi DRG', 'Diagnosa', 'Prosedur',
       'Prosedur Non Bedah', 'Prosedur Bedah', 'Konsultasi', 'Keperawatan',
       'Lab', 'Radiologi', 'Kamar', 'ICU', 'Obat', 'Alkes',
-      'Unit Cost Dihitung', 'Tarif iDRG', 'Selisih', 'Status'
+      'Unit Cost Dihitung', 'Tarif INA-CBG', 'Selisih', 'Status'
     ];
     const patData = patientResults.slice(0, 5000).map(r => [
       r.patient.nama_pasien, r.patient.mrn, r.patient.sep,
@@ -89,7 +89,7 @@ export default function ReportPage() {
       r.patient.billing.laboratory_amt, r.patient.billing.radiology_amt,
       r.patient.billing.room_amt, r.patient.billing.intensive_amt,
       r.patient.billing.drug_amt, r.patient.billing.device_amt,
-      r.unitCostDihitung, r.tarifIDRG, r.selisihNominal, r.status
+      r.unitCostDihitung, r.tarifINACBG, r.selisihINACBG, r.statusINACBG
     ]);
     const ws3 = XLSX.utils.aoa_to_sheet([patHeader, ...patData]);
     XLSX.utils.book_append_sheet(wb, ws3, 'Detail Pasien');
@@ -97,8 +97,8 @@ export default function ReportPage() {
     // Sheet 4: Top Rugi
     const rugiData = [
       ['TOP DRG PALING RUGI'],
-      ['Kode DRG', 'Nama DRG', 'Kasus', 'Unit Cost', 'Tarif iDRG', 'Selisih'],
-      ...summary.top10Rugi.map(d => [d.drg_code, d.drg_description, d.jumlahKasus, d.rataUnitCost, d.rataIDRG, d.selisihNominal]),
+      ['Kode DRG', 'Nama DRG', 'Kasus', 'Unit Cost', 'Tarif INA-CBG', 'Selisih'],
+      ...summary.top10Rugi.map(d => [d.group_code, d.group_description, d.jumlahKasus, d.rataUnitCost, d.rataINACBG, d.selisihINACBG]),
     ];
     const ws4 = XLSX.utils.aoa_to_sheet(rugiData);
     XLSX.utils.book_append_sheet(wb, ws4, 'Top DRG Rugi');
@@ -116,7 +116,7 @@ export default function ReportPage() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Laporan Unit Cost</h1>
-          <p className="text-gray-500 text-sm">Analisis Patient Level Costing vs Tarif iDRG/INACBG</p>
+          <p className="text-gray-500 text-sm">Analisis Patient Level Costing vs Tarif INA-CBG/INACBG</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
           <button
@@ -147,7 +147,7 @@ export default function ReportPage() {
             </div>
             <div>
               <h2 className="text-xl font-bold">LAPORAN UNIT COST</h2>
-              <p className="text-blue-200 text-sm">Patient Level Costing & Perbandingan Tarif iDRG</p>
+              <p className="text-blue-200 text-sm">Patient Level Costing & Perbandingan Tarif INA-CBG</p>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
@@ -176,7 +176,7 @@ export default function ReportPage() {
             { label: 'Total Kasus', value: formatNumber(summary.totalKasus), color: 'border-blue-400' },
             { label: 'Case Mix Index', value: summary.cmi.toFixed(3), color: 'border-violet-400' },
             { label: 'Total Unit Cost RS', value: formatRupiah(summary.totalBiayaRS), color: 'border-indigo-400' },
-            { label: 'Total Tarif iDRG', value: formatRupiah(summary.totalTarifIDRG), color: 'border-cyan-400' },
+            { label: 'Total Tarif INA-CBG', value: formatRupiah(summary.totalTarifINACBG), color: 'border-cyan-400' },
           ].map(kpi => (
             <div key={kpi.label} className={clsx('bg-white rounded-xl p-4 border-l-4 shadow-sm', kpi.color)}>
               <p className="text-xs text-gray-500">{kpi.label}</p>
@@ -188,16 +188,16 @@ export default function ReportPage() {
         {/* Selisih Summary */}
         <div className={clsx(
           'rounded-xl p-5 border',
-          summary.totalSelisih > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+          summary.totalSelisihINACBG > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
         )}>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className={clsx('text-lg font-bold', summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700')}>
-                {summary.totalSelisih > 0 ? '⚠ RS Merugi Secara Agregat' : '✓ RS Untung Secara Agregat'}
+              <p className={clsx('text-lg font-bold', summary.totalSelisihINACBG > 0 ? 'text-red-700' : 'text-green-700')}>
+                {summary.totalSelisihINACBG > 0 ? '⚠ RS Merugi Secara Agregat' : '✓ RS Untung Secara Agregat'}
               </p>
               <p className="text-sm text-gray-600 mt-1">
-                Total selisih: <strong className={summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700'}>
-                  {summary.totalSelisih >= 0 ? '+' : ''}{formatRupiah(summary.totalSelisih)}
+                Total selisih: <strong className={summary.totalSelisihINACBG > 0 ? 'text-red-700' : 'text-green-700'}>
+                  {summary.totalSelisihINACBG >= 0 ? '+' : ''}{formatRupiah(summary.totalSelisihINACBG)}
                 </strong>
               </p>
             </div>
@@ -232,7 +232,7 @@ export default function ReportPage() {
                   <th className="px-3 py-2 text-left font-semibold text-gray-600">Nama DRG</th>
                   <th className="px-3 py-2 text-center font-semibold text-gray-600">Kasus</th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">Unit Cost</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">Tarif iDRG</th>
+                  <th className="px-3 py-2 text-right font-semibold text-gray-600">Tarif INA-CBG</th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">Selisih</th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">%</th>
                   <th className="px-3 py-2 text-center font-semibold text-gray-600">Status</th>
@@ -241,23 +241,23 @@ export default function ReportPage() {
               <tbody className="divide-y divide-gray-50">
                 {drgResults.map((drg, i) => (
                   <tr key={i} className={clsx('hover:bg-gray-50', i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50')}>
-                    <td className="px-3 py-2 font-mono font-semibold text-blue-600 whitespace-nowrap">{drg.drg_code}</td>
+                    <td className="px-3 py-2 font-mono font-semibold text-blue-600 whitespace-nowrap">{drg.group_code}</td>
                     <td className="px-3 py-2 max-w-[200px]">
-                      <p className="truncate text-gray-800">{drg.drg_description}</p>
+                      <p className="truncate text-gray-800">{drg.group_description}</p>
                       <p className="text-gray-400 truncate">MDC {drg.mdc_number}</p>
                     </td>
                     <td className="px-3 py-2 text-center text-gray-700 font-medium">{drg.jumlahKasus}</td>
                     <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataIDRG)}</td>
-                    <td className={clsx('px-3 py-2 text-right font-mono font-semibold whitespace-nowrap', drg.selisihNominal > 0 ? 'text-red-600' : 'text-green-600')}>
-                      {drg.selisihNominal >= 0 ? '+' : ''}{formatRupiah(drg.selisihNominal)}
+                    <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataINACBG)}</td>
+                    <td className={clsx('px-3 py-2 text-right font-mono font-semibold whitespace-nowrap', drg.selisihINACBG > 0 ? 'text-red-600' : 'text-green-600')}>
+                      {drg.selisihINACBG >= 0 ? '+' : ''}{formatRupiah(drg.selisihINACBG)}
                     </td>
-                    <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersen > 0 ? 'text-red-500' : 'text-green-500')}>
-                      {drg.selisihPersen >= 0 ? '+' : ''}{drg.selisihPersen.toFixed(1)}%
+                    <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersenINACBG > 0 ? 'text-red-500' : 'text-green-500')}>
+                      {drg.selisihPersenINACBG >= 0 ? '+' : ''}{drg.selisihPersenINACBG.toFixed(1)}%
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className={clsx('inline-block px-2 py-0.5 rounded-full font-semibold', STATUS_BADGE[drg.status])}>
-                        {drg.status}
+                      <span className={clsx('inline-block px-2 py-0.5 rounded-full font-semibold', STATUS_BADGE[drg.statusINACBG])}>
+                        {drg.statusINACBG}
                       </span>
                     </td>
                   </tr>
@@ -273,7 +273,7 @@ export default function ReportPage() {
             <h3 className="font-bold text-amber-800 mb-3">⚡ Rekomendasi Tindak Lanjut</h3>
             <ul className="space-y-2 text-sm text-amber-700">
               <li>• <strong>{summary.jumlahDRGRugi} DRG group</strong> memiliki unit cost melebihi tarif iDRG — perlu negosiasi tarif atau efisiensi biaya</li>
-              <li>• DRG dengan selisih terbesar: <strong>{summary.top10Rugi[0]?.drg_description}</strong> (+{formatRupiah(summary.top10Rugi[0]?.selisihNominal || 0)} per kasus)</li>
+              <li>• DRG dengan selisih terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> (+{formatRupiah(summary.top10Rugi[0]?.selisihINACBG || 0)} per kasus)</li>
               <li>• Review komponen biaya dominan (surgical, kamar, obat) untuk DRG defisit</li>
               <li>• Pertimbangkan clinical pathway optimization untuk DRG high-cost</li>
               <li>• Lakukan rekonsiliasi tarif dengan BPJS untuk periode berikutnya</li>
