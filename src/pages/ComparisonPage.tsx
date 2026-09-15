@@ -65,13 +65,13 @@ export default function ComparisonPage() {
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
 
   // Chart data (top 15)
-  const chartData = sorted.slice(0, 15).map(d => ({
+  const chartData = useMemo(() => sorted.slice(0, 15).map(d => ({
     code: d.group_code,
     name: d.group_description.slice(0, 25),
     'Unit Cost (Rp Rb)': Math.round(d.rataUnitCost / 1000),
     'Tarif INA-CBG (Rp Rb)': Math.round(d.rataINACBG / 1000),
     Kasus: d.jumlahKasus,
-  }));
+  })), [sorted]);
 
   const SortIcon = ({ k }: { k: SortKey }) => {
     if (sortKey !== k) return <ChevronsUpDown className="w-3 h-3 text-gray-300" />;

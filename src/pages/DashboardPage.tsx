@@ -3,6 +3,7 @@
 // KPI Overview & Summary
 // ============================================================
 
+import React from 'react';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCosting';
 import {
@@ -102,20 +103,20 @@ export default function DashboardPage() {
   if (!summary) return null;
 
   // Pie chart data for DRG status
-  const pieData = [
+  const pieData = React.useMemo(() => [
     { name: 'Untung', value: summary.jumlahDRGUntung, color: COLORS.UNTUNG },
     { name: 'Impas', value: summary.jumlahDRGImpas, color: COLORS.IMPAS },
     { name: 'Rugi', value: summary.jumlahDRGRugi, color: COLORS.RUGI },
-  ].filter(d => d.value > 0);
+  ].filter(d => d.value > 0), [summary.jumlahDRGUntung, summary.jumlahDRGImpas, summary.jumlahDRGRugi]);
 
   // Top DRG for bar chart (top 10 by kasus)
-  const top10DRG = drgResults.slice(0, 10).map(d => ({
+  const top10DRG = React.useMemo(() => drgResults.slice(0, 10).map(d => ({
     name: d.group_code,
     label: d.group_description.slice(0, 30) + '...',
     'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
     'Tarif INA-CBG': Math.round(d.rataINACBG / 1000),
     status: d.statusINACBG,
-  }));
+  })), [drgResults]);
 
   return (
     <div className="space-y-6">

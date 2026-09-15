@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Download } from 'lucide-react';
 import { useCostingStore } from '../../stores/costingStore';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -65,7 +65,7 @@ export function RVUInputForm() {
   const totalCost = Object.values(localCosts).reduce((a, b) => a + (b || 0), 0);
 
   // Group data for donut chart
-  const getChartData = () => {
+  const chartData = React.useMemo(() => {
     const categories = [
       { name: 'Bedah & Prosedur', keys: ['surgical_amt', 'procedure_amt'], color: '#0ea5e9' },
       { name: 'Kamar & Intensif', keys: ['room_amt', 'intensive_amt'], color: '#8b5cf6' },
@@ -80,9 +80,7 @@ export function RVUInputForm() {
       value: cat.keys.reduce((sum, key) => sum + (localCosts[key] || 0), 0),
       color: cat.color
     })).filter(d => d.value > 0);
-  };
-
-  const chartData = getChartData();
+  }, [localCosts]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
