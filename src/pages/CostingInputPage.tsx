@@ -275,11 +275,14 @@ export default function CostingInputPage() {
       ].filter(Boolean).join(', ');
 
       alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nUnit Cost sudah dikalkulasi otomatis. Buka Tab "Hasil" untuk melihat hasilnya.`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('❌ Gagal membaca file Excel. Pastikan format kolom sesuai template.');
+      alert(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
+    } finally {
+      if (e.target) {
+        e.target.value = ''; // Reset input agar bisa upload file yang sama lagi
+      }
     }
-    e.target.value = '';
   };
 
   // ── Download Template Excel sesuai format parser ──

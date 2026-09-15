@@ -40,11 +40,12 @@ function calcAllocationBase(center: {
   switch (center.dasarAlokasi) {
     case 'jumlah_staf':    return center.jumlahStaf || 0;
     case 'luas_lantai':    return center.luasLantai || 0;
-    // Overhead spesifik — gunakan jumlahStaf sebagai proxy untuk penggunaan & pajak
+    // Overhead spesifik
     case 'penggunaan':     return center.jumlahStaf || 0;
     case 'tagihan_pajak':  return center.luasLantai || 0;
-    case 'biaya_riil':     return 1; // alokasi fixed, tiap unit dapat sama
-    // Intermediate spesifik — semua map ke jumlahKunjungan (unit penggunaan)
+    case 'biaya_riil':     return 1;
+    // Intermediate → Final: gunakan jumlahKunjungan ATAU jumlahHariRawat jika tidak ada kunjungan
+    // (rawat inap punya hariRawat, rawat jalan punya kunjungan — keduanya valid)
     case 'resep_ddd':
     case 'jumlah_pemeriksaan':
     case 'jumlah_test':
@@ -53,13 +54,24 @@ function calcAllocationBase(center: {
     case 'jam_operasi':
     case 'kantong_darah':
     case 'jaringan':
-    case 'jumlah_kunjungan': return center.jumlahKunjungan || 0;
-    // Final
-    case 'hari_rawat':     return center.jumlahHariRawat || 0;
-    case 'jumlah_pasien':  return center.jumlahPasienPulang || 0;
+    case 'jumlah_kunjungan':
+      // Fallback ke hariRawat jika kunjungan tidak tersedia (untuk rawat inap)
+      return (center.jumlahKunjungan || 0) > 0
+        ? (center.jumlahKunjungan || 0)
+        : (center.jumlahHariRawat || 0);
+    // Gizi & Laundry (hari_rawat) → gunakan hariRawat ATAU kunjungan
+    case 'hari_rawat':
+      return (center.jumlahHariRawat || 0) > 0
+        ? (center.jumlahHariRawat || 0)
+        : (center.jumlahKunjungan || 0);
+    case 'jumlah_pasien':
+      return (center.jumlahPasienPulang || 0) > 0
+        ? (center.jumlahPasienPulang || 0)
+        : (center.jumlahKunjungan || 0) || (center.jumlahHariRawat || 0);
     default:               return center.jumlahStaf || 0;
   }
 }
+
 
 export function runStepDownCalculation(config: HospitalCostConfig): HospitalCostConfig {
   const updated = { ...config };
@@ -315,7 +327,7 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
     }),
     {
-      name: 'unitcost-hospital-cost-store-v4',
+      name: 'unitcost-hospital-cost-store-v5',
     }
   )
 );
