@@ -19,42 +19,77 @@ import {
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
 
-// ── Reusable number input dengan format Rupiah ──
+// ── Reusable Rupiah input — simpan draft string, commit ke store saat blur ──
 function RpInput({ value, onChange, placeholder = '0' }: {
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
 }) {
+  const [draft, setDraft] = useState<string>('');
   const [focused, setFocused] = useState(false);
+
+  const handleFocus = () => {
+    setFocused(true);
+    setDraft(value > 0 ? String(value) : '');
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft(e.target.value);
+    // Live update untuk responsivitas
+    const parsed = parseFloat(e.target.value.replace(/,/g, '')) || 0;
+    onChange(parsed);
+  };
+
+  const handleBlur = () => {
+    setFocused(false);
+    const parsed = parseFloat(draft.replace(/[^0-9.]/g, '')) || 0;
+    onChange(parsed);
+    setDraft('');
+  };
+
+  const displayValue = focused
+    ? draft
+    : (value > 0 ? value.toLocaleString('id-ID') : '');
+
   return (
     <input
       type={focused ? 'number' : 'text'}
-      value={focused ? (value || '') : (value > 0 ? value.toLocaleString('id-ID') : '')}
-      onChange={e => onChange(parseFloat(e.target.value) || 0)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      value={displayValue}
+      onChange={handleChange}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       placeholder={placeholder}
+      min={0}
       className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
     />
   );
 }
 
-// ── Number input biasa ──
+// ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
 function NumInput({ value, onChange, placeholder = '0' }: {
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
 }) {
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    // Commit nilai final saat blur untuk pastikan store terupdate
+    const v = parseFloat(e.target.value) || 0;
+    onChange(v);
+  };
   return (
     <input
       type="number"
-      value={value || ''}
+      defaultValue={value || undefined}
+      key={value} // force re-render saat value berubah dari luar (misal reset)
       onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      onBlur={handleBlur}
       placeholder={placeholder}
+      min={0}
       className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
     />
   );
 }
+
 
 // ── Label dasar alokasi yang ramah baca ──
 const OVERHEAD_DASAR_LABELS: Record<OverheadDasarAlokasi, string> = {
@@ -331,19 +366,34 @@ export default function CostingInputPage() {
         </div>
       </div>
 
-      {/* Status kalkulasi */}
-      {config.isCalculated && (
-        <div className="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex items-center gap-4">
-          <CheckCircle className="w-6 h-6 text-teal-500 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-teal-800">Kalkulasi Otomatis Aktif</p>
-            <p className="text-xs text-teal-600 mt-0.5">
-              Total Biaya RS: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span>
-              {' · '} Update: {new Date(config.lastCalculatedAt).toLocaleTimeString('id-ID')}
-            </p>
-          </div>
+      {/* Status kalkulasi — selalu tampil */}
+      <div className={clsx(
+        'rounded-2xl p-4 flex items-center gap-4 border transition-colors',
+        config.totalFinalCost > 0
+          ? 'bg-teal-50 border-teal-200'
+          : 'bg-gray-50 border-gray-200'
+      )}>
+        {config.totalFinalCost > 0
+          ? <CheckCircle className="w-6 h-6 text-teal-500 flex-shrink-0" />
+          : <AlertCircle className="w-6 h-6 text-gray-400 flex-shrink-0" />
+        }
+        <div className="flex-1">
+          <p className={clsx('text-sm font-semibold', config.totalFinalCost > 0 ? 'text-teal-800' : 'text-gray-600')}>
+            {config.totalFinalCost > 0 ? '✅ Kalkulasi Otomatis Aktif' : '⬤ Belum ada data biaya'}
+          </p>
+          <p className={clsx('text-xs mt-0.5', config.totalFinalCost > 0 ? 'text-teal-600' : 'text-gray-400')}>
+            {config.totalFinalCost > 0
+              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Penunjang: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span></>
+              : 'Isi data biaya di tiap tab, kalkulasi akan berjalan otomatis setiap kali ada perubahan'
+            }
+          </p>
         </div>
-      )}
+        {config.totalFinalCost > 0 && config.lastCalculatedAt && (
+          <span className="text-xs text-teal-500 flex-shrink-0 hidden sm:block">
+            Update: {new Date(config.lastCalculatedAt).toLocaleTimeString('id-ID')}
+          </span>
+        )}
+      </div>
 
       {/* Alur Step — visual guide */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
