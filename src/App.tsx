@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import AppLayout from './components/layout/AppLayout';
+import GuidePage from './pages/GuidePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import CostingInputPage from './pages/CostingInputPage';
@@ -28,7 +29,9 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route index element={<DashboardPage />} />
+          {/* Halaman awal: Panduan Penggunaan */}
+          <Route index element={<GuidePage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="input-biaya" element={<CostingInputPage />} />
           <Route path="comparison" element={<ComparisonPage />} />

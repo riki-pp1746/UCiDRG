@@ -274,7 +274,7 @@ export default function CostingInputPage() {
 
       {/* Alur Step — visual guide */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Alur Patient Level Costing (Hal. 47 Materi)</p>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Alur Patient Level Costing</p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {[
             { icon: '📋', label: 'Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
@@ -368,7 +368,7 @@ export default function CostingInputPage() {
           {/* Panduan Kesiapan RS (Hal 38) */}
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
             <h3 className="font-semibold text-blue-800 flex items-center gap-2 mb-3">
-              <Info className="w-5 h-5" /> Checklist Kesiapan RS (Hal. 38 Materi)
+              <Info className="w-5 h-5" /> Checklist Kesiapan RS
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-blue-700">
               {[
@@ -408,7 +408,7 @@ export default function CostingInputPage() {
           {/* Indikator Operasional */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="font-bold text-[#041E42] text-lg mb-4 flex items-center gap-2">
-              <Activity className="w-5 h-5 text-teal-600" /> Indikator Operasional RS (Hal. 39)
+              <Activity className="w-5 h-5 text-teal-600" /> Indikator Operasional RS
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {[
@@ -435,7 +435,7 @@ export default function CostingInputPage() {
           {/* Pendapatan & Biaya RS */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="font-bold text-[#041E42] text-lg mb-4 flex items-center gap-2">
-              <Database className="w-5 h-5 text-teal-600" /> Laporan Keuangan RS (Hal. 39)
+              <Database className="w-5 h-5 text-teal-600" /> Laporan Keuangan RS
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
@@ -494,7 +494,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-sm text-blue-800 font-medium">
-              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang akan dialokasikan ke Penunjang Medik dan Layanan Pasien berdasarkan dasar alokasi masing-masing. (Hal. 41 & 48 Materi)
+              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang akan dialokasikan ke Penunjang Medik dan Layanan Pasien berdasarkan dasar alokasi masing-masing.
             </p>
           </div>
 
@@ -586,7 +586,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Pusat Biaya Penunjang Medik (Intermediate)</strong> — Biaya unit penunjang yang mendukung layanan pasien secara tidak langsung. Setelah menerima alokasi dari Overhead, biaya ini akan dialokasikan ke Layanan Pasien berdasarkan pemakaian nyata (Hal. 42 & 50 Materi).
+              🔬 <strong>Pusat Biaya Penunjang Medik (Intermediate)</strong> — Biaya unit penunjang yang mendukung layanan pasien secara tidak langsung. Setelah menerima alokasi dari Overhead, biaya ini akan dialokasikan ke Layanan Pasien berdasarkan pemakaian nyata.
             </p>
           </div>
 
@@ -669,7 +669,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
             <p className="text-sm text-green-800 font-medium">
-              🛏️ <strong>Pusat Biaya Layanan Pasien (Final)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan akan dihitung di sini dan menjadi dasar alokasi ke tiap pasien. (Hal. 43 & 49 Materi)
+              🛏️ <strong>Pusat Biaya Layanan Pasien (Final)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan akan dihitung di sini dan menjadi dasar alokasi ke tiap pasien.
             </p>
           </div>
 
@@ -824,7 +824,7 @@ export default function CostingInputPage() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-green-500" />
-              <h3 className="font-bold text-gray-800">Unit Cost per Pusat Biaya Layanan (Hal. 49 Materi)</h3>
+              <h3 className="font-bold text-gray-800">Unit Cost per Pusat Biaya Layanan</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

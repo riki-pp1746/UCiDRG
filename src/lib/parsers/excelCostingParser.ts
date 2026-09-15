@@ -121,12 +121,12 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
             } else if (currentSection === 'final') {
               let kategori: FinalCenter['kategori'] = 'lainnya';
               const nm = nama.toLowerCase();
-              if (nm.includes('inap')) kategori = 'rawat_inap';
-              else if (nm.includes('jalan') || nm.includes('poli')) kategori = 'rawat_jalan';
-              else if (nm.includes('igd') || nm.includes('darurat')) kategori = 'igd';
-              else if (nm.includes('bedah') || nm.includes('ok') || nm.includes('operasi')) kategori = 'bedah';
-              else if (nm.includes('icu') || nm.includes('hcu')) kategori = 'icu';
-              else if (nm.includes('nicu') || nm.includes('perinatologi')) kategori = 'perinatologi';
+              if (nm.includes('inap') || nm.includes('kelas') || nm.includes('kamar') || nm.includes('vip') || nm.includes('vvip') || nm.includes('suite') || nm.includes('bangsal')) kategori = 'rawat_inap';
+              else if (nm.includes('jalan') || nm.includes('poli') || nm.includes('poliklinik')) kategori = 'rawat_jalan';
+              else if (nm.includes('igd') || nm.includes('darurat') || nm.includes('ugd')) kategori = 'igd';
+              else if (nm.includes('bedah') || nm.includes('ok') || nm.includes('operasi') || nm.includes('ibs')) kategori = 'bedah';
+              else if (nm.includes('icu') || nm.includes('hcu') || nm.includes('iccu') || nm.includes('picu')) kategori = 'icu';
+              else if (nm.includes('nicu') || nm.includes('perinatologi') || nm.includes('neonatus')) kategori = 'perinatologi';
 
               finalCenters.push({
                 id: `fn-imported-${fnIdx++}`,

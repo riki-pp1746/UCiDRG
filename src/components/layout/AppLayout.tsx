@@ -18,13 +18,15 @@ import {
   Calculator,
   X,
   ChevronRight,
+  BookOpen,
 } from 'lucide-react';
 import clsx from 'clsx';
 
 import { BrandLogo } from '../../pages/LoginPage';
 
 const navItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { path: '/', icon: BookOpen, label: 'Panduan', exact: true },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
   { path: '/input-biaya', icon: Calculator, label: 'Input Biaya RS' },
   { path: '/comparison', icon: BarChart3, label: 'Perbandingan' },
