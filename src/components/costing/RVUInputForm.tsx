@@ -1,4 +1,5 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
+import { Download } from 'lucide-react';
 import { useCostingStore } from '../../stores/costingStore';
 
 const COMPONENT_LABELS: Record<string, string> = {
@@ -67,9 +68,15 @@ export function RVUInputForm() {
           <h2 className="text-xl font-bold text-gray-900">Alokasi E-Klaim (RVU)</h2>
           <p className="text-gray-500 text-sm">Masukkan Total Biaya RS untuk ke-18 komponen tarif E-Klaim sebagai dasar pembagi (Cost Driver).</p>
         </div>
-        <button onClick={handleSave} className="ml-auto px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium">
-          Simpan Alokasi
-        </button>
+        <div className="ml-auto flex gap-3">
+          <a href="/Template_Costing_Standard.xlsx" download className="flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl hover:bg-teal-100 font-medium transition-colors">
+            <Download className="w-4 h-4" />
+            Download Template Excel
+          </a>
+          <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium">
+            Simpan Alokasi
+          </button>
+        </div>
       </div>
       
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
