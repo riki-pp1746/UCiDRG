@@ -148,51 +148,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Elegant Mesh Background */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-teal-400/20 blur-[120px]" />
-        <div className="absolute top-[40%] -right-[20%] w-[60%] h-[80%] rounded-full bg-[#041E42]/10 blur-[150px]" />
-      </div>
-
-      <div className="w-full max-w-[1000px] bg-white/70 backdrop-blur-3xl border border-white/50 shadow-[0_8px_40px_rgba(0,0,0,0.04)] rounded-[40px] overflow-hidden flex flex-col md:flex-row relative z-10 min-h-[600px]">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-[1000px] bg-white border border-gray-200 shadow-xl rounded-[24px] overflow-hidden flex flex-col md:flex-row min-h-[600px]">
         
-        {/* Left Side - Branding (Deloitte x Kemenkes Vibe) */}
-        <div className="md:w-5/12 bg-[#041E42] p-10 flex flex-col justify-between relative overflow-hidden text-white">
-          <div className="absolute inset-0 opacity-20">
-            {/* Minimalist pattern overlay */}
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/>
-                </pattern>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-          </div>
-          <div className="relative z-10">
-            <BrandLogo className="w-14 h-14 mb-8" />
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-4 leading-tight">
-              Sistem Kalkulasi<br />
-              <span className="text-teal-400">Patient Level Costing</span>
-            </h1>
-            <p className="text-blue-100/80 text-sm leading-relaxed">
-              Platform analitik enterprise untuk mensimulasikan unit cost rumah sakit dan membandingkannya secara presisi dengan tarif INA-CBG.
-            </p>
-          </div>
-
-          <div className="relative z-10 mt-12 flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
-              <Activity className="w-5 h-5 text-teal-400" />
-            </div>
-            <p className="text-xs font-medium text-blue-200 uppercase tracking-widest">Enterprise<br/>Edition</p>
-          </div>
-        </div>
-
-        {/* Right Side - Login Form (Apple Vibe) */}
-        <div className="md:w-7/12 p-10 sm:p-14 flex flex-col justify-center bg-white/40">
+        {/* Left Side - Login Form (Minimalist White) */}
+        <div className="md:w-6/12 p-10 sm:p-14 flex flex-col justify-center bg-white order-2 md:order-1">
           <div className="max-w-sm mx-auto w-full">
-            <h2 className="text-2xl font-bold text-[#041E42] mb-2">Selamat Datang</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Selamat Datang</h2>
             <p className="text-gray-500 text-sm mb-8">Masuk dengan kredensial rumah sakit Anda.</p>
 
             <form onSubmit={handleLogin} className="space-y-5">
@@ -248,10 +210,10 @@ export default function LoginPage() {
                 type="submit"
                 disabled={!isVerified}
                 className={clsx(
-                  "w-full flex justify-center py-4 px-4 rounded-2xl text-sm font-bold text-white shadow-lg transition-all duration-300 transform active:scale-95",
+                  "w-full flex justify-center py-4 px-4 rounded-xl text-sm font-bold text-white transition-all duration-300 transform active:scale-95",
                   isVerified 
-                    ? "bg-[#041E42] hover:bg-[#062a5c] shadow-[#041E42]/20" 
-                    : "bg-gray-300 cursor-not-allowed shadow-none"
+                    ? "bg-[#041E42] hover:bg-[#062a5c]" 
+                    : "bg-gray-300 cursor-not-allowed"
                 )}
               >
                 Masuk ke Sistem
@@ -259,6 +221,39 @@ export default function LoginPage() {
             </form>
           </div>
         </div>
+
+        {/* Right Side - Branding (Deep Blue / Teal) */}
+        <div className="md:w-6/12 bg-[#041E42] p-10 flex flex-col justify-between relative overflow-hidden text-white order-1 md:order-2">
+          <div className="absolute inset-0 opacity-10">
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid2" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid2)" />
+            </svg>
+          </div>
+          
+          <div className="relative z-10 flex-1 flex flex-col justify-center">
+            <BrandLogo className="w-16 h-16 mb-8" />
+            <h1 className="text-4xl font-bold tracking-tight text-white mb-4 leading-tight">
+              Sistem Kalkulasi<br />
+              <span className="text-teal-400">Patient Level Costing</span>
+            </h1>
+            <p className="text-blue-100/80 text-sm leading-relaxed max-w-sm">
+              Platform analitik enterprise untuk mensimulasikan unit cost rumah sakit dan membandingkannya secara presisi dengan tarif INA-CBG.
+            </p>
+          </div>
+
+          <div className="relative z-10 flex items-center gap-3 mt-8">
+            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
+              <Activity className="w-5 h-5 text-teal-400" />
+            </div>
+            <p className="text-xs font-medium text-blue-200 uppercase tracking-widest">Enterprise<br/>Edition</p>
+          </div>
+        </div>
+
       </div>
     </div>
   );

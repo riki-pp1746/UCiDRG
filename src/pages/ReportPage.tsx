@@ -113,25 +113,25 @@ export default function ReportPage() {
   return (
     <div className="space-y-6">
       {/* Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Laporan Unit Cost</h1>
-          <p className="text-gray-500 text-sm">Analisis Patient Level Costing vs Tarif INA-CBG/INACBG</p>
+          <p className="text-gray-500 text-sm mt-1">Export atau cetak ringkasan analisis performa klaim</p>
         </div>
-        <div className="sm:ml-auto flex gap-2">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={exportExcel}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 text-sm font-medium transition"
+            className="flex items-center gap-2 px-5 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 text-sm font-semibold transition-colors shadow-sm"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Export Excel
+            Export to Excel (.xlsx)
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium transition"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] text-sm font-semibold transition-all shadow-md active:scale-95"
           >
             <Printer className="w-4 h-4" />
-            Cetak / PDF
+            Export Summary Report (PDF)
           </button>
         </div>
       </div>

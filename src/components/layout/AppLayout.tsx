@@ -43,20 +43,20 @@ export default function AppLayout() {
 
   return (
     <div className="flex h-screen bg-[#F5F5F7] text-[#1D1D1F]">
-      {/* Sidebar - Apple Glass Style */}
+      {/* Sidebar - Clean B2B SaaS Style */}
       <aside
         className={clsx(
-          'bg-white/80 backdrop-blur-xl border-r border-gray-200/60 flex flex-col transition-all duration-300 ease-in-out z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
+          'bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-20',
           sidebarOpen ? 'w-64' : 'w-20'
         )}
       >
         {/* Logo Area */}
-        <div className="flex items-center gap-3 p-5 h-20 border-b border-gray-100/50 overflow-hidden">
-          <BrandLogo className="w-10 h-10 flex-shrink-0" />
+        <div className="flex items-center gap-3 p-5 h-16 border-b border-gray-100 overflow-hidden">
+          <BrandLogo className="w-8 h-8 flex-shrink-0" />
           {sidebarOpen && (
             <div className="min-w-0 flex-1 whitespace-nowrap">
               <h1 className="text-base font-bold text-[#041E42] tracking-tight">UnitCOSt PRO</h1>
-              <p className="text-xs text-gray-500 truncate font-medium">{user?.namaRS}</p>
+              <p className="text-xs text-teal-600 truncate font-medium">{user?.namaRS}</p>
             </div>
           )}
         </div>
@@ -117,11 +117,11 @@ export default function AppLayout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        {/* Header - Glass */}
-        <header className="h-16 bg-white/70 backdrop-blur-md border-b border-gray-200/50 flex items-center justify-between px-6 sticky top-0 z-10">
+        {/* Header - Solid Clean */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100/80 transition-colors"
+            className="p-2 -ml-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -129,9 +129,9 @@ export default function AppLayout() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-[#041E42]">{user?.username}</p>
-              <p className="text-xs text-gray-500">Administrator</p>
+              <p className="text-xs text-teal-600 font-medium">Administrator</p>
             </div>
-            <div className="w-9 h-9 bg-teal-100 rounded-full flex items-center justify-center border border-teal-200/50 text-teal-700 font-bold shadow-sm">
+            <div className="w-9 h-9 bg-teal-50 rounded-full flex items-center justify-center border border-teal-100 text-teal-700 font-bold">
               {user?.username?.charAt(0).toUpperCase()}
             </div>
           </div>

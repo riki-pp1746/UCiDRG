@@ -33,7 +33,7 @@ function KPICard({
   trend?: 'up' | 'down' | 'neutral';
 }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-start gap-4">
+    <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex items-start gap-4">
       <div className={clsx('p-3 rounded-xl flex-shrink-0', color)}>
         <Icon className="w-6 h-6 text-white" />
       </div>
@@ -124,53 +124,79 @@ export default function DashboardPage() {
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
-          <div className="bg-teal-50/80 p-3 rounded-2xl">
-            <Users className="w-6 h-6 text-teal-600" />
+      {/* BENTO GRID SUMMARY */}
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+        
+        {/* BIG CARD: CRR (Cost Recovery Rate) */}
+        <div className="md:col-span-2 lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between group hover:border-teal-300 transition-colors">
+          <div className="flex justify-between items-start mb-4">
+            <div className="bg-teal-50 p-2.5 rounded-xl">
+              <Activity className="w-6 h-6 text-teal-600" />
+            </div>
+            <span className={clsx("px-2.5 py-1 text-xs font-bold rounded-full", summary.crr >= 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+              {summary.crr >= 100 ? "SURPLUS" : "DEFISIT"}
+            </span>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">Total Kasus</p>
-            <p className="text-2xl font-bold text-[#041E42] mt-0.5 truncate">{formatNumber(summary.totalKasus)}</p>
-            <p className="text-xs text-gray-400 mt-1">Klaim JKN</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
-          <div className="bg-blue-50/80 p-3 rounded-2xl">
-            <DollarSign className="w-6 h-6 text-blue-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">Total Biaya RS</p>
-            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalBiayaRS)}</p>
-            <p className="text-xs text-gray-400 mt-1">Setelah overhead</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
-          <div className="bg-indigo-50/80 p-3 rounded-2xl">
-            <FileBarChart2 className="w-6 h-6 text-indigo-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">Tarif INA-CBG</p>
-            <p className="text-xl font-bold text-[#041E42] mt-0.5 truncate">{formatRupiah(summary.totalTarifINACBG)}</p>
-            <p className="text-xs text-gray-400 mt-1">Pendapatan INACBG</p>
+          <div>
+            <p className="text-sm font-medium text-gray-500 mb-1">Cost Recovery Rate (CRR)</p>
+            <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>
+              {summary.crr.toFixed(1)}%
+            </p>
+            <p className="text-xs text-gray-400 mt-2">Tarif INA-CBG / Unit Cost RS</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all">
-          <div className="bg-amber-50/80 p-3 rounded-2xl">
-            <Activity className="w-6 h-6 text-amber-600" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
-            <p className="text-2xl font-bold text-[#041E42] mt-0.5 truncate">{summary.cmi.toFixed(3)}</p>
+        {/* CMI & Total Pasien */}
+        <div className="md:col-span-2 lg:col-span-2 grid grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="w-5 h-5 text-amber-500" />
+              <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
+            </div>
+            <p className="text-3xl font-bold text-gray-900 truncate">{summary.cmi.toFixed(3)}</p>
             <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
+          </div>
+          
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-5 h-5 text-blue-500" />
+              <p className="text-sm font-medium text-gray-500">Total Pasien</p>
+            </div>
+            <p className="text-3xl font-bold text-gray-900 truncate">{new Intl.NumberFormat('id-ID').format(summary.totalKasus)}</p>
+            <p className="text-xs text-gray-400 mt-1">Kasus diproses</p>
+          </div>
+        </div>
+
+        {/* COMPARISON: RS vs INA-CBG */}
+        <div className="md:col-span-4 lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+          <div className="flex justify-between items-center mb-6">
+            <p className="text-sm font-medium text-gray-500">Unit Cost vs Tarif INA-CBG</p>
+            <FileBarChart2 className="w-5 h-5 text-gray-400" />
+          </div>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-rose-600 font-semibold">Total Biaya RS</span>
+                <span className="font-mono text-gray-900">{formatRupiah(summary.totalBiayaRS)}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div className="bg-rose-500 h-2 rounded-full" style={{ width: summary.totalBiayaRS > summary.totalTarifINACBG ? '100%' : `${(summary.totalBiayaRS / summary.totalTarifINACBG) * 100}%` }}></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-indigo-600 font-semibold">Total Klaim INA-CBG</span>
+                <span className="font-mono text-gray-900">{formatRupiah(summary.totalTarifINACBG)}</span>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-2">
+                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: summary.totalTarifINACBG > summary.totalBiayaRS ? '100%' : `${(summary.totalTarifINACBG / summary.totalBiayaRS) * 100}%` }}></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all"><div className="bg-teal-50/80 p-3 rounded-2xl"><Activity className="w-6 h-6 text-teal-600" /></div><div className="min-w-0"><p className="text-sm font-medium text-gray-500">Cost Recovery Rate (CRR)</p><p className={clsx("text-2xl font-bold mt-0.5 truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>{summary.crr.toFixed(1)}%</p><p className="text-xs text-gray-400 mt-1">Tarif INA-CBG / Unit Cost RS</p></div></div>{/* Selisih Alert */}
+      {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
         summary.totalSelisihINACBG > 0
@@ -192,7 +218,7 @@ export default function DashboardPage() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Status Pie */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Status DRG Group</h3>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
@@ -216,7 +242,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Top DRG Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
@@ -241,7 +267,7 @@ export default function DashboardPage() {
       {/* Top Rugi & Untung Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Rugi */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-red-500" />
             Top 5 DRG Paling Rugi
@@ -266,7 +292,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Top Untung */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-green-500" />
             Top 5 DRG Paling Menguntungkan

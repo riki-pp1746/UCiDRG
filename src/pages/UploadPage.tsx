@@ -273,9 +273,9 @@ export default function UploadPage() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={clsx(
-            'border-2 border-dashed rounded-[32px] p-12 text-center transition-all duration-300 relative overflow-hidden bg-white shadow-[0_4px_24px_rgba(0,0,0,0.02)]',
+            'border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 relative overflow-hidden bg-white shadow-sm',
             uploadState === 'dragging' 
-              ? 'border-teal-500 bg-teal-50/50 scale-[1.02]' 
+              ? 'border-teal-500 bg-teal-50' 
               : 'border-gray-200 hover:border-teal-400 hover:bg-gray-50'
           )}
         >
@@ -285,21 +285,25 @@ export default function UploadPage() {
               <p className="text-gray-900 font-semibold mb-2">Memproses File Anda...</p>
               <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-teal-400 to-teal-600 transition-all duration-300 rounded-full"
+                  className="h-full bg-teal-500 transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
           )}
 
-          <div className="w-24 h-24 bg-[#F5F5F7] rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-white">
-            <Upload className="w-10 h-10 text-teal-600" />
+          <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-gray-100">
+            <Upload className="w-8 h-8 text-teal-600" />
           </div>
-          <h2 className="text-xl font-bold text-[#041E42]">Tarik & Lepas File Di Sini</h2>
-          <p className="text-gray-500 mt-2 mb-8 max-w-md mx-auto leading-relaxed">
-            Mendukung upload lebih dari 1 file sekaligus.<br/>
-            Format <strong>.TXT</strong> (Data Pasien INA-CBG) dan <strong>.XLSX</strong> (Template Keuangan).
+          <h2 className="text-xl font-bold text-gray-900">Tarik & Lepas File Di Sini</h2>
+          <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
+            Mendukung file Data Pasien INA-CBG (.TXT) dan Template Keuangan (.XLSX)
           </p>
+          <div className="mb-8">
+            <a href="/Template_Costing_Standard.xlsx" download className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
+              Unduh Template Sample (.XLSX)
+            </a>
+          </div>
           
           <input
             type="file"
@@ -312,9 +316,9 @@ export default function UploadPage() {
           />
           <label
             htmlFor="file-upload"
-            className="inline-flex items-center gap-2 px-8 py-4 bg-[#041E42] text-white rounded-2xl hover:bg-[#062a5c] font-semibold cursor-pointer transition-all shadow-[0_4px_16px_rgba(4,30,66,0.2)] hover:shadow-[0_8px_24px_rgba(4,30,66,0.3)] transform active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] font-semibold cursor-pointer transition-all active:scale-95"
           >
-            Pilih File Dari Komputer
+            Pilih File
           </label>
         </div>
       )}

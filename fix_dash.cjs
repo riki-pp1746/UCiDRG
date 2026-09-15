@@ -1,13 +1,22 @@
 ﻿const fs = require('fs');
-
 let r = fs.readFileSync('src/pages/DashboardPage.tsx', 'utf8');
 
-const newGrid = 
+// The file got corrupted starting at line 127
+// We need to rebuild the file from line 120 (return statement) down to {/* Selisih Alert */}
+
+const properReturn = 
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Dashboard Overview</h1>
+        <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
+      </div>
+
       {/* BENTO GRID SUMMARY */}
-      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
         
         {/* BIG CARD: CRR (Cost Recovery Rate) */}
-        <div className="md:col-span-2 lg:col-span-2 bg-white rounded-[24px] p-6 border border-gray-200 shadow-sm flex flex-col justify-between group hover:border-teal-300 transition-colors">
+        <div className="md:col-span-2 lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between group hover:border-teal-300 transition-colors">
           <div className="flex justify-between items-start mb-4">
             <div className="bg-teal-50 p-2.5 rounded-xl">
               <Activity className="w-6 h-6 text-teal-600" />
@@ -21,13 +30,13 @@ const newGrid =
             <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>
               {summary.crr.toFixed(1)}%
             </p>
-            <p className="text-xs text-gray-400 mt-2">Standar emas performa klaim RS</p>
+            <p className="text-xs text-gray-400 mt-2">Tarif INA-CBG / Unit Cost RS</p>
           </div>
         </div>
 
         {/* CMI & Total Pasien */}
         <div className="md:col-span-2 lg:col-span-2 grid grid-cols-2 gap-4">
-          <div className="bg-white rounded-[24px] p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-5 h-5 text-amber-500" />
               <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
@@ -36,7 +45,7 @@ const newGrid =
             <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
           </div>
           
-          <div className="bg-white rounded-[24px] p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-5 h-5 text-blue-500" />
               <p className="text-sm font-medium text-gray-500">Total Pasien</p>
@@ -47,7 +56,7 @@ const newGrid =
         </div>
 
         {/* COMPARISON: RS vs INA-CBG */}
-        <div className="md:col-span-4 lg:col-span-2 bg-white rounded-[24px] p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+        <div className="md:col-span-4 lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm font-medium text-gray-500">Unit Cost vs Tarif INA-CBG</p>
             <FileBarChart2 className="w-5 h-5 text-gray-400" />
@@ -74,12 +83,11 @@ const newGrid =
           </div>
         </div>
       </div>
-;
 
-r = r.replace(/<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">[\s\S]*?(?=\{\/\* Selisih Alert \*\/)/, newGrid);
+      {/* Selisih Alert */};
 
-// Remove shadow-sm border border-gray-100 and use rounded-2xl border border-gray-200 shadow-sm for the rest
-r = r.replace(/bg-white rounded-2xl p-5 shadow-sm border border-gray-100/g, 'bg-white rounded-2xl p-6 border border-gray-200 shadow-sm');
-r = r.replace(/bg-white rounded-\[24px\] p-6 shadow-\[0_4px_24px_rgba\(0,0,0,0\.02\)\] border border-gray-100/g, 'bg-white rounded-2xl p-6 border border-gray-200 shadow-sm');
-
-fs.writeFileSync('src/pages/DashboardPage.tsx', r);
+const match = r.match(/return \([\s\S]*?\{\/\* Selisih Alert \*\/\}/);
+if (match) {
+  r = r.replace(match[0], properReturn);
+  fs.writeFileSync('src/pages/DashboardPage.tsx', r);
+}

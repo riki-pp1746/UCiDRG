@@ -1,67 +1,7 @@
-import { useState } from 'react';
-import { Download } from 'lucide-react';
-import { useCostingStore } from '../../stores/costingStore';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+﻿const fs = require('fs');
+let r = fs.readFileSync('src/components/costing/RVUInputForm.tsx', 'utf8');
 
-const COMPONENT_LABELS: Record<string, string> = {
-  procedure_amt: 'Prosedur Non Bedah',
-  surgical_amt: 'Prosedur Bedah',
-  consul_amt: 'Konsultasi',
-  expert_amt: 'Tenaga Ahli',
-  nursing_amt: 'Keperawatan',
-  ancillary_amt: 'Penunjang',
-  radiology_amt: 'Radiologi',
-  laboratory_amt: 'Laboratorium',
-  blood_amt: 'Pelayanan Darah',
-  rehab_amt: 'Rehabilitasi',
-  room_amt: 'Kamar/Akomodasi',
-  intensive_amt: 'Rawat Intensif',
-  drug_amt: 'Obat',
-  drug_chronic_amt: 'Obat Kronis',
-  drug_chemo_amt: 'Obat Kemoterapi',
-  device_amt: 'Alkes',
-  consumable_amt: 'BMHP',
-  device_rent_amt: 'Sewa Alat',
-};
-
-export function RVUInputForm() {
-  const rvuGlobalCosts = useCostingStore(s => s.rvuGlobalCosts) || {} as any;
-  const setRVUGlobalCosts = useCostingStore(s => s.setRVUGlobalCosts);
-
-  // Initialize if empty
-  const [localCosts, setLocalCosts] = useState<Record<string, number>>({
-    procedure_amt: rvuGlobalCosts.procedure_amt || 0,
-    surgical_amt: rvuGlobalCosts.surgical_amt || 0,
-    consul_amt: rvuGlobalCosts.consul_amt || 0,
-    expert_amt: rvuGlobalCosts.expert_amt || 0,
-    nursing_amt: rvuGlobalCosts.nursing_amt || 0,
-    ancillary_amt: rvuGlobalCosts.ancillary_amt || 0,
-    radiology_amt: rvuGlobalCosts.radiology_amt || 0,
-    laboratory_amt: rvuGlobalCosts.laboratory_amt || 0,
-    blood_amt: rvuGlobalCosts.blood_amt || 0,
-    rehab_amt: rvuGlobalCosts.rehab_amt || 0,
-    room_amt: rvuGlobalCosts.room_amt || 0,
-    intensive_amt: rvuGlobalCosts.intensive_amt || 0,
-    drug_amt: rvuGlobalCosts.drug_amt || 0,
-    drug_chronic_amt: rvuGlobalCosts.drug_chronic_amt || 0,
-    drug_chemo_amt: rvuGlobalCosts.drug_chemo_amt || 0,
-    device_amt: rvuGlobalCosts.device_amt || 0,
-    consumable_amt: rvuGlobalCosts.consumable_amt || 0,
-    device_rent_amt: rvuGlobalCosts.device_rent_amt || 0,
-  });
-
-  const handleChange = (key: string, value: number) => {
-    const newCosts = { ...localCosts, [key]: value };
-    setLocalCosts(newCosts);
-  };
-
-  const handleSave = () => {
-    setRVUGlobalCosts(localCosts as any);
-    alert('Alokasi E-Klaim berhasil disimpan! Sistem akan menghitung ulang Patient Level Costing.');
-  };
-
-  const formatRupiah = (val: number) => val.toLocaleString('id-ID');
-
+const returnStatement = 
   const totalCost = Object.values(localCosts).reduce((a, b) => a + (b || 0), 0);
 
   // Group data for donut chart
@@ -72,7 +12,7 @@ export function RVUInputForm() {
       { name: 'Obat & Farmasi', keys: ['drug_amt', 'drug_chronic_amt', 'drug_chemo_amt'], color: '#10b981' },
       { name: 'Penunjang & Lab', keys: ['laboratory_amt', 'radiology_amt', 'ancillary_amt', 'blood_amt'], color: '#f59e0b' },
       { name: 'Alkes & BMHP', keys: ['device_amt', 'consumable_amt', 'device_rent_amt'], color: '#f43f5e' },
-      { name: 'Lainnya', keys: ['consul_amt', 'expert_amt', 'nursing_amt', 'rehab_amt'], color: '#6366f1' },
+      { name: 'Konsultasi & Keperawatan', keys: ['consul_amt', 'expert_amt', 'nursing_amt', 'rehab_amt'], color: '#6366f1' },
     ];
 
     return categories.map(cat => ({
@@ -102,7 +42,7 @@ export function RVUInputForm() {
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
-          <strong>Info:</strong> Angka ini digunakan untuk mendistribusikan total biaya ke setiap pasien berdasarkan proporsi tagihan.
+          <strong>Info:</strong> Angka ini digunakan untuk mendistribusikan total biaya ke setiap pasien berdasarkan proporsi billing mereka (Relative Value Unit).
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -124,17 +64,17 @@ export function RVUInputForm() {
       </div>
 
       {/* RIGHT: Sticky Realtime Calculator */}
-      <div className="w-full lg:w-[360px] bg-white rounded-2xl p-6 border border-gray-200 shadow-sm sticky top-24 order-1 lg:order-2 shrink-0">
-        <h3 className="font-bold text-gray-900 mb-1">Total Global Cost</h3>
-        <p className="text-3xl font-bold text-[#041E42] mb-6 truncate">{formatRupiah(totalCost)}</p>
+      <div className="w-full lg:w-[380px] bg-white rounded-2xl p-6 border border-gray-200 shadow-sm sticky top-24 order-1 lg:order-2 shrink-0">
+        <h3 className="font-bold text-gray-900 mb-2">Total Global Cost</h3>
+        <p className="text-3xl font-bold text-teal-600 mb-6 truncate">{formatRupiah(totalCost)}</p>
 
         {chartData.length > 0 ? (
-          <div className="h-[180px] w-full mb-6">
+          <div className="h-[200px] w-full mb-6">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value">
+                <Pie data={chartData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={2} dataKey="value">
                   {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <Cell key={\cell-\\} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip formatter={(val) => formatRupiah(val as number)} />
@@ -142,8 +82,8 @@ export function RVUInputForm() {
             </ResponsiveContainer>
           </div>
         ) : (
-          <div className="h-[180px] w-full mb-6 bg-gray-50 rounded-full border-4 border-gray-100 flex items-center justify-center text-gray-400 text-xs text-center p-4">
-            Isi nominal<br/>di samping
+          <div className="h-[200px] w-full mb-6 bg-gray-50 rounded-full border-4 border-gray-100 flex items-center justify-center text-gray-400 text-xs">
+            Belum ada data
           </div>
         )}
 
@@ -151,7 +91,7 @@ export function RVUInputForm() {
           {chartData.map(d => (
             <div key={d.name} className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color }}></div>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
                 <span className="text-gray-600 truncate max-w-[120px]">{d.name}</span>
               </div>
               <span className="font-semibold text-gray-900">{((d.value / totalCost) * 100).toFixed(1)}%</span>
@@ -159,10 +99,14 @@ export function RVUInputForm() {
           ))}
         </div>
 
-        <button onClick={handleSave} className="w-full py-3 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] font-semibold transition-all active:scale-95 shadow-md">
+        <button onClick={handleSave} className="w-full py-3 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] font-semibold shadow-md transition-all active:scale-95">
           Simpan Alokasi
         </button>
       </div>
     </div>
   );
-}
+;
+
+r = r.replace(/  return \([\s\S]*?\);\n/m, returnStatement);
+
+fs.writeFileSync('src/components/costing/RVUInputForm.tsx', r);
