@@ -128,7 +128,7 @@ export function RVUInputForm() {
 
         {chartData.length > 0 ? (
           <div className="h-[180px] w-full mb-6 relative">
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="99%" height={180}>
               <PieChart>
                 <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={2} dataKey="value">
                   {chartData.map((entry, index) => (

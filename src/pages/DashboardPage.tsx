@@ -221,7 +221,7 @@ export default function DashboardPage() {
         {/* Status Pie */}
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Status DRG Group</h3>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="99%" height={200}>
             <PieChart>
               <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
                 {pieData.map((entry, i) => (
@@ -245,7 +245,7 @@ export default function DashboardPage() {
         {/* Top DRG Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="99%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} />

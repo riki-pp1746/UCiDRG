@@ -142,7 +142,7 @@ export default function ComparisonPage() {
       {activeTab === 'chart' ? (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="99%" height={400}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `${v}K`} />
