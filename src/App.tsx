@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import AppLayout from './components/layout/AppLayout';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
+import CostingInputPage from './pages/CostingInputPage';
 import ComparisonPage from './pages/ComparisonPage';
 import ReportPage from './pages/ReportPage';
 import SettingsPage from './pages/SettingsPage';
@@ -29,6 +30,7 @@ export default function App() {
         >
           <Route index element={<DashboardPage />} />
           <Route path="upload" element={<UploadPage />} />
+          <Route path="input-biaya" element={<CostingInputPage />} />
           <Route path="comparison" element={<ComparisonPage />} />
           <Route path="report" element={<ReportPage />} />
           <Route path="settings" element={<SettingsPage />} />

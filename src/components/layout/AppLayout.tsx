@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  Calculator,
   X,
   ChevronRight,
 } from 'lucide-react';
@@ -22,6 +23,7 @@ import clsx from 'clsx';
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
+  { path: '/input-biaya', icon: Calculator, label: 'Input Biaya RS' },
   { path: '/comparison', icon: BarChart3, label: 'Perbandingan' },
   { path: '/report', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },

@@ -1,0 +1,618 @@
+// ============================================================
+// PAGE: CostingInputPage.tsx
+// Form input biaya RS — Step-Down Costing
+// Tab: Info RS | A. Overhead | B. Intermediate | C. Final | Hasil
+// ============================================================
+
+import { useState } from 'react';
+import { useHospitalCostStore } from '../stores/hospitalCostStore';
+import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import {
+  Building2, Calculator, ChevronDown, ChevronUp,
+  Plus, Trash2, Save, RotateCcw, CheckCircle,
+  AlertCircle, Info, TrendingUp
+} from 'lucide-react';
+import clsx from 'clsx';
+
+// ── Reusable number input dengan format Rupiah ──
+function RpInput({ value, onChange, placeholder = '0' }: {
+  value: number;
+  onChange: (v: number) => void;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      type={focused ? 'number' : 'text'}
+      value={focused ? (value || '') : (value > 0 ? value.toLocaleString('id-ID') : '')}
+      onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholder={placeholder}
+      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+    />
+  );
+}
+
+// ── Number input biasa ──
+function NumInput({ value, onChange, placeholder = '0' }: {
+  value: number;
+  onChange: (v: number) => void;
+  placeholder?: string;
+}) {
+  return (
+    <input
+      type="number"
+      value={value || ''}
+      onChange={e => onChange(parseFloat(e.target.value) || 0)}
+      placeholder={placeholder}
+      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+    />
+  );
+}
+
+type Tab = 'info' | 'overhead' | 'intermediate' | 'final' | 'hasil';
+
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'info', label: 'Info RS', icon: '🏥' },
+  { id: 'overhead', label: 'A. Overhead', icon: '📋' },
+  { id: 'intermediate', label: 'B. Penunjang', icon: '🔬' },
+  { id: 'final', label: 'C. Layanan', icon: '🛏️' },
+  { id: 'hasil', label: 'Hasil & Unit Cost', icon: '📊' },
+];
+
+const DASAR_ALOKASI_OPTIONS = [
+  { value: 'jumlah_staf', label: 'Jumlah Staf' },
+  { value: 'luas_lantai', label: 'Luas Lantai (m²)' },
+  { value: 'jumlah_kunjungan', label: 'Jumlah Kunjungan' },
+  { value: 'hari_rawat', label: 'Hari Rawat' },
+  { value: 'jumlah_pasien', label: 'Jumlah Pasien' },
+];
+
+export default function CostingInputPage() {
+  const {
+    config,
+    updateInfo, updateOverhead, addOverhead, removeOverhead,
+    updateIntermediate, addIntermediate, removeIntermediate,
+    updateFinal, addFinal, removeFinal,
+    calculate, resetToDefault,
+  } = useHospitalCostStore();
+
+  const [activeTab, setActiveTab] = useState<Tab>('info');
+  const [calculated, setCalculated] = useState(config.isCalculated);
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  const toggleRow = (id: string) => {
+    setExpandedRows(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleCalculate = () => {
+    calculate();
+    setCalculated(true);
+    setActiveTab('hasil');
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Input Biaya Rumah Sakit</h1>
+          <p className="text-gray-500 text-sm mt-1">Step-Down Costing — Overhead → Penunjang → Layanan</p>
+        </div>
+        <div className="sm:ml-auto flex gap-2">
+          <button
+            onClick={() => { if (window.confirm('Reset semua data ke template default?')) resetToDefault(); }}
+            className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm"
+          >
+            <RotateCcw className="w-4 h-4" />
+            Reset Default
+          </button>
+          <button
+            onClick={handleCalculate}
+            className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium"
+          >
+            <Calculator className="w-4 h-4" />
+            Hitung Unit Cost
+          </button>
+        </div>
+      </div>
+
+      {/* Status */}
+      {config.isCalculated && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-500" />
+          <p className="text-sm text-green-700">
+            Perhitungan terakhir: {new Date(config.lastCalculatedAt).toLocaleString('id-ID')}
+            {' '}· Total Biaya RS: <strong>{formatRupiah(config.totalFinalCost)}</strong>
+          </p>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={clsx(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition',
+              activeTab === tab.id
+                ? 'bg-white text-blue-700 shadow-sm'
+                : 'text-gray-500 hover:text-gray-800'
+            )}
+          >
+            <span>{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── TAB: INFO RS ── */}
+      {activeTab === 'info' && (
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+          <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-blue-500" />
+            Identitas Rumah Sakit
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nama Rumah Sakit *</label>
+              <input
+                type="text"
+                value={config.namaRS}
+                onChange={e => updateInfo({ namaRS: e.target.value })}
+                placeholder="cth: RSUD Provinsi Bali"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Kepemilikan</label>
+              <input
+                type="text"
+                value={config.kepemilikan}
+                onChange={e => updateInfo({ kepemilikan: e.target.value })}
+                placeholder="cth: Pemerintah Provinsi"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipe RS</label>
+              <select
+                value={config.tipeRS}
+                onChange={e => updateInfo({ tipeRS: e.target.value as 'A' | 'B' | 'C' | 'D' })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                {['A', 'B', 'C', 'D'].map(t => <option key={t} value={t}>Tipe {t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Data</label>
+              <input
+                type="number"
+                value={config.tahunData}
+                onChange={e => updateInfo({ tahunData: parseInt(e.target.value) || new Date().getFullYear() })}
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </div>
+          </div>
+          <div className="bg-blue-50 rounded-xl p-4 text-sm text-blue-700">
+            <p className="font-semibold mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Panduan Pengisian:</p>
+            <ol className="space-y-1 list-decimal list-inside text-blue-600">
+              <li><strong>Tab A (Overhead)</strong>: Input biaya pusat biaya non-layanan (Manajemen, IT, Cleaning, dll)</li>
+              <li><strong>Tab B (Penunjang)</strong>: Input biaya unit penunjang medis (Lab, Radiologi, Farmasi, dll)</li>
+              <li><strong>Tab C (Layanan)</strong>: Input biaya unit layanan langsung (Rawat Inap, IGD, Bedah, dll)</li>
+              <li>Klik <strong>"Hitung Unit Cost"</strong> untuk menjalankan step-down allocation</li>
+            </ol>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: OVERHEAD ── */}
+      {activeTab === 'overhead' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800">A. Pusat Biaya Overhead (Non-Layanan)</p>
+              <p className="text-xs text-gray-400">Biaya akan dialokasikan ke seluruh pusat biaya lain berdasarkan dasar alokasi</p>
+            </div>
+            <button onClick={addOverhead} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100">
+              <Plus className="w-4 h-4" /> Tambah
+            </button>
+          </div>
+
+          {config.overheadCenters.map((center) => (
+            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Row Header */}
+              <div
+                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50"
+                onClick={() => toggleRow(center.id)}
+              >
+                <span className="w-6 h-6 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {center.nomor}
+                </span>
+                <input
+                  type="text"
+                  value={center.nama}
+                  onChange={e => { e.stopPropagation(); updateOverhead(center.id, { nama: e.target.value }); }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-1 text-sm font-medium text-gray-800 bg-transparent border-none outline-none"
+                  placeholder="Nama pusat biaya..."
+                />
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs text-gray-400">Total Biaya</p>
+                  <p className="text-sm font-semibold text-gray-700">{formatRupiah(center.totalCost || calcTotalOverhead(center))}</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); removeOverhead(center.id); }} className="text-gray-300 hover:text-red-400 ml-1">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {expandedRows.has(center.id) ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </div>
+
+              {/* Expanded Form */}
+              {expandedRows.has(center.id) && (
+                <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Dasar Alokasi</label>
+                      <select
+                        value={center.dasarAlokasi}
+                        onChange={e => updateOverhead(center.id, { dasarAlokasi: e.target.value as OverheadCenter['dasarAlokasi'] })}
+                        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      >
+                        {DASAR_ALOKASI_OPTIONS.slice(0, 2).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
+                      <NumInput value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
+                      <NumInput value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Pegawai (Rp)</label>
+                      <RpInput value={center.biayaPegawai} onChange={v => updateOverhead(center.id, { biayaPegawai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
+                      <RpInput value={center.biayaOperasional} onChange={v => updateOverhead(center.id, { biayaOperasional: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Harga Peralatan 5 Thn (Rp)</label>
+                      <RpInput value={center.hargaPeralatan5Tahun} onChange={v => updateOverhead(center.id, { hargaPeralatan5Tahun: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Investasi Gedung 40 Thn (Rp)</label>
+                      <RpInput value={center.biayaInvestasiGedung} onChange={v => updateOverhead(center.id, { biayaInvestasiGedung: v })} />
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-2">
+                      <p className="text-xs text-blue-500 mb-1">Auto: Depresiasi/Tahun</p>
+                      <p className="text-sm font-semibold text-blue-700">
+                        {formatRupiah(Math.round((center.hargaPeralatan5Tahun || 0) / 5) + Math.round((center.biayaInvestasiGedung || 0) / 40))}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Total Overhead */}
+          <div className="bg-blue-50 rounded-xl p-4 flex justify-between items-center border border-blue-200">
+            <p className="font-semibold text-blue-800">Total Biaya Overhead</p>
+            <p className="text-xl font-bold text-blue-700">
+              {formatRupiah(config.overheadCenters.reduce((s, c) => s + calcTotalOverhead(c), 0))}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── TAB: INTERMEDIATE ── */}
+      {activeTab === 'intermediate' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800">B. Pusat Biaya Penunjang Medis (Intermediate)</p>
+              <p className="text-xs text-gray-400">Menerima alokasi overhead, lalu mengalokasikan ke unit layanan</p>
+            </div>
+            <button onClick={addIntermediate} className="flex items-center gap-1 px-3 py-1.5 bg-violet-50 text-violet-600 rounded-lg text-sm hover:bg-violet-100">
+              <Plus className="w-4 h-4" /> Tambah
+            </button>
+          </div>
+
+          {config.intermediateCenters.map((center) => (
+            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
+                <span className="w-6 h-6 bg-violet-100 text-violet-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {center.nomor}
+                </span>
+                <input
+                  type="text"
+                  value={center.nama}
+                  onChange={e => { e.stopPropagation(); updateIntermediate(center.id, { nama: e.target.value }); }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-1 text-sm font-medium text-gray-800 bg-transparent border-none outline-none"
+                />
+                <div className="text-right hidden sm:block">
+                  <p className="text-xs text-gray-400">Biaya Langsung</p>
+                  <p className="text-sm font-semibold text-gray-700">{formatRupiah(calcTotalOverhead(center))}</p>
+                </div>
+                <button onClick={e => { e.stopPropagation(); removeIntermediate(center.id); }} className="text-gray-300 hover:text-red-400">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {expandedRows.has(center.id) ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </div>
+
+              {expandedRows.has(center.id) && (
+                <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Dasar Alokasi ke Final</label>
+                      <select
+                        value={center.dasarAlokasi}
+                        onChange={e => updateIntermediate(center.id, { dasarAlokasi: e.target.value as IntermediateCenter['dasarAlokasi'] })}
+                        className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                      >
+                        {DASAR_ALOKASI_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
+                      <NumInput value={center.jumlahStaf} onChange={v => updateIntermediate(center.id, { jumlahStaf: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jumlah Kunjungan</label>
+                      <NumInput value={center.jumlahKunjungan} onChange={v => updateIntermediate(center.id, { jumlahKunjungan: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
+                      <NumInput value={center.luasLantai} onChange={v => updateIntermediate(center.id, { luasLantai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Pegawai (Rp)</label>
+                      <RpInput value={center.biayaPegawai} onChange={v => updateIntermediate(center.id, { biayaPegawai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
+                      <RpInput value={center.biayaOperasional} onChange={v => updateIntermediate(center.id, { biayaOperasional: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Harga Peralatan 5 Thn</label>
+                      <RpInput value={center.hargaPeralatan5Tahun} onChange={v => updateIntermediate(center.id, { hargaPeralatan5Tahun: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Investasi Gedung 40 Thn</label>
+                      <RpInput value={center.biayaInvestasiGedung} onChange={v => updateIntermediate(center.id, { biayaInvestasiGedung: v })} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB: FINAL ── */}
+      {activeTab === 'final' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold text-gray-800">C. Pusat Biaya Layanan / Produksi (Final)</p>
+              <p className="text-xs text-gray-400">Unit layanan langsung — menghasilkan Unit Cost per hari rawat / kunjungan / pasien</p>
+            </div>
+            <button onClick={addFinal} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm hover:bg-green-100">
+              <Plus className="w-4 h-4" /> Tambah
+            </button>
+          </div>
+
+          {config.finalCenters.map((center) => (
+            <div key={center.id} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
+                <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {center.nomor}
+                </span>
+                <input
+                  type="text"
+                  value={center.nama}
+                  onChange={e => { e.stopPropagation(); updateFinal(center.id, { nama: e.target.value }); }}
+                  onClick={e => e.stopPropagation()}
+                  className="flex-1 text-sm font-medium text-gray-800 bg-transparent border-none outline-none"
+                />
+                <select
+                  value={center.kategori}
+                  onChange={e => { e.stopPropagation(); updateFinal(center.id, { kategori: e.target.value as FinalCenter['kategori'] }); }}
+                  onClick={e => e.stopPropagation()}
+                  className="hidden sm:block text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"
+                >
+                  {['rawat_inap', 'rawat_jalan', 'igd', 'bedah', 'icu', 'perinatologi', 'lainnya'].map(k => (
+                    <option key={k} value={k}>{k.replace('_', ' ')}</option>
+                  ))}
+                </select>
+                {center.unitCostPerHariRawat > 0 || center.unitCostPerKunjungan > 0 ? (
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs text-gray-400">Unit Cost</p>
+                    <p className="text-sm font-semibold text-green-700">
+                      {formatRupiah(center.unitCostPerHariRawat || center.unitCostPerKunjungan || center.unitCostPerPasien)}
+                    </p>
+                  </div>
+                ) : null}
+                <button onClick={e => { e.stopPropagation(); removeFinal(center.id); }} className="text-gray-300 hover:text-red-400">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                {expandedRows.has(center.id) ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+              </div>
+
+              {expandedRows.has(center.id) && (
+                <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/50">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Dasar Alokasi</label>
+                      <select value={center.dasarAlokasi} onChange={e => updateFinal(center.id, { dasarAlokasi: e.target.value as FinalCenter['dasarAlokasi'] })} className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="hari_rawat">Hari Rawat</option>
+                        <option value="jumlah_kunjungan">Jumlah Kunjungan</option>
+                        <option value="jumlah_pasien">Jumlah Pasien</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
+                      <NumInput value={center.jumlahStaf} onChange={v => updateFinal(center.id, { jumlahStaf: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Hari Rawat / Tahun</label>
+                      <NumInput value={center.jumlahHariRawat} onChange={v => updateFinal(center.id, { jumlahHariRawat: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Pasien Pulang / Tahun</label>
+                      <NumInput value={center.jumlahPasienPulang} onChange={v => updateFinal(center.id, { jumlahPasienPulang: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Kunjungan / Tahun</label>
+                      <NumInput value={center.jumlahKunjungan} onChange={v => updateFinal(center.id, { jumlahKunjungan: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Tempat Tidur</label>
+                      <NumInput value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
+                      <NumInput value={center.luasLantai} onChange={v => updateFinal(center.id, { luasLantai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Pegawai (Rp)</label>
+                      <RpInput value={center.biayaPegawai} onChange={v => updateFinal(center.id, { biayaPegawai: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Dokter (Rp)</label>
+                      <RpInput value={center.biayaJasaMedis} onChange={v => updateFinal(center.id, { biayaJasaMedis: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
+                      <RpInput value={center.biayaOperasional} onChange={v => updateFinal(center.id, { biayaOperasional: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Harga Peralatan 5 Thn (Rp)</label>
+                      <RpInput value={center.hargaPeralatan5Tahun} onChange={v => updateFinal(center.id, { hargaPeralatan5Tahun: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Investasi Gedung 40 Thn (Rp)</label>
+                      <RpInput value={center.biayaInvestasiGedung} onChange={v => updateFinal(center.id, { biayaInvestasiGedung: v })} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── TAB: HASIL ── */}
+      {activeTab === 'hasil' && (
+        <div className="space-y-4">
+          {!config.isCalculated ? (
+            <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
+              <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-3" />
+              <p className="text-gray-600 font-medium">Belum ada hasil perhitungan</p>
+              <p className="text-gray-400 text-sm mt-1">Klik "Hitung Unit Cost" untuk menjalankan step-down allocation</p>
+              <button onClick={handleCalculate} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 text-sm font-medium flex items-center gap-2 mx-auto">
+                <Calculator className="w-4 h-4" /> Hitung Sekarang
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: 'Total Biaya Overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                  { label: 'Total Biaya Penunjang', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700' },
+                  { label: 'Total Biaya Layanan', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700' },
+                ].map(c => (
+                  <div key={c.label} className={`rounded-xl p-4 border ${c.color}`}>
+                    <p className="text-xs font-medium opacity-70">{c.label}</p>
+                    <p className="text-xl font-bold mt-1">{formatRupiah(c.value)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Unit Cost per Final Center */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    Unit Cost per Pusat Biaya Layanan
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600">Pusat Biaya</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Biaya Langsung</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Setelah Overhead</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Total (incl. Penunjang)</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Unit Cost/Hari Rawat</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Unit Cost/Kunjungan</th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600">Unit Cost/Pasien</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {config.finalCenters.map((c, i) => (
+                        <tr key={c.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                          <td className="px-4 py-3 font-medium text-gray-800">{c.nama}</td>
+                          <td className="px-4 py-3 text-right text-gray-600 font-mono text-xs">{formatRupiah(c.totalCostDirect)}</td>
+                          <td className="px-4 py-3 text-right text-gray-600 font-mono text-xs">{formatRupiah(c.totalCostAfterOverhead)}</td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-800 font-mono text-xs">{formatRupiah(c.totalCostAfterIntermediate)}</td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700 font-mono text-xs">
+                            {c.unitCostPerHariRawat > 0 ? formatRupiah(c.unitCostPerHariRawat) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700 font-mono text-xs">
+                            {c.unitCostPerKunjungan > 0 ? formatRupiah(c.unitCostPerKunjungan) : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-green-700 font-mono text-xs">
+                            {c.unitCostPerPasien > 0 ? formatRupiah(c.unitCostPerPasien) : '-'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-sm text-amber-700">
+                <p className="font-semibold mb-1">💡 Cara Membaca Hasil:</p>
+                <ul className="space-y-1 text-amber-600 list-disc list-inside">
+                  <li><strong>Unit Cost/Hari Rawat</strong> → Bandingkan dengan tarif kamar harian</li>
+                  <li><strong>Unit Cost/Pasien</strong> → Bandingkan dengan tarif iDRG di tab Perbandingan</li>
+                  <li>Data ini tersimpan otomatis di browser (localStorage)</li>
+                </ul>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper: hitung total tanpa menunggu store calculation
+function calcTotalOverhead(c: { biayaPegawai?: number; biayaJasaMedis?: number; biayaJasaMedisLain?: number; biayaOperasional?: number; hargaPeralatan5Tahun?: number; biayaInvestasiGedung?: number }): number {
+  return (
+    (c.biayaPegawai || 0) +
+    (c.biayaJasaMedis || 0) +
+    (c.biayaJasaMedisLain || 0) +
+    (c.biayaOperasional || 0) +
+    Math.round((c.hargaPeralatan5Tahun || 0) / 5) +
+    Math.round((c.biayaInvestasiGedung || 0) / 40)
+  );
+}
+
+// Import type for FinalCenter kategori in JSX
+type FinalCenterKategori = 'rawat_inap' | 'rawat_jalan' | 'igd' | 'bedah' | 'icu' | 'perinatologi' | 'lainnya';
+type OverheadCenterDasar = 'jumlah_staf' | 'luas_lantai' | 'jumlah_kunjungan' | 'hari_rawat';
+type IntermediateDasar = 'jumlah_staf' | 'luas_lantai' | 'jumlah_kunjungan' | 'hari_rawat' | 'jumlah_pasien';
+import { FinalCenter, OverheadCenter, IntermediateCenter } from '../types/hospitalCost.types';
