@@ -1,13 +1,16 @@
 // ============================================================
 // STORE: hospitalCostStore.ts
 // Zustand store untuk input biaya RS — tersimpan di localStorage
+// Sesuai materi Workshop Kemenkes Hal. 26-56
 // ============================================================
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
   OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig,
+  DataDasarRS,
   DEFAULT_OVERHEAD_CENTERS, DEFAULT_INTERMEDIATE_CENTERS, DEFAULT_FINAL_CENTERS,
+  DEFAULT_DATA_DASAR,
 } from '../types/hospitalCost.types';
 
 // ============================================================
@@ -25,21 +28,43 @@ function calcDirectCost(center: OverheadCenter | IntermediateCenter | FinalCente
   );
 }
 
-function calcAllocationBase(center: { dasarAlokasi: string; jumlahStaf: number; luasLantai: number; jumlahKunjungan?: number; jumlahHariRawat?: number }): number {
+// Fungsi allocasi basis — semua jenis dasar alokasi sesuai materi Kemenkes
+function calcAllocationBase(center: {
+  dasarAlokasi: string;
+  jumlahStaf: number;
+  luasLantai: number;
+  jumlahKunjungan?: number;
+  jumlahHariRawat?: number;
+  jumlahPasienPulang?: number;
+}): number {
   switch (center.dasarAlokasi) {
-    case 'jumlah_staf': return center.jumlahStaf || 0;
-    case 'luas_lantai': return center.luasLantai || 0;
-    case 'jumlah_kunjungan': return (center as IntermediateCenter).jumlahKunjungan || 0;
-    case 'hari_rawat': return (center as FinalCenter).jumlahHariRawat || 0;
-    case 'jumlah_pasien': return (center as FinalCenter).jumlahPasienPulang || 0;
-    default: return center.jumlahStaf || 0;
+    case 'jumlah_staf':    return center.jumlahStaf || 0;
+    case 'luas_lantai':    return center.luasLantai || 0;
+    // Overhead spesifik — gunakan jumlahStaf sebagai proxy untuk penggunaan & pajak
+    case 'penggunaan':     return center.jumlahStaf || 0;
+    case 'tagihan_pajak':  return center.luasLantai || 0;
+    case 'biaya_riil':     return 1; // alokasi fixed, tiap unit dapat sama
+    // Intermediate spesifik — semua map ke jumlahKunjungan (unit penggunaan)
+    case 'resep_ddd':
+    case 'jumlah_pemeriksaan':
+    case 'jumlah_test':
+    case 'jumlah_terapi':
+    case 'jumlah_tindakan':
+    case 'jam_operasi':
+    case 'kantong_darah':
+    case 'jaringan':
+    case 'jumlah_kunjungan': return center.jumlahKunjungan || 0;
+    // Final
+    case 'hari_rawat':     return center.jumlahHariRawat || 0;
+    case 'jumlah_pasien':  return center.jumlahPasienPulang || 0;
+    default:               return center.jumlahStaf || 0;
   }
 }
 
 export function runStepDownCalculation(config: HospitalCostConfig): HospitalCostConfig {
   const updated = { ...config };
 
-  // ── STEP 1: Hitung total cost langsung per overhead center ──
+  // STEP 1a: Hitung total cost langsung per overhead center
   const overheads = updated.overheadCenters.map(c => {
     const dep5 = Math.round((c.hargaPeralatan5Tahun || 0) / 5);
     const dep40 = Math.round((c.biayaInvestasiGedung || 0) / 40);
@@ -49,37 +74,25 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
 
   const totalOverheadCost = overheads.reduce((s, c) => s + c.totalCost, 0);
 
-  // ──  // STEP 2: Alokasikan overhead ke intermediate + final secara INDIVIDU berdasarkan dasarAlokasi
+  // STEP 1b: Inisialisasi intermediate dan final dengan biaya langsung
   let intermediates = updated.intermediateCenters.map(c => {
     const direct = calcDirectCost(c);
     const dep5 = Math.round((c.hargaPeralatan5Tahun || 0) / 5);
     const dep40 = Math.round((c.biayaInvestasiGedung || 0) / 40);
-    return {
-      ...c,
-      depresiasiPeralatan: dep5,
-      depresiasiGedung: dep40,
-      totalCostDirect: direct,
-      totalCostAfterOverhead: direct,
-    };
+    return { ...c, depresiasiPeralatan: dep5, depresiasiGedung: dep40, totalCostDirect: direct, totalCostAfterOverhead: direct };
   });
 
   let finals = updated.finalCenters.map(c => {
     const direct = calcDirectCost(c);
     const dep5 = Math.round((c.hargaPeralatan5Tahun || 0) / 5);
     const dep40 = Math.round((c.biayaInvestasiGedung || 0) / 40);
-    return {
-      ...c,
-      depresiasiPeralatan: dep5,
-      depresiasiGedung: dep40,
-      totalCostDirect: direct,
-      totalCostAfterOverhead: direct,
-      totalCostAfterIntermediate: 0,
-    };
+    return { ...c, depresiasiPeralatan: dep5, depresiasiGedung: dep40, totalCostDirect: direct, totalCostAfterOverhead: direct, totalCostAfterIntermediate: 0 };
   });
 
-  // Loop each overhead center and distribute its totalCost based on ITS dasarAlokasi
+  // STEP 1c: Setiap Overhead Center mengalokasikan biayanya ke Intermediate + Final
+  // sesuai dasarAlokasi MASING-MASING overhead center (Hal 48 Materi)
   overheads.forEach(oh => {
-    const dasar = oh.dasarAlokasi as 'jumlah_staf' | 'luas_lantai' | 'jumlah_kunjungan' | 'hari_rawat';
+    const dasar = oh.dasarAlokasi;
     let totalBase = 0;
     intermediates.forEach(im => { totalBase += calcAllocationBase({ ...im, dasarAlokasi: dasar }); });
     finals.forEach(fn => { totalBase += calcAllocationBase({ ...fn, dasarAlokasi: dasar }); });
@@ -97,11 +110,13 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
     }
   });
 
-  // STEP 3 & 4: Alokasikan intermediate ke final centers secara INDIVIDU
+  // STEP 2 & 3: Intermediate Center mengalokasikan biayanya ke Final Centers
+  // Inisialisasi totalCostAfterIntermediate = totalCostAfterOverhead (biaya final sudah termasuk alokasi overhead)
   finals = finals.map(fn => ({ ...fn, totalCostAfterIntermediate: fn.totalCostAfterOverhead }));
 
+  // Setiap Intermediate Center mengalokasikan ke Final berdasarkan dasarAlokasinya sendiri
   intermediates.forEach(im => {
-    const dasar = im.dasarAlokasi as 'jumlah_staf' | 'luas_lantai' | 'jumlah_kunjungan' | 'hari_rawat' | 'jumlah_pasien';
+    const dasar = im.dasarAlokasi;
     let totalBase = 0;
     finals.forEach(fn => { totalBase += calcAllocationBase({ ...fn, dasarAlokasi: dasar }); });
 
@@ -114,15 +129,13 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
     }
   });
 
-  // STEP 5: Hitung Unit Cost
-  finals = finals.map(fn => {
-    return {
-      ...fn,
-      unitCostPerHariRawat: fn.jumlahHariRawat > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahHariRawat) : 0,
-      unitCostPerKunjungan: fn.jumlahKunjungan > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahKunjungan) : 0,
-      unitCostPerPasien: fn.jumlahPasienPulang > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahPasienPulang) : 0,
-    };
-  });
+  // STEP 4: Hitung Unit Cost per Final Center (Hal 49 — biaya per hari rawat / kunjungan)
+  finals = finals.map(fn => ({
+    ...fn,
+    unitCostPerHariRawat:   fn.jumlahHariRawat     > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahHariRawat)    : 0,
+    unitCostPerKunjungan:   fn.jumlahKunjungan      > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahKunjungan)    : 0,
+    unitCostPerPasien:      fn.jumlahPasienPulang   > 0 ? Math.round(fn.totalCostAfterIntermediate / fn.jumlahPasienPulang) : 0,
+  }));
 
   return {
     ...updated,
@@ -143,17 +156,23 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
 interface HospitalCostState {
   config: HospitalCostConfig;
 
-  // Actions
+  // Info RS
   updateInfo: (info: Partial<Pick<HospitalCostConfig, 'namaRS' | 'tipeRS' | 'kepemilikan' | 'tahunData'>>) => void;
+  // Data Dasar RS
+  updateDataDasar: (data: Partial<DataDasarRS>) => void;
+  // Overhead
   updateOverhead: (id: string, data: Partial<OverheadCenter>) => void;
   addOverhead: () => void;
   removeOverhead: (id: string) => void;
+  // Intermediate
   updateIntermediate: (id: string, data: Partial<IntermediateCenter>) => void;
   addIntermediate: () => void;
   removeIntermediate: (id: string) => void;
+  // Final
   updateFinal: (id: string, data: Partial<FinalCenter>) => void;
   addFinal: () => void;
   removeFinal: (id: string) => void;
+  // Control
   calculate: () => void;
   resetToDefault: () => void;
 }
@@ -163,9 +182,10 @@ const makeDefaultConfig = (): HospitalCostConfig => ({
   tipeRS: 'B',
   kepemilikan: 'Pemerintah Daerah',
   tahunData: new Date().getFullYear(),
-  overheadCenters: DEFAULT_OVERHEAD_CENTERS,
-  intermediateCenters: DEFAULT_INTERMEDIATE_CENTERS,
-  finalCenters: DEFAULT_FINAL_CENTERS,
+  dataDasar: { ...DEFAULT_DATA_DASAR },
+  overheadCenters: DEFAULT_OVERHEAD_CENTERS.map(c => ({ ...c })),
+  intermediateCenters: DEFAULT_INTERMEDIATE_CENTERS.map(c => ({ ...c })),
+  finalCenters: DEFAULT_FINAL_CENTERS.map(c => ({ ...c })),
   totalOverheadCost: 0,
   totalIntermediateCost: 0,
   totalFinalCost: 0,
@@ -182,6 +202,15 @@ export const useHospitalCostStore = create<HospitalCostState>()(
         set(s => ({ config: runStepDownCalculation({ ...s.config, ...info }) }));
       },
 
+      updateDataDasar: (data) => {
+        set(s => ({
+          config: runStepDownCalculation({
+            ...s.config,
+            dataDasar: { ...s.config.dataDasar, ...data },
+          }),
+        }));
+      },
+
       updateOverhead: (id, data) => {
         set(s => ({
           config: runStepDownCalculation({
@@ -195,11 +224,10 @@ export const useHospitalCostStore = create<HospitalCostState>()(
 
       addOverhead: () => {
         const { config } = get();
-        const newId = `oh-${Date.now()}`;
         const newCenter: OverheadCenter = {
-          id: newId,
+          id: `oh-${Date.now()}`,
           nomor: config.overheadCenters.length + 1,
-          nama: 'Pusat Biaya Baru',
+          nama: 'Pusat Biaya Overhead Baru',
           dasarAlokasi: 'jumlah_staf',
           jumlahStaf: 0, luasLantai: 0,
           biayaPegawai: 0, biayaJasaMedis: 0, biayaJasaMedisLain: 0,
@@ -261,7 +289,7 @@ export const useHospitalCostStore = create<HospitalCostState>()(
           nomor: config.finalCenters.length + 1,
           nama: 'Unit Layanan Baru',
           kategori: 'lainnya',
-          dasarAlokasi: 'hari_rawat',
+          dasarAlokasi: 'jumlah_kunjungan',
           jumlahStaf: 0, jumlahHariRawat: 0, jumlahPasienPulang: 0,
           jumlahKunjungan: 0, alos: 0, jumlahTempat: 0, luasLantai: 0,
           biayaPegawai: 0, biayaJasaMedis: 0, biayaJasaMedisLain: 0,
@@ -287,7 +315,7 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
     }),
     {
-      name: 'unitcost-hospital-cost-store-v3',
+      name: 'unitcost-hospital-cost-store-v4',
     }
   )
 );
