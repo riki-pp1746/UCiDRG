@@ -441,7 +441,7 @@ export default function CostingInputPage() {
                 </div>
               )}
             </div>
-          ))}
+          )))}
 
           {/* Total Overhead */}
           <div className="bg-blue-50 rounded-xl p-4 flex justify-between items-center border border-blue-200">
@@ -551,7 +551,7 @@ export default function CostingInputPage() {
                 </div>
               )}
             </div>
-          ))}
+          )))}
         </div>
       )}
 
@@ -681,7 +681,7 @@ export default function CostingInputPage() {
                 </div>
               )}
             </div>
-          ))}
+          )))}
         </div>
       )}
 
