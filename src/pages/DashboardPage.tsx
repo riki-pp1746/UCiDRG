@@ -170,7 +170,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Selisih Alert */}
+      <div className="bg-white rounded-[24px] p-6 shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4 hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] transition-all"><div className="bg-teal-50/80 p-3 rounded-2xl"><Activity className="w-6 h-6 text-teal-600" /></div><div className="min-w-0"><p className="text-sm font-medium text-gray-500">Cost Recovery Rate (CRR)</p><p className={clsx("text-2xl font-bold mt-0.5 truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>{summary.crr.toFixed(1)}%</p><p className="text-xs text-gray-400 mt-1">Tarif INA-CBG / Unit Cost RS</p></div></div>{/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
         summary.totalSelisihINACBG > 0

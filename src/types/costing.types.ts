@@ -35,6 +35,8 @@ export interface BillingGroup {
   drug_chemo_amt: number;     // Obat Kemoterapi
 }
 
+export type RVUGlobalCosts = Record<keyof BillingGroup, number>;
+
 // ============================================================
 // iDRG Info - dari kolom JSON dalam file TXT
 // ============================================================
@@ -159,6 +161,7 @@ export interface PatientCostResult {
   
   selisihPersenINACBG: number;
   selisihPersenIDRG: number;
+  crr: number;
   
   statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI';
   statusIDRG: 'UNTUNG' | 'IMPAS' | 'RUGI';
@@ -191,6 +194,7 @@ export interface DRGGroupResult {
   selisihIDRG: number;
   selisihPersenINACBG: number;
   selisihPersenIDRG: number;
+  crr: number;
   
   // Cost Weight
   avgCostWeight: number;
@@ -209,6 +213,7 @@ export interface CostingSummary {
   totalTarifIDRG: number;
   totalSelisihINACBG: number;
   totalSelisihIDRG: number;
+  crr: number;
   
   cmi: number;  // Case Mix Index
   

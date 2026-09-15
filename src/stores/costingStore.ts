@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { RVUGlobalCosts } from '../types/costing.types';
 import {
   PatientRecord,
   PatientCostResult,
@@ -13,7 +14,7 @@ import {
   UploadSession,
 } from '../types/costing.types';
 import {
-  calcPatientResult,
+  runRVUAllocation,
   aggregateByDRG,
   generateSummary,
   OverheadConfig,
@@ -32,25 +33,23 @@ interface CostingState {
   patientResults: PatientCostResult[];
   drgResults: DRGGroupResult[];
   summary: CostingSummary | null;
-
-  // Config
   overheadConfig: OverheadConfig;
+  rvuGlobalCosts?: RVUGlobalCosts;
   
-  // Loading/status
+  // UI State
   isProcessing: boolean;
   processProgress: number;
-
-  // Filters
-  filterDRG: string;
-  filterStatus: '' | 'UNTUNG' | 'IMPAS' | 'RUGI';
-  filterMDC: string;
   searchTerm: string;
+  filterStatus: 'ALL' | 'UNTUNG' | 'IMPAS' | 'RUGI';
+  filterDRG: string;
+  filterMDC: string;
 
   // Actions
   setRawRecords: (records: PatientRecord[], session: UploadSession) => void;
-  processData: () => void;
+    processData: () => void;
   setOverheadConfig: (config: Partial<OverheadConfig>) => void;
-  setFilter: (key: string, value: string) => void;
+  setRVUGlobalCosts: (costs: RVUGlobalCosts) => void;
+  setFilter: (key: string, value: any) => void;
   clearData: () => void;
   setActiveSession: (id: string) => void;
 }
@@ -68,7 +67,7 @@ export const useCostingStore = create<CostingState>()(
       isProcessing: false,
       processProgress: 0,
       filterDRG: '',
-      filterStatus: '',
+      filterStatus: 'ALL',
       filterMDC: '',
       searchTerm: '',
 
@@ -88,39 +87,35 @@ export const useCostingStore = create<CostingState>()(
       },
 
       processData: () => {
-        const { rawRecords, overheadConfig } = get();
+        const { rawRecords, overheadConfig, rvuGlobalCosts } = get();
         if (!rawRecords.length) return;
 
-        set({ isProcessing: true, processProgress: 0 });
+        set({ isProcessing: true, processProgress: 10 });
 
-        // Process in chunks to avoid blocking UI
-        const CHUNK = 500;
-        const results: PatientCostResult[] = [];
-        
-        const processChunk = (start: number) => {
-          const end = Math.min(start + CHUNK, rawRecords.length);
-          for (let i = start; i < end; i++) {
-            results.push(calcPatientResult(rawRecords[i], overheadConfig));
-          }
-          const progress = Math.round((end / rawRecords.length) * 100);
-          set({ processProgress: progress });
-
-          if (end < rawRecords.length) {
-            setTimeout(() => processChunk(end), 0);
-          } else {
-            const drgResults = aggregateByDRG(results);
-            const summary = generateSummary(results, drgResults);
-            set({
-              patientResults: results,
-              drgResults,
-              summary,
-              isProcessing: false,
-              processProgress: 100,
-            });
-          }
-        };
-
-        setTimeout(() => processChunk(0), 0);
+        // Gunakan metode RVU baru
+        setTimeout(() => {
+          const { results, rejectedCount } = runRVUAllocation(
+            rawRecords,
+            rvuGlobalCosts || null,
+            overheadConfig
+          );
+          
+          set({ processProgress: 50 });
+          
+          const drgResults = aggregateByDRG(results);
+          
+          set({ processProgress: 80 });
+          
+          const summary = generateSummary(results, drgResults);
+          
+          set({
+            patientResults: results,
+            drgResults,
+            summary,
+            isProcessing: false,
+            processProgress: 100,
+          });
+        }, 100);
       },
 
       setOverheadConfig: (config) => {
@@ -131,6 +126,7 @@ export const useCostingStore = create<CostingState>()(
         setTimeout(() => get().processData(), 100);
       },
 
+      setRVUGlobalCosts: (costs) => { set({ rvuGlobalCosts: costs }); setTimeout(() => get().processData(), 100); },
       setFilter: (key, value) => {
         set({ [key]: value } as Partial<CostingState>);
       },

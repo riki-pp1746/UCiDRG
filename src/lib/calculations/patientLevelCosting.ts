@@ -9,6 +9,7 @@ import {
   DRGGroupResult,
   CostingSummary,
   BillingGroup,
+  RVUGlobalCosts,
 } from '../../types/costing.types';
 
 // ============================================================
@@ -58,85 +59,107 @@ export function calcBiayaLangsung(billing: BillingGroup): number {
 }
 
 // ============================================================
-// Hitung Unit Cost per Pasien (Patient Level Costing)
-// Formula:
-//   Unit Cost = Biaya Langsung + Biaya Tidak Langsung
-//   Biaya Tidak Langsung = Biaya Langsung × (OH + Admin + Dep + JM)
-// ============================================================
-export function calcPatientUnitCost(
-  record: PatientRecord,
-  config: OverheadConfig = DEFAULT_OVERHEAD_CONFIG
-): number {
-  let biayaLangsung: number;
-  
-  if (config.useActualBilling) {
-    biayaLangsung = calcBiayaLangsung(record.billing);
-  } else {
-    biayaLangsung = record.tarif_inacbg;
-  }
-
-  if (biayaLangsung === 0) {
-    biayaLangsung = record.tarif_rs;
-  }
-
-  const totalOverheadFactor =
-    config.overheadFactor +
-    config.administrasiFactor +
-    config.depresiasiFactor +
-    config.jaminanMutuFactor;
-
-  const biayaTidakLangsung = biayaLangsung * totalOverheadFactor;
-  return biayaLangsung + biayaTidakLangsung;
-}
-
-// ============================================================
 // Hitung hasil per pasien (dengan perbandingan iDRG)
+// menggunakan metode RVU (Relative Value Unit) Proporsional
 // ============================================================
-export function calcPatientResult(
-  record: PatientRecord,
+export function runRVUAllocation(
+  records: PatientRecord[],
+  globalCosts: RVUGlobalCosts | null,
   config: OverheadConfig = DEFAULT_OVERHEAD_CONFIG
-): PatientCostResult {
-  const biayaLangsung = calcBiayaLangsung(record.billing) || record.tarif_rs;
-  const totalOverheadFactor =
-    config.overheadFactor +
-    config.administrasiFactor +
-    config.depresiasiFactor +
-    config.jaminanMutuFactor;
-  const biayaTidakLangsung = biayaLangsung * totalOverheadFactor;
-  const unitCostDihitung = biayaLangsung + biayaTidakLangsung;
+): { results: PatientCostResult[]; rejectedCount: number } {
+  const validRecords: PatientRecord[] = [];
+  let rejectedCount = 0;
 
-  const tarifINACBG = record.total_tarif || record.tarif_inacbg || 0;
-  const tarifIDRG = record.idrg.total_tarif || 0;
-  
-  const selisihINACBG = unitCostDihitung - tarifINACBG;
-  const selisihIDRG = unitCostDihitung - tarifIDRG;
-  
-  const selisihPersenINACBG = tarifINACBG > 0 ? (selisihINACBG / tarifINACBG) * 100 : 0;
-  const selisihPersenIDRG = tarifIDRG > 0 ? (selisihIDRG / tarifIDRG) * 100 : 0;
-
-  const getStatus = (selisih: number) => {
-    if (selisih < -50000) return 'UNTUNG';
-    if (selisih > 50000) return 'RUGI';
-    return 'IMPAS';
+  const totalBilling: Record<keyof BillingGroup, number> = {
+    procedure_amt: 0, surgical_amt: 0, consul_amt: 0, expert_amt: 0,
+    nursing_amt: 0, ancillary_amt: 0, radiology_amt: 0, laboratory_amt: 0,
+    blood_amt: 0, rehab_amt: 0, room_amt: 0, intensive_amt: 0,
+    drug_amt: 0, device_amt: 0, consumable_amt: 0, device_rent_amt: 0,
+    drug_chronic_amt: 0, drug_chemo_amt: 0,
   };
 
-  return {
-    patient: record,
-    unitCostDihitung,
-    biayaLangsung,
-    biayaTidakLangsung,
+  // 1. Validasi & Hitung Total Tagihan Nasional/RS
+  for (const r of records) {
+    const sumBilling = calcBiayaLangsung(r.billing);
+    if (sumBilling <= 0) {
+      rejectedCount++;
+      continue;
+    }
+    validRecords.push(r);
+    for (const key in totalBilling) {
+      const k = key as keyof BillingGroup;
+      totalBilling[k] += r.billing[k] || 0;
+    }
+  }
+
+  // 2. Alokasi Global Cost ke Pasien
+  const results: PatientCostResult[] = [];
+
+  for (const r of validRecords) {
+    const biayaLangsung = calcBiayaLangsung(r.billing);
+    let unitCostDihitung = 0;
+    let biayaTidakLangsung = 0;
+
+    // Jika globalCosts diberikan, gunakan alokasi proporsional murni (RVU)
+    // Overhead dianggap sudah include di dalam globalCosts
+    if (globalCosts) {
+      for (const key in globalCosts) {
+        const k = key as keyof BillingGroup;
+        const patientCharge = r.billing[k] || 0;
+        const totalCharge = totalBilling[k];
+        const gCost = globalCosts[k];
+
+        let allocatedCost = 0;
+        if (totalCharge > 0) {
+          allocatedCost = (patientCharge / totalCharge) * gCost;
+        }
+        unitCostDihitung += allocatedCost;
+      }
+      biayaTidakLangsung = unitCostDihitung - biayaLangsung; // Sekadar formalitas matematis untuk laporan
+    } else {
+      // Fallback ke metode lama (Naif Overhead Factor) jika user belum input Global Cost
+      const totalOverheadFactor = config.overheadFactor + config.administrasiFactor + config.depresiasiFactor + config.jaminanMutuFactor;
+      biayaTidakLangsung = biayaLangsung * totalOverheadFactor;
+      unitCostDihitung = biayaLangsung + biayaTidakLangsung;
+    }
+
+    const tarifINACBG = r.total_tarif || r.tarif_inacbg || 0;
+    const tarifIDRG = r.idrg.total_tarif || 0;
     
-    tarifINACBG,
-    tarifIDRG,
+    const selisihINACBG = unitCostDihitung - tarifINACBG;
+    const selisihIDRG = unitCostDihitung - tarifIDRG;
     
-    selisihINACBG,
-    selisihIDRG,
-    selisihPersenINACBG,
-    selisihPersenIDRG,
-    
-    statusINACBG: getStatus(selisihINACBG),
-    statusIDRG: getStatus(selisihIDRG),
-  };
+    const selisihPersenINACBG = tarifINACBG > 0 ? (selisihINACBG / tarifINACBG) * 100 : 0;
+    const selisihPersenIDRG = tarifIDRG > 0 ? (selisihIDRG / tarifIDRG) * 100 : 0;
+    const crr = unitCostDihitung > 0 ? (tarifINACBG / unitCostDihitung) * 100 : 0;
+
+    const getStatus = (selisih: number) => {
+      if (selisih < -50000) return 'UNTUNG';
+      if (selisih > 50000) return 'RUGI';
+      return 'IMPAS';
+    };
+
+    results.push({
+      patient: r,
+      unitCostDihitung,
+      biayaLangsung,
+      biayaTidakLangsung,
+      
+      tarifINACBG,
+      tarifIDRG,
+      
+      selisihINACBG,
+      selisihIDRG,
+      selisihPersenINACBG,
+      selisihPersenIDRG,
+      crr,
+      
+      statusINACBG: getStatus(selisihINACBG),
+      statusIDRG: getStatus(selisihIDRG),
+    });
+  }
+
+  return { results, rejectedCount };
 }
 
 // ============================================================
@@ -174,6 +197,7 @@ export function aggregateByDRG(
     
     const selisihPersenINACBG = rataINACBG > 0 ? (selisihINACBG / rataINACBG) * 100 : 0;
     const selisihPersenIDRG = rataIDRG > 0 ? (selisihIDRG / rataIDRG) * 100 : 0;
+    const crr = rataUnitCost > 0 ? (rataINACBG / rataUnitCost) * 100 : 0;
 
     const getStatus = (selisih: number) => {
       if (selisih < -50000) return 'UNTUNG';
@@ -202,6 +226,7 @@ export function aggregateByDRG(
       selisihIDRG,
       selisihPersenINACBG,
       selisihPersenIDRG,
+      crr,
       
       avgCostWeight: totalCostWeight / n,
       statusINACBG: getStatus(selisihINACBG),
@@ -240,6 +265,7 @@ export function generateSummary(
       totalTarifIDRG: 0,
       totalSelisihINACBG: 0,
       totalSelisihIDRG: 0,
+      crr: 0,
       cmi: 0,
       jumlahDRGUntung: 0,
       jumlahDRGImpas: 0,
@@ -259,6 +285,7 @@ export function generateSummary(
   const totalSelisihIDRG = totalBiayaRS - totalTarifIDRG;
   
   const cmi = calcCMI(results.map(r => r.patient));
+  const crr = totalBiayaRS > 0 ? (totalTarifINACBG / totalBiayaRS) * 100 : 0;
 
   const drgUntung = drgResults.filter(d => d.statusINACBG === 'UNTUNG');
   const drgImpas = drgResults.filter(d => d.statusINACBG === 'IMPAS');
@@ -283,6 +310,7 @@ export function generateSummary(
     totalSelisihINACBG,
     totalSelisihIDRG,
     cmi,
+    crr,
     jumlahDRGUntung: drgUntung.length,
     jumlahDRGImpas: drgImpas.length,
     jumlahDRGRugi: drgRugi.length,

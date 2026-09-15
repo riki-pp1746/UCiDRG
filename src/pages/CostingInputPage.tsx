@@ -9,6 +9,7 @@ import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
+import { RVUInputForm } from '../components/costing/RVUInputForm';
 import {
   Building2, Calculator, ChevronDown, ChevronUp,
   Plus, Trash2, Save, RotateCcw, CheckCircle,
@@ -53,13 +54,14 @@ function NumInput({ value, onChange, placeholder = '0' }: {
   );
 }
 
-type Tab = 'info' | 'overhead' | 'intermediate' | 'final' | 'hasil';
+type Tab = 'info' | 'overhead' | 'intermediate' | 'final' | 'rvu' | 'hasil';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'info', label: 'Info RS', icon: '🏥' },
   { id: 'overhead', label: 'A. Overhead', icon: '📋' },
   { id: 'intermediate', label: 'B. Penunjang', icon: '🔬' },
   { id: 'final', label: 'C. Layanan', icon: '🛏️' },
+  { id: 'rvu', label: 'D. Alokasi E-Klaim', icon: '🔗' },
   { id: 'hasil', label: 'Hasil & Unit Cost', icon: '📊' },
 ];
 
@@ -686,6 +688,8 @@ export default function CostingInputPage() {
       )}
 
       {/* ── TAB: HASIL ── */}
+      {activeTab === 'rvu' && <RVUInputForm />}
+
       {activeTab === 'hasil' && (
         <div className="space-y-4">
           {!config.isCalculated ? (
