@@ -171,7 +171,7 @@ export function aggregateByDRG(
   const groups = new Map<string, PatientCostResult[]>();
 
   for (const r of results) {
-    const key = r.patient.idrg.drg_code || r.patient.inacbg || 'UNKNOWN';
+    const key = `${r.patient.inacbg || 'N/A'}|${r.patient.idrg?.drg_code || 'N/A'}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(r);
   }
@@ -206,8 +206,14 @@ export function aggregateByDRG(
     };
 
     drgResults.push({
-      group_code: groupCode,
-      group_description: first.patient.deskripsi_inacbg || first.patient.idrg.drg_description,
+      group_code: first.patient.inacbg || 'N/A', // keep backward compatibility
+      group_description: first.patient.deskripsi_inacbg || 'N/A',
+      inacbg_code: first.patient.inacbg || 'N/A',
+      inacbg_description: first.patient.deskripsi_inacbg || 'N/A',
+      idrg_code: first.patient.idrg?.drg_code || 'N/A',
+      idrg_description: first.patient.idrg?.drg_description || 'N/A',
+      
+      ptd: first.patient.ptd,
       
       mdc_number: first.patient.idrg?.mdc_number,
       mdc_description: first.patient.idrg?.mdc_description,

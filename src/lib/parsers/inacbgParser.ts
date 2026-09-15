@@ -190,6 +190,7 @@ function parseRow(cols: string[]): PatientRecord | null {
     mrn: get(COLUMN_MAP.MRN),
     umur_tahun: parseNum(get(COLUMN_MAP.UMUR_TAHUN)) || calcAge(get(COLUMN_MAP.BIRTH_DATE), get(COLUMN_MAP.ADMISSION_DATE)),
     sex: parseNum(get(COLUMN_MAP.SEX)),
+    ptd: parseNum(get(COLUMN_MAP.PTD)),
     sep: get(COLUMN_MAP.SEP),
     admission_date: admissionDate,
     discharge_date: parseDate(get(COLUMN_MAP.DISCHARGE_DATE)),

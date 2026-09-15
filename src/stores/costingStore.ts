@@ -44,6 +44,7 @@ interface CostingState {
   filterStatus: 'ALL' | 'UNTUNG' | 'IMPAS' | 'RUGI';
   filterDRG: string;
   filterMDC: string;
+  filterPTD: string;
 
   // Actions
   setRawRecords: (records: PatientRecord[], session: UploadSession) => void;
@@ -70,6 +71,7 @@ export const useCostingStore = create<CostingState>()(
       filterDRG: '',
       filterStatus: 'ALL',
       filterMDC: '',
+      filterPTD: '',
       searchTerm: '',
 
       setRawRecords: (records, session) => {
@@ -161,6 +163,7 @@ export function useFilteredDRGResults() {
   const drgResults = useCostingStore(s => s.drgResults);
   const filterStatus = useCostingStore(s => s.filterStatus);
   const filterMDC = useCostingStore(s => s.filterMDC);
+  const filterPTD = useCostingStore(s => s.filterPTD);
   const searchTerm = useCostingStore(s => s.searchTerm);
 
   return React.useMemo(() => {
@@ -170,6 +173,9 @@ export function useFilteredDRGResults() {
     }
     if (filterMDC) {
       results = results.filter(r => String(r.mdc_number) === filterMDC);
+    }
+    if (filterPTD) {
+      results = results.filter(r => String(r.ptd) === filterPTD);
     }
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -181,19 +187,23 @@ export function useFilteredDRGResults() {
       );
     }
     return results;
-  }, [drgResults, filterStatus, filterMDC, searchTerm]);
+  }, [drgResults, filterStatus, filterMDC, filterPTD, searchTerm]);
 }
 
 // Hook untuk filtered patient results
 export function useFilteredPatientResults() {
   const patientResults = useCostingStore(s => s.patientResults);
   const filterStatus = useCostingStore(s => s.filterStatus);
+  const filterPTD = useCostingStore(s => s.filterPTD);
   const searchTerm = useCostingStore(s => s.searchTerm);
 
   return React.useMemo(() => {
     let results = patientResults;
     if (filterStatus && filterStatus !== 'ALL') {
       results = results.filter(r => r.statusINACBG === filterStatus);
+    }
+    if (filterPTD) {
+      results = results.filter(r => String(r.patient.ptd) === filterPTD);
     }
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -205,5 +215,5 @@ export function useFilteredPatientResults() {
       );
     }
     return results;
-  }, [patientResults, filterStatus, searchTerm]);
+  }, [patientResults, filterStatus, filterPTD, searchTerm]);
 }

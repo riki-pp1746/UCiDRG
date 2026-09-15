@@ -70,6 +70,7 @@ export interface PatientRecord {
   sex: number;           // 1=Laki, 2=Perempuan
   
   // Episode Rawat
+  ptd: number;           // 1=Rawat Inap, 2=Rawat Jalan
   sep: string;
   admission_date: string;
   discharge_date: string;
@@ -173,6 +174,13 @@ export interface PatientCostResult {
 export interface DRGGroupResult {
   group_code: string;
   group_description: string;
+  
+  inacbg_code: string;
+  inacbg_description: string;
+  idrg_code: string;
+  idrg_description: string;
+  
+  ptd: number;
   
   mdc_number?: number;
   mdc_description?: string;

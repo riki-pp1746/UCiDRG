@@ -23,7 +23,7 @@ type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataINACBG' | 's
 
 export default function ComparisonPage() {
   const drgResults = useFilteredDRGResults();
-  const { setFilter, filterStatus, searchTerm, isProcessing } = useCostingStore();
+  const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
   const summary = useCostingStore(s => s.summary);
 
   const [sortKey, setSortKey] = useState<SortKey>('jumlahKasus');
@@ -127,6 +127,18 @@ export default function ComparisonPage() {
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-gray-400" />
           <select
+            value={filterPTD}
+            onChange={e => { setFilter('filterPTD', e.target.value); setCurrentPage(1); }}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="">Semua Perawatan</option>
+            <option value="1">Rawat Inap (1)</option>
+            <option value="2">Rawat Jalan (2)</option>
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-gray-400" />
+          <select
             value={filterStatus}
             onChange={e => { setFilter('filterStatus', e.target.value); setCurrentPage(1); }}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -163,15 +175,16 @@ export default function ComparisonPage() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     {[
-                      { key: 'group_code', label: 'Kode DRG' },
-                      { key: null, label: 'Nama DRG / MDC' },
+                      { key: 'inacbg_code', label: 'Kode INA-CBG' },
+                      { key: 'idrg_code', label: 'Kode iDRG' },
+                      { key: null, label: 'Deskripsi / MDC' },
                       { key: 'jumlahKasus', label: 'Kasus' },
                       { key: 'rataUnitCost', label: 'Unit Cost RS' },
                       { key: 'rataINACBG', label: 'Tarif INA-CBG' },
-                      { key: 'rataIDRG', label: 'Tarif INA-CBG' },
-                      { key: 'selisihINACBG', label: 'Selisih INA-CBG (Rp)' },
-                      { key: 'selisihIDRG', label: 'Selisih iDRG (Rp)' },
-                      { key: null, label: 'Status (INA-CBG)' },
+                      { key: 'rataIDRG', label: 'Tarif iDRG' },
+                      { key: 'selisihINACBG', label: 'Selisih INA-CBG' },
+                      { key: 'selisihIDRG', label: 'Selisih iDRG' },
+                      { key: null, label: 'Status' },
                     ].map(col => (
                       <th
                         key={col.label}
@@ -191,13 +204,17 @@ export default function ComparisonPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {paginated.map((drg, i) => (
-                    <tr key={i} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">
-                        {drg.group_code}
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <p className="text-gray-800 font-medium leading-tight text-xs">{drg.group_description}</p>
-                      </td>
+                      <tr key={i} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-700 whitespace-nowrap">
+                          {drg.inacbg_code}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs font-semibold text-indigo-700 whitespace-nowrap">
+                          {drg.idrg_code}
+                        </td>
+                        <td className="px-4 py-3 max-w-xs">
+                          <p className="text-gray-800 font-medium leading-tight text-xs">{drg.inacbg_description}</p>
+                          <p className="text-gray-500 font-medium leading-tight text-[10px] mt-1 line-clamp-1">{drg.idrg_description}</p>
+                        </td>
                       <td className="px-4 py-3 text-center font-semibold text-gray-700">
                         {formatNumber(drg.jumlahKasus)}
                       </td>
@@ -234,7 +251,7 @@ export default function ComparisonPage() {
                   ))}
                   {paginated.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                      <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
                         Tidak ada data yang sesuai filter
                       </td>
                     </tr>
