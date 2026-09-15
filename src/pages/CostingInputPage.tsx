@@ -4,13 +4,14 @@
 // Tab: Info RS | A. Overhead | B. Intermediate | C. Final | Hasil
 // ============================================================
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {
   Building2, Calculator, ChevronDown, ChevronUp,
   Plus, Trash2, Save, RotateCcw, CheckCircle,
-  AlertCircle, Info, TrendingUp
+  AlertCircle, Info, TrendingUp, Upload as UploadIcon, FileSpreadsheet
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -81,6 +82,8 @@ export default function CostingInputPage() {
   const [activeTab, setActiveTab] = useState<Tab>('info');
   const [calculated, setCalculated] = useState(config.isCalculated);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleRow = (id: string) => {
     setExpandedRows(prev => {
@@ -96,6 +99,34 @@ export default function CostingInputPage() {
     setActiveTab('hasil');
   };
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsImporting(true);
+      const parsedData = await parseExcelTemplate(file);
+      
+      // Update store secara manual 
+      useHospitalCostStore.setState(s => ({
+        config: {
+          ...s.config,
+          overheadCenters: parsedData.overheadCenters || s.config.overheadCenters,
+          intermediateCenters: parsedData.intermediateCenters || s.config.intermediateCenters,
+          finalCenters: parsedData.finalCenters || s.config.finalCenters,
+          isCalculated: false
+        }
+      }));
+
+      alert('Import berhasil! Silakan periksa tab Overhead, Penunjang, dan Layanan.');
+    } catch (err: any) {
+      alert(`Error saat import: ${err.message}`);
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -105,12 +136,27 @@ export default function CostingInputPage() {
           <p className="text-gray-500 text-sm mt-1">Step-Down Costing — Overhead → Penunjang → Layanan</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImport}
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="flex items-center gap-2 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 text-sm font-medium transition disabled:opacity-50"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            {isImporting ? 'Importing...' : 'Import Template Excel'}
+          </button>
           <button
             onClick={() => { if (window.confirm('Reset semua data ke template default?')) resetToDefault(); }}
             className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl text-gray-600 hover:bg-gray-50 text-sm"
           >
             <RotateCcw className="w-4 h-4" />
-            Reset Default
+            Reset
           </button>
           <button
             onClick={handleCalculate}
