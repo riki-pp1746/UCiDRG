@@ -185,7 +185,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
               <Activity className="w-5 h-5 text-teal-400" />
             </div>
-            <p className="text-xs font-medium text-blue-200">Kementerian Kesehatan<br/>Republik Indonesia</p>
+            <p className="text-xs font-medium text-blue-200 uppercase tracking-widest">Enterprise<br/>Edition</p>
           </div>
         </div>
 
