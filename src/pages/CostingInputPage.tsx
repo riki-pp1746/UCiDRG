@@ -326,6 +326,14 @@ export default function CostingInputPage() {
                       <RpInput value={center.biayaPegawai} onChange={v => updateOverhead(center.id, { biayaPegawai: v })} />
                     </div>
                     <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Dokter (Rp)</label>
+                      <RpInput value={center.biayaJasaMedis} onChange={v => updateOverhead(center.id, { biayaJasaMedis: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Lainnya (Rp)</label>
+                      <RpInput value={center.biayaJasaMedisLain} onChange={v => updateOverhead(center.id, { biayaJasaMedisLain: v })} />
+                    </div>
+                    <div>
                       <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
                       <RpInput value={center.biayaOperasional} onChange={v => updateOverhead(center.id, { biayaOperasional: v })} />
                     </div>
@@ -425,6 +433,14 @@ export default function CostingInputPage() {
                       <RpInput value={center.biayaPegawai} onChange={v => updateIntermediate(center.id, { biayaPegawai: v })} />
                     </div>
                     <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Dokter (Rp)</label>
+                      <RpInput value={center.biayaJasaMedis} onChange={v => updateIntermediate(center.id, { biayaJasaMedis: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Lainnya (Rp)</label>
+                      <RpInput value={center.biayaJasaMedisLain} onChange={v => updateIntermediate(center.id, { biayaJasaMedisLain: v })} />
+                    </div>
+                    <div>
                       <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
                       <RpInput value={center.biayaOperasional} onChange={v => updateIntermediate(center.id, { biayaOperasional: v })} />
                     </div>
@@ -522,6 +538,10 @@ export default function CostingInputPage() {
                       <NumInput value={center.jumlahKunjungan} onChange={v => updateFinal(center.id, { jumlahKunjungan: v })} />
                     </div>
                     <div>
+                      <label className="block text-xs text-gray-500 mb-1">ALOS (Hari)</label>
+                      <NumInput value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
+                    </div>
+                    <div>
                       <label className="block text-xs text-gray-500 mb-1">Tempat Tidur</label>
                       <NumInput value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} />
                     </div>
@@ -536,6 +556,10 @@ export default function CostingInputPage() {
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Jasa Medis Dokter (Rp)</label>
                       <RpInput value={center.biayaJasaMedis} onChange={v => updateFinal(center.id, { biayaJasaMedis: v })} />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Jasa Medis Lainnya (Rp)</label>
+                      <RpInput value={center.biayaJasaMedisLain} onChange={v => updateFinal(center.id, { biayaJasaMedisLain: v })} />
                     </div>
                     <div>
                       <label className="block text-xs text-gray-500 mb-1">Biaya Operasional (Rp)</label>
