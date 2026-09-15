@@ -6,6 +6,7 @@
 
 import { useState, useRef } from 'react';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
+import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {
@@ -79,6 +80,8 @@ export default function CostingInputPage() {
     calculate, resetToDefault,
   } = useHospitalCostStore();
 
+  const { setOverheadConfig } = useCostingStore();
+
   const [activeTab, setActiveTab] = useState<Tab>('info');
   const [calculated, setCalculated] = useState(config.isCalculated);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -97,6 +100,28 @@ export default function CostingInputPage() {
     calculate();
     setCalculated(true);
     setActiveTab('hasil');
+  };
+
+  const handleSyncToPatientLevel = () => {
+    const totalDirectCost = config.finalCenters.reduce((s, c) => s + c.totalCostDirect, 0);
+    
+    if (totalDirectCost === 0) {
+      alert('Gagal: Biaya Langsung di Layanan Final masih 0. Pastikan data sudah diinput.');
+      return;
+    }
+
+    const totalOverhead = config.totalFinalCost - totalDirectCost;
+    const overheadRatio = totalOverhead / totalDirectCost;
+
+    setOverheadConfig({
+      overheadFactor: overheadRatio,
+      administrasiFactor: 0,
+      depresiasiFactor: 0,
+      jaminanMutuFactor: 0,
+      useActualBilling: true
+    });
+
+    alert(`✅ Sinkronisasi Berhasil!\n\nPersentase Overhead Aktual RS: ${(overheadRatio * 100).toFixed(2)}%\n\nFaktor ini telah diterapkan ke engine Patient Level Costing. Silakan cek menu Laporan & Perbandingan untuk melihat hasilnya pada data pasien INA-CBG.`);
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -653,13 +678,20 @@ export default function CostingInputPage() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200 text-sm text-amber-700">
-                <p className="font-semibold mb-1">💡 Cara Membaca Hasil:</p>
-                <ul className="space-y-1 text-amber-600 list-disc list-inside">
-                  <li><strong>Unit Cost/Hari Rawat</strong> → Bandingkan dengan tarif kamar harian</li>
-                  <li><strong>Unit Cost/Pasien</strong> → Bandingkan dengan tarif iDRG di tab Perbandingan</li>
-                  <li>Data ini tersimpan otomatis di browser (localStorage)</li>
-                </ul>
+              <div className="bg-amber-50 rounded-xl p-5 border border-amber-200 text-sm flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+                <div>
+                  <p className="font-semibold text-amber-800 mb-1">💡 Cara Integrasi dengan Data Pasien (INA-CBG):</p>
+                  <ul className="space-y-1 text-amber-700 list-disc list-inside">
+                    <li>Rasio overhead dari tabel di atas dapat disinkronkan langsung ke sistem kalkulasi pasien.</li>
+                    <li>Sistem akan menggunakan rasio overhead aktual ini (bukan asumsi statis) terhadap tagihan rawat tiap pasien.</li>
+                  </ul>
+                </div>
+                <button
+                  onClick={handleSyncToPatientLevel}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 shadow-sm whitespace-nowrap"
+                >
+                  Sinkronkan ke Patient Level
+                </button>
               </div>
             </>
           )}
