@@ -3,6 +3,7 @@
 // Zustand state management untuk data costing
 // ============================================================
 
+import React from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { RVUGlobalCosts } from '../types/costing.types';
@@ -155,18 +156,23 @@ export const useCostingStore = create<CostingState>()(
   )
 );
 
-// Selector untuk filtered DRG results
+// Hook untuk filtered DRG results (menggunakan useMemo agar tidak infinite loop di Zustand)
 export function useFilteredDRGResults() {
-  return useCostingStore(state => {
-    let results = state.drgResults;
-    if (state.filterStatus) {
-      results = results.filter(r => r.statusINACBG === state.filterStatus);
+  const drgResults = useCostingStore(s => s.drgResults);
+  const filterStatus = useCostingStore(s => s.filterStatus);
+  const filterMDC = useCostingStore(s => s.filterMDC);
+  const searchTerm = useCostingStore(s => s.searchTerm);
+
+  return React.useMemo(() => {
+    let results = drgResults;
+    if (filterStatus) {
+      results = results.filter(r => r.statusINACBG === filterStatus);
     }
-    if (state.filterMDC) {
-      results = results.filter(r => String(r.mdc_number) === state.filterMDC);
+    if (filterMDC) {
+      results = results.filter(r => String(r.mdc_number) === filterMDC);
     }
-    if (state.searchTerm) {
-      const term = state.searchTerm.toLowerCase();
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       results = results.filter(
         r =>
           r.group_description.toLowerCase().includes(term) ||
@@ -175,18 +181,22 @@ export function useFilteredDRGResults() {
       );
     }
     return results;
-  });
+  }, [drgResults, filterStatus, filterMDC, searchTerm]);
 }
 
-// Selector untuk filtered patient results
+// Hook untuk filtered patient results
 export function useFilteredPatientResults() {
-  return useCostingStore(state => {
-    let results = state.patientResults;
-    if (state.filterStatus) {
-      results = results.filter(r => r.statusINACBG === state.filterStatus);
+  const patientResults = useCostingStore(s => s.patientResults);
+  const filterStatus = useCostingStore(s => s.filterStatus);
+  const searchTerm = useCostingStore(s => s.searchTerm);
+
+  return React.useMemo(() => {
+    let results = patientResults;
+    if (filterStatus) {
+      results = results.filter(r => r.statusINACBG === filterStatus);
     }
-    if (state.searchTerm) {
-      const term = state.searchTerm.toLowerCase();
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       results = results.filter(
         r =>
           r.patient.nama_pasien.toLowerCase().includes(term) ||
@@ -195,5 +205,5 @@ export function useFilteredPatientResults() {
       );
     }
     return results;
-  });
+  }, [patientResults, filterStatus, searchTerm]);
 }
