@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+import { BrandLogo } from '../../pages/LoginPage';
+
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
@@ -49,13 +51,11 @@ export default function AppLayout() {
         )}
       >
         {/* Logo Area */}
-        <div className="flex items-center gap-3 p-5 h-20 border-b border-gray-100/50">
-          <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-sm shadow-teal-500/20">
-            <Activity className="w-6 h-6 text-white" />
-          </div>
+        <div className="flex items-center gap-3 p-5 h-20 border-b border-gray-100/50 overflow-hidden">
+          <BrandLogo className="w-10 h-10 flex-shrink-0" />
           {sidebarOpen && (
-            <div className="min-w-0 flex-1">
-              <h1 className="text-base font-bold text-[#041E42] truncate tracking-tight">UnitCOSt PRO</h1>
+            <div className="min-w-0 flex-1 whitespace-nowrap">
+              <h1 className="text-base font-bold text-[#041E42] tracking-tight">UnitCOSt PRO</h1>
               <p className="text-xs text-gray-500 truncate font-medium">{user?.namaRS}</p>
             </div>
           )}

@@ -1,127 +1,263 @@
 // ============================================================
 // PAGE: LoginPage.tsx
+// Redesigned with Apple x Deloitte x Kemenkes theme & Security Slider
 // ============================================================
 
-import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { Activity, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck, Activity } from 'lucide-react';
+import clsx from 'clsx';
 
+// ============================================================
+// COMPONENT: Custom Logo SVG (Professional & Elegant)
+// ============================================================
+export function BrandLogo({ className = "w-12 h-12" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      {/* Background shape */}
+      <rect width="48" height="48" rx="14" fill="#041E42" />
+      
+      {/* U and C intertwined with medical/chart vibe */}
+      <path d="M14 16V28C14 32.4183 17.5817 36 22 36C26.4183 36 30 32.4183 30 28V24" stroke="#00A6A6" strokeWidth="4" strokeLinecap="round" />
+      <path d="M34 18C34 13.5817 30.4183 10 26 10C21.5817 10 18 13.5817 18 18V20" stroke="#38BDF8" strokeWidth="4" strokeLinecap="round" />
+      
+      {/* Chart Bars replacing the right side */}
+      <rect x="22" y="24" width="4" height="12" rx="2" fill="#FFFFFF" />
+      <rect x="28" y="18" width="4" height="18" rx="2" fill="#00A6A6" />
+      <rect x="34" y="12" width="4" height="24" rx="2" fill="#38BDF8" />
+    </svg>
+  );
+}
+
+// ============================================================
+// COMPONENT: Slide to Verify
+// ============================================================
+function SlideToVerify({ onVerify }: { onVerify: (status: boolean) => void }) {
+  const [isVerified, setIsVerified] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const thumbWidth = 48; // px
+
+  const handleMove = (clientX: number) => {
+    if (!isDragging || isVerified || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const max = rect.width - thumbWidth - 8; // 8px padding
+    let newX = clientX - rect.left - (thumbWidth / 2);
+    
+    if (newX < 0) newX = 0;
+    if (newX >= max) {
+      newX = max;
+      setIsVerified(true);
+      setIsDragging(false);
+      onVerify(true);
+    }
+    setPosition(newX);
+  };
+
+  const handleUp = () => {
+    if (isVerified) return;
+    setIsDragging(false);
+    // Snap back if not fully swiped
+    setPosition(0);
+  };
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const onTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX);
+    
+    if (isDragging) {
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('touchmove', onTouchMove);
+      window.addEventListener('mouseup', handleUp);
+      window.addEventListener('touchend', handleUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [isDragging, isVerified]);
+
+  return (
+    <div 
+      ref={containerRef}
+      className="relative h-14 bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden select-none"
+    >
+      {/* Background fill when dragging */}
+      <div 
+        className={clsx(
+          "absolute left-0 top-0 bottom-0 transition-colors duration-300",
+          isVerified ? "bg-teal-500/20" : "bg-teal-500/10"
+        )}
+        style={{ width: `${position + (thumbWidth / 2)}px` }}
+      />
+      
+      {/* Text inside */}
+      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-gray-400 pointer-events-none">
+        {isVerified ? (
+          <span className="text-teal-600 flex items-center gap-2"><ShieldCheck className="w-5 h-5" /> Verifikasi Berhasil</span>
+        ) : (
+          "Geser untuk verifikasi keamanan"
+        )}
+      </div>
+
+      {/* Draggable Thumb */}
+      <div
+        className={clsx(
+          "absolute top-1 bottom-1 w-12 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform shadow-sm",
+          isVerified ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-400 hover:border-teal-300 hover:text-teal-500",
+          !isDragging && !isVerified && "duration-300 ease-out"
+        )}
+        style={{ transform: `translateX(${position + 4}px)` }}
+        onMouseDown={() => !isVerified && setIsDragging(true)}
+        onTouchStart={() => !isVerified && setIsDragging(true)}
+      >
+        {isVerified ? <ShieldCheck className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN PAGE
+// ============================================================
 export default function LoginPage() {
-  const { isAuthenticated, login, error } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isVerified, setIsVerified] = useState(false);
+  const login = useAuthStore(state => state.login);
+  const navigate = useNavigate();
 
-  if (isAuthenticated) return <Navigate to="/" replace />;
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 400)); // Simulate async
-    login(username, password);
-    setLoading(false);
+    if (!isVerified) {
+      setError('Silakan selesaikan verifikasi keamanan terlebih dahulu.');
+      return;
+    }
+    
+    if (login(username, password)) {
+      navigate('/');
+    } else {
+      setError('Username atau password salah.');
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 flex items-center justify-center p-4">
-      {/* Background pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }} />
+    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Elegant Mesh Background */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-teal-400/20 blur-[120px]" />
+        <div className="absolute top-[40%] -right-[20%] w-[60%] h-[80%] rounded-full bg-[#041E42]/10 blur-[150px]" />
       </div>
 
-      <div className="relative w-full max-w-md">
-        {/* Logo / Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 border border-white/30">
-            <Activity className="w-10 h-10 text-white" />
+      <div className="w-full max-w-[1000px] bg-white/70 backdrop-blur-3xl border border-white/50 shadow-[0_8px_40px_rgba(0,0,0,0.04)] rounded-[40px] overflow-hidden flex flex-col md:flex-row relative z-10 min-h-[600px]">
+        
+        {/* Left Side - Branding (Deloitte x Kemenkes Vibe) */}
+        <div className="md:w-5/12 bg-[#041E42] p-10 flex flex-col justify-between relative overflow-hidden text-white">
+          <div className="absolute inset-0 opacity-20">
+            {/* Minimalist pattern overlay */}
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            UnitCOSt PRO
-          </h1>
-          <p className="text-blue-200 mt-2 text-sm">
-            Sistem Perhitungan Unit Cost DRG & Patient Level Costing
-          </p>
+          <div className="relative z-10">
+            <BrandLogo className="w-14 h-14 mb-8" />
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-4 leading-tight">
+              Sistem Kalkulasi<br />
+              <span className="text-teal-400">Patient Level Costing</span>
+            </h1>
+            <p className="text-blue-100/80 text-sm leading-relaxed">
+              Platform analitik enterprise untuk mensimulasikan unit cost rumah sakit dan membandingkannya secara presisi dengan tarif INA-CBG.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-12 flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
+              <Activity className="w-5 h-5 text-teal-400" />
+            </div>
+            <p className="text-xs font-medium text-blue-200">Kementerian Kesehatan<br/>Republik Indonesia</p>
+          </div>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 shadow-2xl">
-          <h2 className="text-xl font-semibold text-white mb-6">Masuk ke Sistem</h2>
+        {/* Right Side - Login Form (Apple Vibe) */}
+        <div className="md:w-7/12 p-10 sm:p-14 flex flex-col justify-center bg-white/40">
+          <div className="max-w-sm mx-auto w-full">
+            <h2 className="text-2xl font-bold text-[#041E42] mb-2">Selamat Datang</h2>
+            <p className="text-gray-500 text-sm mb-8">Masuk dengan kredensial rumah sakit Anda.</p>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div>
-              <label className="block text-sm font-medium text-blue-100 mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300" />
-                <input
-                  type="text"
-                  value={username}
-                  onChange={e => setUsername(e.target.value)}
-                  placeholder="Masukkan username"
-                  required
-                  className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-blue-100 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300" />
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Masukkan password"
-                  required
-                  className="w-full pl-10 pr-12 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(!showPass)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-300 hover:text-white transition"
-                >
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
-              <div className="bg-red-500/20 border border-red-400/30 rounded-lg p-3 text-red-200 text-sm">
-                {error}
-              </div>
-            )}
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 px-6 bg-blue-500 hover:bg-blue-400 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30"
-            >
-              {loading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Memproses...
-                </>
-              ) : (
-                'Masuk'
+            <form onSubmit={handleLogin} className="space-y-5">
+              {error && (
+                <div className="p-3 bg-red-50 text-red-600 text-sm rounded-2xl border border-red-100 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                  {error}
+                </div>
               )}
-            </button>
-          </form>
 
-          <p className="text-center text-blue-300 text-xs mt-6">
-            UnitCOSt PRO v1.0 — {new Date().getFullYear()}
-          </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Username</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Mail className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white/80"
+                      placeholder="Masukkan username"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Password</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white/80"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Puzzle */}
+              <div className="pt-2">
+                <SlideToVerify onVerify={setIsVerified} />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!isVerified}
+                className={clsx(
+                  "w-full flex justify-center py-4 px-4 rounded-2xl text-sm font-bold text-white shadow-lg transition-all duration-300 transform active:scale-95",
+                  isVerified 
+                    ? "bg-[#041E42] hover:bg-[#062a5c] shadow-[#041E42]/20" 
+                    : "bg-gray-300 cursor-not-allowed shadow-none"
+                )}
+              >
+                Masuk ke Sistem
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </div>
