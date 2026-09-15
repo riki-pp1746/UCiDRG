@@ -85,12 +85,45 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
 
-        // Cari sheet: "Costing Dummy" atau yang mengandung kata costing/template/input
-        const sheetName =
-          workbook.SheetNames.find(s => s.toLowerCase().includes('costing')) ||
-          workbook.SheetNames.find(s => s.toLowerCase().includes('template')) ||
-          workbook.SheetNames.find(s => s.toLowerCase().includes('input')) ||
-          workbook.SheetNames[0];
+        // ── Pilih sheet yang tepat ──────────────────────────────────
+        // Prioritas:
+        // 1. Sheet bernama persis "Costing Dummy" (format template standar)
+        // 2. Sheet mengandung "dummy"
+        // 3. Sheet mengandung "costing" TAPI bukan yang terlalu pendek (template kosong)
+        // 4. Sheet mengandung "template" atau "input"
+        // 5. Sheet dengan paling banyak baris (paling banyak data)
+        let sheetName = workbook.SheetNames[0]; // fallback
+
+        const dummy = workbook.SheetNames.find(s => s.toLowerCase().includes('dummy'));
+        const costing = workbook.SheetNames.find(s => s.toLowerCase() === 'costing dummy' || s.toLowerCase().includes('costing dummy'));
+        const template = workbook.SheetNames.find(s => s.toLowerCase().includes('template'));
+        const input = workbook.SheetNames.find(s => s.toLowerCase().includes('input'));
+
+        if (costing) {
+          sheetName = costing;
+        } else if (dummy) {
+          sheetName = dummy;
+        } else if (template) {
+          sheetName = template;
+        } else if (input) {
+          sheetName = input;
+        } else {
+          // Pilih sheet dengan jumlah baris terbanyak (paling banyak data)
+          let maxRows = 0;
+          for (const sn of workbook.SheetNames) {
+            const s = workbook.Sheets[sn];
+            const ref = s['!ref'];
+            if (ref) {
+              const range = XLSX.utils.decode_range(ref);
+              if (range.e.r > maxRows) {
+                maxRows = range.e.r;
+                sheetName = sn;
+              }
+            }
+          }
+        }
+
+        console.log(`📊 Parsing sheet: "${sheetName}" dari [${workbook.SheetNames.join(', ')}]`);
 
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null }) as any[][];
