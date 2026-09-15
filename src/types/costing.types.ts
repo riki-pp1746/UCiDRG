@@ -1,0 +1,220 @@
+// ============================================================
+// TYPES: costing.types.ts
+// Definisi tipe data untuk sistem Unit Cost
+// ============================================================
+
+export interface HospitalInfo {
+  namaRS: string;
+  kepemilikan: string;
+  tipeRS: 'A' | 'B' | 'C' | 'D';
+  periode: string;
+  baseRate: number; // NBR / National Base Rate
+}
+
+// ============================================================
+// Billing Group - sesuai struktur data TXT INACBG
+// ============================================================
+export interface BillingGroup {
+  procedure_amt: number;      // Prosedur Non Bedah
+  surgical_amt: number;       // Prosedur Bedah
+  consul_amt: number;         // Konsultasi
+  expert_amt: number;         // Tenaga Ahli
+  nursing_amt: number;        // Keperawatan
+  ancillary_amt: number;      // Penunjang
+  radiology_amt: number;      // Radiologi
+  laboratory_amt: number;     // Laboratorium
+  blood_amt: number;          // Pelayanan Darah
+  rehab_amt: number;          // Rehabilitasi
+  room_amt: number;           // Kamar/Akomodasi
+  intensive_amt: number;      // Rawat Intensif
+  drug_amt: number;           // Obat
+  device_amt: number;         // Alkes
+  consumable_amt: number;     // BMHP
+  device_rent_amt: number;    // Sewa Alat
+  drug_chronic_amt: number;   // Obat Kronis
+  drug_chemo_amt: number;     // Obat Kemoterapi
+}
+
+// ============================================================
+// iDRG Info - dari kolom JSON dalam file TXT
+// ============================================================
+export interface IDRGInfo {
+  diag_lists: string;
+  proc_lists: string;
+  mdc_number: number;
+  mdc_description: string;
+  drg_code: string;
+  drg_description: string;
+  cost_weight: number;
+  total_cost_weight: number;
+  nbr: number;           // National Base Rate
+  total_tarif: number;   // Tarif iDRG
+  grouper_version: string;
+  logic_version: string;
+}
+
+// ============================================================
+// Data Pasien Lengkap (1 baris dari file TXT)
+// ============================================================
+export interface PatientRecord {
+  // Identitas RS
+  kode_rs: string;
+  kelas_rs: string;
+  
+  // Identitas Pasien
+  nama_pasien: string;
+  mrn: string;           // No. Rekam Medis
+  umur_tahun: number;
+  sex: number;           // 1=Laki, 2=Perempuan
+  
+  // Episode Rawat
+  sep: string;
+  admission_date: string;
+  discharge_date: string;
+  los: number;
+  kelas_rawat: number;   // 1=Kelas 1, 2=Kelas 2, 3=Kelas 3, VIP
+  discharge_status: number;
+  
+  // Klinis
+  diaglist: string;
+  proclist: string;
+  dpjp: string;
+  
+  // INACBG
+  inacbg: string;
+  deskripsi_inacbg: string;
+  tarif_inacbg: number;
+  total_tarif: number;   // Tarif RS total
+  
+  // iDRG
+  idrg: IDRGInfo;
+  
+  // Billing Detail
+  billing: BillingGroup;
+  
+  // Payor
+  payor_id: string;      // "3;JKN" dll
+}
+
+// ============================================================
+// Overhead Cost Centers (Step-Down Method)
+// ============================================================
+export interface OverheadCenter {
+  id: string;
+  nama: string;
+  dasarAlokasi: 'jumlah_staf' | 'hari_rawat' | 'kunjungan' | 'luas_lantai';
+  jumlahStaf: number;
+  biayaPegawai: number;
+  biayaOperasional: number;
+  depresiasPeralatan: number;
+  depresiasiGedung: number;
+  luasLantai: number;
+  totalCost: number;
+}
+
+// ============================================================
+// Unit Cost per Pusat Biaya Final
+// ============================================================
+export interface FinalCostCenter {
+  id: string;
+  nama: string;
+  kategori: 'rawat_inap' | 'rawat_jalan' | 'igd' | 'bedah' | 'penunjang' | 'farmasi';
+  
+  // Volume
+  jumlahHariRawat: number;
+  jumlahPasienPulang: number;
+  jumlahKunjungan: number;
+  
+  // Cost after step-down
+  totalCostAfterOverhead: number;
+  totalCostAfterIntermediate: number;
+  
+  // Unit Cost
+  unitCostPerHariRawat: number;
+  unitCostPerKunjungan: number;
+}
+
+// ============================================================
+// Hasil Perhitungan Per Pasien
+// ============================================================
+export interface PatientCostResult {
+  patient: PatientRecord;
+  
+  // Unit Cost calculated
+  unitCostDihitung: number;
+  
+  // Komponen breakdown
+  biayaLangsung: number;
+  biayaTidakLangsung: number;
+  
+  // iDRG comparison
+  tarifIDRG: number;
+  selisihNominal: number;      // unitCostDihitung - tarifIDRG
+  selisihPersen: number;       // selisihNominal / tarifIDRG * 100
+  status: 'UNTUNG' | 'IMPAS' | 'RUGI';
+}
+
+// ============================================================
+// Agregat per DRG Group
+// ============================================================
+export interface DRGGroupResult {
+  drg_code: string;
+  drg_description: string;
+  mdc_number: number;
+  mdc_description: string;
+  
+  jumlahKasus: number;
+  
+  // Rata-rata biaya
+  rataUnitCost: number;
+  rataIDRG: number;
+  
+  // Total
+  totalBiayaRS: number;
+  totalTarifIDRG: number;
+  
+  // Selisih
+  selisihNominal: number;
+  selisihPersen: number;
+  
+  // Cost Weight
+  avgCostWeight: number;
+  
+  status: 'UNTUNG' | 'IMPAS' | 'RUGI';
+}
+
+// ============================================================
+// Summary / Dashboard KPI
+// ============================================================
+export interface CostingSummary {
+  periodeData: string;
+  totalKasus: number;
+  totalBiayaRS: number;
+  totalTarifIDRG: number;
+  totalSelisih: number;
+  
+  cmi: number;  // Case Mix Index
+  
+  jumlahDRGUntung: number;
+  jumlahDRGImpas: number;
+  jumlahDRGRugi: number;
+  
+  persenRugi: number;
+  persenUntung: number;
+  
+  top10Rugi: DRGGroupResult[];
+  top10Untung: DRGGroupResult[];
+}
+
+// ============================================================
+// Session / Upload State
+// ============================================================
+export interface UploadSession {
+  id: string;
+  filename: string;
+  uploadedAt: string;
+  totalRows: number;
+  parsedRows: number;
+  status: 'idle' | 'parsing' | 'done' | 'error';
+  error?: string;
+}
