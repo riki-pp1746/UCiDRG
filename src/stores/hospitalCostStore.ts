@@ -280,7 +280,7 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
     }),
     {
-      name: 'unitcost-hospital-cost-store',
+      name: 'unitcost-hospital-cost-store-v2',
     }
   )
 );

@@ -71,6 +71,54 @@ const DASAR_ALOKASI_OPTIONS = [
   { value: 'jumlah_pasien', label: 'Jumlah Pasien' },
 ];
 
+function EmptyDataGuide({ type, onAdd, onImport }: { type: string, onAdd: () => void, onImport: () => void }) {
+  return (
+    <div className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
+      <div className="w-20 h-20 bg-[#F5F5F7] rounded-3xl flex items-center justify-center mb-6 shadow-sm border border-white">
+        <FileSpreadsheet className="w-10 h-10 text-teal-600" />
+      </div>
+      <h2 className="text-2xl font-bold text-[#041E42] mb-3 tracking-tight">Data {type} Masih Kosong</h2>
+      <p className="text-gray-500 max-w-md mx-auto mb-8 leading-relaxed">
+        Sistem belum memiliki struktur pusat biaya untuk <strong>{type}</strong>. 
+        Anda bisa mengimpor format Excel standar yang sudah diisi, atau menambahkan baris secara manual.
+      </p>
+
+      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+        <button 
+          onClick={onImport}
+          className="flex items-center justify-center gap-2 px-8 py-3.5 bg-[#041E42] text-white rounded-2xl hover:bg-[#062a5c] font-semibold transition-all shadow-[0_4px_16px_rgba(4,30,66,0.2)] hover:shadow-[0_8px_24px_rgba(4,30,66,0.3)] transform active:scale-95"
+        >
+          <UploadIcon className="w-5 h-5" />
+          Import Template Excel
+        </button>
+        <button
+          onClick={onAdd}
+          className="flex items-center justify-center gap-2 px-8 py-3.5 bg-white text-teal-700 border-2 border-teal-100 rounded-2xl hover:bg-teal-50 hover:border-teal-200 font-semibold transition-all shadow-sm transform active:scale-95"
+        >
+          <Plus className="w-5 h-5" />
+          Tambah Baris Manual
+        </button>
+      </div>
+
+      <div className="mt-12 max-w-xl mx-auto bg-blue-50/50 rounded-[20px] p-6 border border-blue-100/50 text-left">
+        <p className="font-semibold text-[#041E42] flex items-center gap-2 mb-3">
+          <Info className="w-5 h-5 text-teal-600" /> Tips Penggunaan (Quick Start)
+        </p>
+        <ul className="text-sm text-gray-600 space-y-2 list-none">
+          <li className="flex items-start gap-2 leading-relaxed">
+            <span className="text-teal-500 font-bold">•</span> 
+            <span><strong>Disarankan:</strong> Gunakan tombol <span className="font-semibold text-[#041E42]">Import Template Excel</span>. Anda bisa meminta tim keuangan untuk mengisi angka di Excel, lalu sistem ini akan membaca & menghitung otomatis.</span>
+          </li>
+          <li className="flex items-start gap-2 leading-relaxed">
+            <span className="text-teal-500 font-bold">•</span> 
+            <span><strong>Input Manual:</strong> Gunakan tombol <span className="font-semibold text-teal-700">Tambah Baris Manual</span> jika Anda sedang mencoba-coba simulasi atau hanya perlu menambahkan 1-2 unit layanan baru.</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 export default function CostingInputPage() {
   const {
     config,
@@ -289,18 +337,27 @@ export default function CostingInputPage() {
 
       {/* ── TAB: OVERHEAD ── */}
       {activeTab === 'overhead' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="font-semibold text-gray-800">A. Pusat Biaya Overhead (Non-Layanan)</p>
-              <p className="text-xs text-gray-400">Biaya akan dialokasikan ke seluruh pusat biaya lain berdasarkan dasar alokasi</p>
+              <p className="font-semibold text-[#041E42] text-lg">A. Pusat Biaya Overhead (Non-Layanan)</p>
+              <p className="text-sm text-gray-500">Biaya akan dialokasikan ke seluruh pusat biaya lain berdasarkan dasar alokasi.</p>
             </div>
-            <button onClick={addOverhead} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm hover:bg-blue-100">
-              <Plus className="w-4 h-4" /> Tambah
-            </button>
+            {config.overheadCenters.length > 0 && (
+              <button onClick={addOverhead} className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-colors">
+                <Plus className="w-4 h-4" /> Tambah
+              </button>
+            )}
           </div>
 
-          {config.overheadCenters.map((center) => (
+          {config.overheadCenters.length === 0 ? (
+            <EmptyDataGuide 
+              type="Overhead" 
+              onAdd={addOverhead} 
+              onImport={() => fileInputRef.current?.click()} 
+            />
+          ) : (
+            config.overheadCenters.map((center) => (
             <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               {/* Row Header */}
               <div
@@ -398,18 +455,27 @@ export default function CostingInputPage() {
 
       {/* ── TAB: INTERMEDIATE ── */}
       {activeTab === 'intermediate' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="font-semibold text-gray-800">B. Pusat Biaya Penunjang Medis (Intermediate)</p>
-              <p className="text-xs text-gray-400">Menerima alokasi overhead, lalu mengalokasikan ke unit layanan</p>
+              <p className="font-semibold text-[#041E42] text-lg">B. Pusat Biaya Penunjang Medis (Intermediate)</p>
+              <p className="text-sm text-gray-500">Menerima alokasi overhead, lalu mengalokasikan ke unit layanan.</p>
             </div>
-            <button onClick={addIntermediate} className="flex items-center gap-1 px-3 py-1.5 bg-violet-50 text-violet-600 rounded-lg text-sm hover:bg-violet-100">
-              <Plus className="w-4 h-4" /> Tambah
-            </button>
+            {config.intermediateCenters.length > 0 && (
+              <button onClick={addIntermediate} className="flex items-center justify-center gap-1.5 px-4 py-2 bg-violet-50 text-violet-600 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-colors">
+                <Plus className="w-4 h-4" /> Tambah
+              </button>
+            )}
           </div>
 
-          {config.intermediateCenters.map((center) => (
+          {config.intermediateCenters.length === 0 ? (
+            <EmptyDataGuide 
+              type="Penunjang Medis (Intermediate)" 
+              onAdd={addIntermediate} 
+              onImport={() => fileInputRef.current?.click()} 
+            />
+          ) : (
+            config.intermediateCenters.map((center) => (
             <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
                 <span className="w-6 h-6 bg-violet-100 text-violet-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
@@ -491,18 +557,27 @@ export default function CostingInputPage() {
 
       {/* ── TAB: FINAL ── */}
       {activeTab === 'final' && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="font-semibold text-gray-800">C. Pusat Biaya Layanan / Produksi (Final)</p>
-              <p className="text-xs text-gray-400">Unit layanan langsung — menghasilkan Unit Cost per hari rawat / kunjungan / pasien</p>
+              <p className="font-semibold text-[#041E42] text-lg">C. Pusat Biaya Layanan / Produksi (Final)</p>
+              <p className="text-sm text-gray-500">Unit layanan langsung — menghasilkan Unit Cost per hari rawat / kunjungan / pasien.</p>
             </div>
-            <button onClick={addFinal} className="flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-600 rounded-lg text-sm hover:bg-green-100">
-              <Plus className="w-4 h-4" /> Tambah
-            </button>
+            {config.finalCenters.length > 0 && (
+              <button onClick={addFinal} className="flex items-center justify-center gap-1.5 px-4 py-2 bg-green-50 text-green-600 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors">
+                <Plus className="w-4 h-4" /> Tambah
+              </button>
+            )}
           </div>
 
-          {config.finalCenters.map((center) => (
+          {config.finalCenters.length === 0 ? (
+            <EmptyDataGuide 
+              type="Layanan / Produksi (Final)" 
+              onAdd={addFinal} 
+              onImport={() => fileInputRef.current?.click()} 
+            />
+          ) : (
+            config.finalCenters.map((center) => (
             <div key={center.id} className="bg-white rounded-[24px] border border-gray-100 shadow-[0_4px_24px_rgba(0,0,0,0.02)] overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50" onClick={() => toggleRow(center.id)}>
                 <span className="w-6 h-6 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center justify-center flex-shrink-0">
