@@ -5,7 +5,7 @@
 // Tab: Info RS | Data Dasar | A. Overhead | B. Penunjang | C. Layanan | Hasil
 // ============================================================
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
@@ -281,6 +281,40 @@ export default function CostingInputPage() {
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
   const { setOverheadConfig } = useCostingStore();
+
+  // Load defaults for total Biaya RS dari intermediate centers jika masih kosong
+  useEffect(() => {
+    if (Object.keys(biayaRSMap).length === 0 && config.intermediateCenters.length > 0) {
+      const im = config.intermediateCenters;
+      const findCost = (kw: string) => im.find(c => c.nama.toLowerCase().includes(kw))?.totalCostAfterOverhead || 0;
+      
+      setBiayaRS('drug_amt', findCost('farmasi'));
+      setBiayaRS('radiology_amt', findCost('radiologi'));
+      setBiayaRS('laboratory_amt', findCost('lab'));
+      setBiayaRS('blood_amt', findCost('darah'));
+      setBiayaRS('rehab_amt', findCost('rehab'));
+    }
+  }, [config, biayaRSMap, setBiayaRS]);
+
+  // Recalculate otomatis saat masuk ke tab distribusi18
+  useEffect(() => {
+    if (activeTab === 'distribusi18') {
+      const ucKamar: Record<string, number> = {};
+      const finals = config.finalCenters || [];
+      finals.forEach(f => {
+        const nama = f.nama.toLowerCase();
+        const unitCostLHR = f.jumlahHariRawat > 0 ? (f.totalCostAfterIntermediate / f.jumlahHariRawat) : 0;
+        const unitCostKJ = f.jumlahKunjungan > 0 ? (f.totalCostAfterIntermediate / f.jumlahKunjungan) : 0;
+        if (nama.includes('kelas iii') || nama.includes('kelas 3')) ucKamar['kelas3'] = unitCostLHR;
+        if (nama.includes('kelas ii') || nama.includes('kelas 2')) ucKamar['kelas2'] = unitCostLHR;
+        if (nama.includes('kelas i') || nama.includes('kelas 1')) ucKamar['kelas1'] = unitCostLHR;
+        if (nama.includes('icu') || nama.includes('intensif')) ucKamar['icu'] = unitCostLHR;
+        if (nama.includes('igd') || nama.includes('gawat')) ucKamar['igd'] = unitCostKJ;
+        if (nama.includes('rawat jalan') || nama.includes('poliklinik')) ucKamar['rawat_jalan'] = unitCostKJ;
+      });
+      calculateDistribution(ucKamar);
+    }
+  }, [activeTab, config.finalCenters, biayaRSMap, calculateDistribution]);
 
   // Validasi sumber data dan dasar alokasi: biaya tidak boleh dialokasikan tanpa volume pemicu.
   const validation = useMemo(() => {

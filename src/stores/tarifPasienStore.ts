@@ -169,7 +169,11 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       },
     }),
     {
-      name: 'unitcost-tarif-pasien-v1'
+      name: 'unitcost-tarif-pasien-v1',
+      partialize: (state) => ({
+        biayaRSMap: state.biayaRSMap,
+        distribusi: state.distribusi,
+      })
     }
   )
 );
