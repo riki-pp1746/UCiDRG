@@ -105,6 +105,18 @@ export interface KomponenDistribusi {
   metodeAlokasi: string;
 }
 
+export type ValidationSeverity = 'error' | 'warning';
+
+/** Pemeriksaan konsistensi antara data PLC dan data dasar RS (materi hal. 39-40). */
+export interface ValidationIssue {
+  id: string;
+  severity: ValidationSeverity;
+  label: string;
+  expected: number;
+  actual: number;
+  message: string;
+}
+
 export const makeEmptyKomponen = (): KomponenTarif18 => ({
   procedure_amt: 0, surgical_amt: 0, consul_amt: 0, expert_amt: 0,
   nursing_amt: 0, ancillary_amt: 0, radiology_amt: 0, laboratory_amt: 0,

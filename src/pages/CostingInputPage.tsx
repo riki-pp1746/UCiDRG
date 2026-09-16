@@ -1,11 +1,11 @@
 // ============================================================
 // PAGE: CostingInputPage.tsx
 // Form input biaya RS — Step-Down Costing
-// Alur sesuai Materi Workshop Kemenkes Hal. 26-56
+// Alur Patient Level Costing bertahap
 // Tab: Info RS | Data Dasar | A. Overhead | B. Penunjang | C. Layanan | Hasil
 // ============================================================
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
@@ -66,10 +66,11 @@ function RpInput({ value, onChange, placeholder = '0' }: {
 }
 
 // ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
-function NumInput({ value, onChange, placeholder = '0' }: {
+function NumInput({ value, onChange, placeholder = '0', invalid = false }: {
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
+  invalid?: boolean;
 }) {
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     // Commit nilai final saat blur untuk pastikan store terupdate
@@ -85,7 +86,8 @@ function NumInput({ value, onChange, placeholder = '0' }: {
       onBlur={handleBlur}
       placeholder={placeholder}
       min={0}
-      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+      className={clsx('w-full px-2 py-1.5 border rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white', invalid ? 'border-red-400 bg-red-50 text-red-800' : 'border-gray-200')}
+      aria-invalid={invalid}
     />
   );
 }
@@ -132,10 +134,10 @@ type Tab = 'info' | 'dataDasar' | 'overhead' | 'intermediate' | 'final' | 'hasil
 const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: 'info',         label: 'Info RS',       icon: '🏥', desc: 'Identitas & kesiapan RS' },
   { id: 'dataDasar',    label: 'Data Dasar RS',  icon: '📊', desc: 'BOR, ALOS, LHR, Pendapatan' },
-  { id: 'overhead',     label: 'A. Overhead',    icon: '📋', desc: '12 pusat biaya non-layanan' },
-  { id: 'intermediate', label: 'B. Penunjang',   icon: '🔬', desc: '12 pusat biaya penunjang medik' },
-  { id: 'final',        label: 'C. Layanan',     icon: '🛏️', desc: 'Rawat Inap & Rawat Jalan' },
-  { id: 'hasil',        label: 'Hasil',          icon: '📈', desc: 'Unit cost per pusat biaya' },
+  { id: 'overhead',     label: 'Step 1: Overhead', icon: '📋', desc: 'Pusat biaya penunjang umum' },
+  { id: 'intermediate', label: 'Step 3: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
+  { id: 'final',        label: 'Step 2: Layanan', icon: '🛏️', desc: 'Alokasi layanan ke pasien' },
+  { id: 'hasil',        label: 'Hasil Unit Cost', icon: '📈', desc: 'Unit cost per pusat biaya' },
 ];
 
 // ── Helper hitung biaya langsung untuk tampilan ──
@@ -154,12 +156,13 @@ function calcTotalBiaya(c: { biayaPegawai?: number; biayaJasaMedis?: number; bia
 // Variabel: Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | TT | Luas Lantai
 //           Biaya Pegawai | Jasa Medis | Jasa Medis Lain | Operasional
 //           Nilai Alat | Investasi Gedung | Dep. Alat (auto) | Dep. Gedung (auto) | Total Biaya (auto)
-function BiayaForm({ label, type, data, onChange, showStatOnly = false }: {
+function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, hasAllocationError = false }: {
   label: string;
   type: 'overhead' | 'intermediate' | 'final';
   data: any;
   onChange: (field: string, val: number) => void;
-  showStatOnly?: boolean;
+  hasBiayaGajiError?: boolean;
+  hasAllocationError?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const depAlat = Math.round((data.hargaPeralatan5Tahun || 0) / 5);
@@ -230,7 +233,10 @@ function BiayaForm({ label, type, data, onChange, showStatOnly = false }: {
             {biayaFields.map(f => (
               <div key={f.field}>
                 <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
-                <RpInput value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
+                <div className={hasAllocationError || (f.field === 'biayaPegawai' && hasBiayaGajiError) ? '[&>input]:border-red-400 [&>input]:bg-red-50 [&>input]:text-red-800' : ''}>
+                  <RpInput value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
+                </div>
+                {f.field === 'biayaPegawai' && hasBiayaGajiError && <p className="mt-1 text-[11px] text-red-600">Tidak sesuai total Biaya Gaji pada Data Dasar RS.</p>}
               </div>
             ))}
           </div>
@@ -258,6 +264,7 @@ function BiayaForm({ label, type, data, onChange, showStatOnly = false }: {
 
 export default function CostingInputPage() {
   const [activeTab, setActiveTab] = useState<Tab>('info');
+  const [showAuditTrail, setShowAuditTrail] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -270,6 +277,38 @@ export default function CostingInputPage() {
   } = useHospitalCostStore();
 
   const { setOverheadConfig } = useCostingStore();
+
+  // Validasi sumber data dan dasar alokasi: biaya tidak boleh dialokasikan tanpa volume pemicu.
+  const validation = useMemo(() => {
+    const errors = new Map<string, string>();
+    const direct = (c: any) => calcTotalBiaya(c);
+    const allocationValue = (c: any) => {
+      if (c.dasarAlokasi === 'luas_lantai' || c.dasarAlokasi === 'tagihan_pajak') return c.luasLantai || 0;
+      if (c.dasarAlokasi === 'jumlah_staf' || c.dasarAlokasi === 'penggunaan' || c.dasarAlokasi === 'biaya_riil') return c.jumlahStaf || 0;
+      if (c.dasarAlokasi === 'hari_rawat') return c.jumlahHariRawat || 0;
+      if (c.dasarAlokasi === 'jumlah_pasien') return c.jumlahPasienPulang || 0;
+      return c.jumlahKunjungan || c.jumlahHariRawat || 0;
+    };
+    config.overheadCenters.forEach(c => {
+      if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`overhead-${c.id}`, 'Biaya langsung terisi, tetapi dasar alokasi belum memiliki nilai.');
+    });
+    config.intermediateCenters.forEach(c => {
+      if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`intermediate-${c.id}`, 'Biaya langsung terisi, tetapi volume pemakaian belum diisi.');
+    });
+    config.finalCenters.forEach(c => {
+      if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`final-${c.id}`, 'Biaya langsung terisi, tetapi volume layanan untuk dasar alokasi belum diisi.');
+    });
+    const basic = config.dataDasar;
+    const finalLHR = config.finalCenters.reduce((sum, c) => sum + (c.jumlahHariRawat || 0), 0);
+    const finalTT = config.finalCenters.filter(c => c.kategori === 'rawat_inap' || c.kategori === 'icu').reduce((sum, c) => sum + (c.jumlahTempat || 0), 0);
+    const gajiCenters = [...config.overheadCenters, ...config.intermediateCenters, ...config.finalCenters].reduce((sum, c) => sum + (c.biayaPegawai || 0), 0);
+    if (basic.lamaHariRawatJKN + basic.lamaHariRawatNonJKN > 0 && Math.abs(finalLHR - (basic.lamaHariRawatJKN + basic.lamaHariRawatNonJKN)) > 0.5) errors.set('final-lhr', 'Total Hari Rawat layanan belum sama dengan total Lama Hari Rawat pada Data Dasar RS.');
+    if (basic.jumlahTempaTidur > 0 && Math.abs(finalTT - basic.jumlahTempaTidur) > 0.5) errors.set('final-tt', 'Total tempat tidur layanan belum sama dengan Data Dasar RS.');
+    if (basic.biayaGajiTotal > 0 && Math.abs(gajiCenters - basic.biayaGajiTotal) > 0.5) errors.set('biaya-gaji', 'Akumulasi biaya gaji seluruh pusat biaya belum sama dengan Data Dasar RS.');
+    return { errors, finalLHR, finalTT, gajiCenters };
+  }, [config]);
+
+  const hasBiayaGajiError = validation.errors.has('biaya-gaji');
 
   // Sinkronisasi hasil step-down ke engine Patient Level Costing
   const handleSyncToPatientLevel = () => {
@@ -322,6 +361,12 @@ export default function CostingInputPage() {
       useHospitalCostStore.setState(s => {
         const newConfig = runStepDownCalculation({
           ...s.config,
+          namaRS: parsedData.namaRS || s.config.namaRS,
+          tipeRS: parsedData.tipeRS || s.config.tipeRS,
+          kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,
+          tahunData: parsedData.tahunData || s.config.tahunData,
+          dataDasar: parsedData.dataDasar || s.config.dataDasar,
+          dataLayanan: parsedData.dataLayanan || s.config.dataLayanan,
           overheadCenters: (parsedData.overheadCenters && parsedData.overheadCenters.length > 0)
             ? parsedData.overheadCenters
             : s.config.overheadCenters,
@@ -339,9 +384,11 @@ export default function CostingInputPage() {
         parsedData.overheadCenters?.length ? `${parsedData.overheadCenters.length} Overhead` : '',
         parsedData.intermediateCenters?.length ? `${parsedData.intermediateCenters.length} Penunjang` : '',
         parsedData.finalCenters?.length ? `${parsedData.finalCenters.length} Layanan` : '',
+        parsedData.dataDasar ? 'Data Dasar RS' : '',
+        parsedData.dataLayanan ? 'Data Operasional' : '',
       ].filter(Boolean).join(', ');
 
-      alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nUnit Cost sudah dikalkulasi otomatis. Buka Tab "Hasil" untuk melihat hasilnya.`);
+      alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
     } catch (err: any) {
       console.error(err);
       alert(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
@@ -357,23 +404,28 @@ export default function CostingInputPage() {
     const XLSX = await import('xlsx');
 
     // Header kolom: No | Nama Unit | Dasar Alokasi | Jml Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | Jml TT | Biaya Gaji | Jasa Medis | Jasa Medis Lain | Biaya Operasional | Nilai Alat (5th) | Investasi Gedung | - | - | Luas Lantai
-    const COLS = ['No', 'Nama Unit / Pusat Biaya', 'Dasar Alokasi', 'Jumlah Staf', 'Hari Rawat', 'Pasien Pulang', 'Jml Kunjungan', 'ALOS', 'Jml Tempat Tidur', 'Biaya Gaji', 'Biaya Jasa Medis', 'Biaya Jasa Medis Lain', 'Biaya Operasional', 'Nilai Alat (5th)', 'Investasi Gedung', '-', '-', 'Luas Lantai (m2)'];
+    const COLS = ['No', 'Nama Unit / Pusat Biaya', 'Dasar Alokasi', 'Jumlah Staf', 'Hari Rawat', 'Pasien Pulang', 'Jml Kunjungan', 'ALOS', 'Jml Tempat Tidur', 'Biaya Gaji', 'Biaya Jasa Medis', 'Biaya Jasa Medis Lain', 'Biaya Operasional', 'Nilai Alat', 'Investasi Gedung', 'Dep. Peralatan (Otomatis)', 'Dep. Gedung (Otomatis)', 'Luas Lantai (m²)', 'Total Biaya Langsung (Otomatis)'];
 
     const overheadRows = config.overheadCenters.map((c, i) => [
       i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, 0, 0, 0, 0, 0,
-      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai, ''
     ]);
 
     const intermediateRows = config.intermediateCenters.map((c, i) => [
       i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, 0, 0, c.jumlahKunjungan, 0, 0,
-      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai, ''
     ]);
 
     const finalRows = config.finalCenters.map((c, i) => [
       i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, c.jumlahHariRawat, c.jumlahPasienPulang, c.jumlahKunjungan, c.alos, c.jumlahTempat,
-      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai
+      c.biayaPegawai, c.biayaJasaMedis, c.biayaJasaMedisLain, c.biayaOperasional, c.hargaPeralatan5Tahun, c.biayaInvestasiGedung, '', '', c.luasLantai, ''
     ]);
 
+    const makeTotalRow = (label: string) => {
+      const row = Array(19).fill('');
+      row[1] = label;
+      return row;
+    };
     const sheetData = [
       ['TEMPLATE INPUT DATA COSTING RS', '', '', '', '', '', '', '', '', config.namaRS || ''],
       ['Tahun Data:', config.tahunData || new Date().getFullYear(), '', '', '', '', '', '', '', 'Tipe RS:', config.tipeRS || 'B', '', 'Kepemilikan:', config.kepemilikan || ''],
@@ -381,14 +433,18 @@ export default function CostingInputPage() {
       ['A. PUSAT BIAYA PENUNJANG UMUM (OVERHEAD)'],
       COLS,
       ...overheadRows,
+      makeTotalRow('TOTAL OVERHEAD'),
       [],
       ['B. PUSAT BIAYA PENUNJANG MEDIS (INTERMEDIATE)'],
       COLS,
       ...intermediateRows,
+      makeTotalRow('TOTAL PENUNJANG MEDIK'),
       [],
       ['C. PUSAT BIAYA UTAMA (LAYANAN PASIEN)'],
       COLS,
       ...finalRows,
+      makeTotalRow('TOTAL LAYANAN PASIEN'),
+      makeTotalRow('TOTAL BIAYA COSTING RS'),
       [],
       ['CATATAN:'],
       ['Kolom "Dasar Alokasi" isi dengan: jumlah_staf / luas_lantai / hari_rawat / jumlah_kunjungan / jumlah_pasien'],
@@ -397,7 +453,115 @@ export default function CostingInputPage() {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
+    // Kolom otomatis: depresiasi alat (nilai alat ÷ 5), depresiasi gedung (investasi ÷ 40), dan total biaya langsung.
+    sheetData.forEach((row, index) => {
+      if (typeof row[0] === 'number') {
+        const excelRow = index + 1;
+        ws[`P${excelRow}`] = { t: 'n', f: `N${excelRow}/5` };
+        ws[`Q${excelRow}`] = { t: 'n', f: `O${excelRow}/40` };
+        ws[`S${excelRow}`] = { t: 'n', f: `J${excelRow}+K${excelRow}+L${excelRow}+M${excelRow}+P${excelRow}+Q${excelRow}` };
+      }
+    });
+    const addSectionTotalFormula = (label: string) => {
+      const totalIndex = sheetData.findIndex(row => row[1] === label);
+      if (totalIndex < 0) return;
+      let headerIndex = -1;
+      for (let i = totalIndex - 1; i >= 0; i--) {
+        if (sheetData[i][0] === COLS[0] && sheetData[i][1] === COLS[1]) { headerIndex = i; break; }
+      }
+      if (headerIndex >= 0) {
+        const totalRow = totalIndex + 1;
+        const startRow = headerIndex + 2;
+        ws[`S${totalRow}`] = { t: 'n', f: `SUM(S${startRow}:S${totalRow - 1})` };
+        ws[`B${totalRow}`] = { t: 's', v: label };
+      }
+    };
+    addSectionTotalFormula('TOTAL OVERHEAD');
+    addSectionTotalFormula('TOTAL PENUNJANG MEDIK');
+    addSectionTotalFormula('TOTAL LAYANAN PASIEN');
+    const grandTotalIndex = sheetData.findIndex(row => row[1] === 'TOTAL BIAYA COSTING RS');
+    if (grandTotalIndex >= 0) {
+      const grandTotalRow = grandTotalIndex + 1;
+      const overheadTotalRow = sheetData.findIndex(row => row[1] === 'TOTAL OVERHEAD') + 1;
+      const intermediateTotalRow = sheetData.findIndex(row => row[1] === 'TOTAL PENUNJANG MEDIK') + 1;
+      const finalTotalRow = sheetData.findIndex(row => row[1] === 'TOTAL LAYANAN PASIEN') + 1;
+      ws[`S${grandTotalRow}`] = { t: 'n', f: `S${overheadTotalRow}+S${intermediateTotalRow}+S${finalTotalRow}` };
+      ws[`B${grandTotalRow}`] = { t: 's', v: 'TOTAL BIAYA COSTING RS' };
+    }
+    const dataDasarRows = [
+      ['DATA DASAR RUMAH SAKIT', 'NILAI'],
+      ['Nama Rumah Sakit', config.namaRS],
+      ['Tipe RS', config.tipeRS],
+      ['Kepemilikan RS', config.kepemilikan],
+      ['Tahun Data', config.tahunData],
+      [],
+      ['BOR (%)', config.dataDasar.bor],
+      ['ALOS (hari)', config.dataDasar.alos],
+      ['Jumlah Tempat Tidur', config.dataDasar.jumlahTempaTidur],
+      ['Lama Hari Rawat JKN', config.dataDasar.lamaHariRawatJKN],
+      ['Lama Hari Rawat Non JKN', config.dataDasar.lamaHariRawatNonJKN],
+      ['Jumlah SDM Dokter', config.dataDasar.jumlahSDMDokter],
+      ['Jumlah SDM Nakes', config.dataDasar.jumlahSDMNakes],
+      ['Jumlah SDM Non Nakes', config.dataDasar.jumlahSDMNonNakes],
+      ['Biaya Gaji', config.dataDasar.biayaGajiTotal],
+      ['Biaya Jasa/Remunerasi', config.dataDasar.biayaJasaRemunerasi],
+      ['Biaya Operasional Lainnya', config.dataDasar.biayaOperasionalLain],
+      ['Biaya Penyusutan', config.dataDasar.biayaPenyusutan],
+      ['Pendapatan Fungsional JKN', config.dataDasar.pendapatanJKN],
+      ['Pendapatan Fungsional Non JKN', config.dataDasar.pendapatanNonJKN],
+      ['Pendapatan Lainnya', config.dataDasar.pendapatanLain],
+      ['Subsidi/Pendanaan Pemerintah', config.dataDasar.subsidiPemerintah],
+    ];
+    const wsDataDasar = XLSX.utils.aoa_to_sheet(dataDasarRows);
+    const dataOperasionalRows = [
+      ['DATA OPERASIONAL RS', 'Kunjungan JKN', 'Kunjungan Non-JKN', 'Hari Rawat JKN', 'Hari Rawat Non-JKN', 'Total Kunjungan (Otomatis)', 'Total Hari Rawat (Otomatis)'],
+      ...((config.dataLayanan || []).length ? (config.dataLayanan || []).map(item => [item.namaUnit, item.kunjunganJKN, item.kunjunganNonJKN, item.hariRawatJKN, item.hariRawatNonJKN, '', '']) : config.finalCenters.map(unit => [unit.nama, 0, 0, unit.jumlahHariRawat || 0, 0, '', ''])),
+      ['TOTAL DATA OPERASIONAL', '', '', '', '', '', ''],
+    ];
+    const panduanRows = [
+      ['PANDUAN PENGISIAN TEMPLATE COSTING'],
+      ['1. Data Dasar RS', 'Isi seluruh indikator dan nilai keuangan RS untuk satu periode data yang sama.'],
+      ['2. Data Operasional', 'Isi kunjungan dan hari rawat JKN/Non-JKN per unit layanan.'],
+      ['3. Costing Template', 'Isi volume, dasar alokasi, dan biaya langsung setiap pusat biaya. Semua biaya dalam Rupiah.'],
+      ['4. Dasar alokasi', 'Gunakan dasar yang sesuai: staf, luas lantai, resep/DDD, pemeriksaan, tes, terapi, jam operasi, hari rawat, tindakan, penggunaan, darah, atau jaringan.'],
+      ['5. Pemeriksaan', 'Setelah impor, perbaiki seluruh input bertanda merah sebelum menjalankan alokasi dan distribusi tarif pasien.'],
+      ['6. Jejak alokasi', 'Gunakan Hasil Unit Cost untuk memeriksa perpindahan biaya dari sumber ke unit penerima.'],
+      [],
+      ['DEFINISI OPERASIONAL', 'PENGERTIAN / CARA ISI'],
+      ['Nama Rumah Sakit, Tipe RS, Kepemilikan, Tahun Data', 'Identitas RS dan periode pelaporan. Gunakan satu periode yang sama pada seluruh sheet.'],
+      ['BOR', 'Persentase keterisian tempat tidur pada periode pelaporan.'],
+      ['ALOS', 'Rata-rata lama hari rawat pasien rawat inap, dalam hari.'],
+      ['Jumlah Tempat Tidur', 'Total tempat tidur operasional RS, bukan tempat tidur yang sedang kosong.'],
+      ['Lama Hari Rawat JKN/Non-JKN', 'Akumulasi hari rawat pasien JKN atau non-JKN pada periode data.'],
+      ['Jumlah SDM', 'Jumlah dokter, tenaga kesehatan, dan non-tenaga kesehatan aktif pada periode data.'],
+      ['Biaya Gaji / Jasa / Operasional / Penyusutan', 'Nilai dari laporan keuangan RS pada periode yang sama, dalam Rupiah.'],
+      ['Pendapatan / Subsidi', 'Pendapatan fungsional dan pendanaan pemerintah yang diterima RS pada periode data.'],
+      ['Kunjungan JKN/Non-JKN', 'Jumlah kontak pelayanan rawat jalan atau layanan per unit menurut penjamin.'],
+      ['Hari Rawat JKN/Non-JKN', 'Akumulasi hari perawatan rawat inap per unit menurut penjamin.'],
+      ['Dasar Alokasi', 'Pemicu pembagian biaya: staf, luas lantai, resep/DDD, pemeriksaan, tes, terapi, jam operasi, hari rawat, tindakan, penggunaan, darah, atau jaringan.'],
+      ['Jumlah Staf', 'Jumlah staf yang bekerja pada pusat biaya tersebut.'],
+      ['Hari Rawat / Pasien Pulang / Kunjungan', 'Volume layanan pada pusat biaya dalam periode data. Untuk penunjang, isi sesuai dasar alokasi yang tertera.'],
+      ['ALOS / Jumlah Tempat Tidur / Luas Lantai', 'Indikator operasional unit layanan; luas lantai diisi dalam meter persegi.'],
+      ['Biaya Gaji / Jasa Medis / Jasa Medis Lain / Operasional', 'Biaya langsung pusat biaya dalam Rupiah.'],
+      ['Nilai Alat / Investasi Gedung', 'Nilai aset yang menjadi dasar penyusutan; jangan mengisi nilai penyusutan pada kolom ini.'],
+      ['Kolom Otomatis', 'Depresiasi peralatan = Nilai Alat ÷ 5; depresiasi gedung = Investasi Gedung ÷ 40; Total Biaya Langsung menjumlahkan komponen biaya dan depresiasi.'],
+    ];
+    const wsDataOperasional = XLSX.utils.aoa_to_sheet(dataOperasionalRows);
+    dataOperasionalRows.slice(1).forEach((_, index) => {
+      const excelRow = index + 2;
+      if (index === dataOperasionalRows.length - 2) return;
+      wsDataOperasional[`F${excelRow}`] = { t: 'n', f: `B${excelRow}+C${excelRow}` };
+      wsDataOperasional[`G${excelRow}`] = { t: 'n', f: `D${excelRow}+E${excelRow}` };
+    });
+    const operationalTotalRow = dataOperasionalRows.length;
+    ['B', 'C', 'D', 'E', 'F', 'G'].forEach(column => {
+      wsDataOperasional[`${column}${operationalTotalRow}`] = { t: 'n', f: `SUM(${column}2:${column}${operationalTotalRow - 1})` };
+    });
+    const wsPanduan = XLSX.utils.aoa_to_sheet(panduanRows);
     const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, wsPanduan, 'Panduan Pengisian');
+    XLSX.utils.book_append_sheet(wb, wsDataDasar, 'Data Dasar RS');
+    XLSX.utils.book_append_sheet(wb, wsDataOperasional, 'Data Operasional');
     XLSX.utils.book_append_sheet(wb, ws, 'Costing Template');
     XLSX.writeFile(wb, `Template_Costing_${config.namaRS || 'RS'}_${config.tahunData || new Date().getFullYear()}.xlsx`);
   };
@@ -411,7 +575,7 @@ export default function CostingInputPage() {
             <Layers className="w-6 h-6 text-teal-600" />
             Input Data Costing RS
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Metode Patient Level Costing sesuai Workshop Kemenkes</p>
+          <p className="text-gray-500 text-sm mt-1">Metode Patient Level Costing dengan alokasi bertahap</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
@@ -472,7 +636,7 @@ export default function CostingInputPage() {
           {[
             { icon: '📋', label: 'Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🔬', label: 'Penunjang Medik', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+            { icon: '🔬', label: 'Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
             { icon: '🛏️', label: 'Layanan Pasien', color: 'bg-green-50 text-green-700 border-green-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
@@ -503,6 +667,19 @@ export default function CostingInputPage() {
           </button>
         ))}
       </div>
+
+      {validation.errors.size > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-none" />
+          <div className="text-sm text-red-800">
+            <p className="font-bold">{validation.errors.size} data perlu disesuaikan sebelum alokasi dilanjutkan</p>
+            <ul className="mt-1 list-disc list-inside text-xs space-y-1">
+              {[...validation.errors.values()].slice(0, 3).map((message, index) => <li key={index}>{message}</li>)}
+              {validation.errors.size > 3 && <li>Periksa penanda merah pada setiap input terkait.</li>}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* ════════════════════════════════════════════════════════
           TAB 1: INFO RS
@@ -704,7 +881,7 @@ export default function CostingInputPage() {
           </div>
 
           {config.overheadCenters.map((center, idx) => (
-            <div key={center.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`overhead-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
               {/* Header Row */}
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                 <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{center.nomor}</span>
@@ -740,11 +917,11 @@ export default function CostingInputPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
-                    <NumInput value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} />
+                    <NumInput value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
-                    <NumInput value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} />
+                    <NumInput value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div className="flex items-end">
                     <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
@@ -760,6 +937,8 @@ export default function CostingInputPage() {
                   type="overhead"
                   data={center}
                   onChange={(field, val) => updateOverhead(center.id, { [field]: val })}
+                  hasBiayaGajiError={hasBiayaGajiError}
+                  hasAllocationError={validation.errors.has(`overhead-${center.id}`)}
                 />
               </div>
             </div>
@@ -779,19 +958,19 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Pusat Biaya Penunjang Medik (Intermediate)</strong> — Biaya unit penunjang yang mendukung layanan pasien secara tidak langsung. Setelah menerima alokasi dari Overhead, biaya ini akan dialokasikan ke Layanan Pasien berdasarkan pemakaian nyata.
+              🔬 <strong>Intermediate Cost</strong> — Pusat biaya penunjang medik yang menerima alokasi dari Overhead Cost. Biayanya menjadi dasar pembagian proporsional ke pasien melalui komponen tarif sesuai pemakaian.
             </p>
           </div>
 
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">Total Penunjang: <span className="font-bold text-violet-700">{formatRupiah(config.totalIntermediateCost)}</span></p>
+            <p className="text-sm text-gray-500">Total Intermediate Cost: <span className="font-bold text-violet-700">{formatRupiah(config.totalIntermediateCost)}</span></p>
             <button onClick={addIntermediate} className="flex items-center gap-1.5 px-4 py-2 bg-violet-50 text-violet-600 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-colors">
               <Plus className="w-4 h-4" /> Tambah
             </button>
           </div>
 
           {config.intermediateCenters.map(center => (
-            <div key={center.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`intermediate-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                 <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{center.nomor}</span>
                 <input
@@ -824,11 +1003,11 @@ export default function CostingInputPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
-                    <NumInput value={center.jumlahStaf} onChange={v => updateIntermediate(center.id, { jumlahStaf: v })} />
+                    <NumInput value={center.jumlahStaf} onChange={v => updateIntermediate(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">{INTERMEDIATE_DASAR_LABELS[center.dasarAlokasi]}</label>
-                    <NumInput value={center.jumlahKunjungan} onChange={v => updateIntermediate(center.id, { jumlahKunjungan: v })} />
+                    <NumInput value={center.jumlahKunjungan} onChange={v => updateIntermediate(center.id, { jumlahKunjungan: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
                   </div>
                   <div className="flex items-end">
                     <div className="w-full bg-violet-50 border border-violet-200 rounded-lg p-2 text-center">
@@ -843,6 +1022,8 @@ export default function CostingInputPage() {
                   type="intermediate"
                   data={center}
                   onChange={(field, val) => updateIntermediate(center.id, { [field]: val })}
+                  hasBiayaGajiError={hasBiayaGajiError}
+                  hasAllocationError={validation.errors.has(`intermediate-${center.id}`)}
                 />
               </div>
             </div>
@@ -885,7 +1066,7 @@ export default function CostingInputPage() {
                 </h3>
                 <div className="space-y-3">
                   {units.map(center => (
-                    <div key={center.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`final-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
                       <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                         <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{center.nomor}</span>
                         <input
@@ -931,7 +1112,7 @@ export default function CostingInputPage() {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Hari Rawat</label>
-                            <NumInput value={center.jumlahHariRawat} onChange={v => updateFinal(center.id, { jumlahHariRawat: v })} />
+                            <NumInput value={center.jumlahHariRawat} onChange={v => updateFinal(center.id, { jumlahHariRawat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-lhr')} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Jumlah Kunjungan</label>
@@ -943,7 +1124,7 @@ export default function CostingInputPage() {
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Jumlah TT</label>
-                            <NumInput value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} />
+                            <NumInput value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-tt')} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">ALOS (hari)</label>
@@ -960,6 +1141,8 @@ export default function CostingInputPage() {
                           type="final"
                           data={center}
                           onChange={(field, val) => updateFinal(center.id, { [field]: val })}
+                          hasBiayaGajiError={hasBiayaGajiError}
+                          hasAllocationError={validation.errors.has(`final-${center.id}`)}
                         />
 
                         {/* Hasil Unit Cost */}
@@ -1001,8 +1184,8 @@ export default function CostingInputPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { step: 'Step 1', label: 'Total Overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Dialokasikan ke Penunjang & Layanan' },
-              { step: 'Step 2', label: 'Total Penunjang', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Setelah menerima alokasi Overhead' },
-              { step: 'Step 3', label: 'Total Biaya Layanan RS', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Dasar penghitungan unit cost pasien' },
+              { step: 'Step 3', label: 'Total Intermediate Cost', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Dasar pembagian proporsional ke pasien' },
+              { step: 'Step 2', label: 'Total Biaya Layanan RS', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Dasar penghitungan unit cost pasien' },
             ].map(c => (
               <div key={c.step} className={clsx('rounded-xl p-4 border', c.color)}>
                 <p className="text-xs font-bold opacity-60">{c.step}</p>
@@ -1049,13 +1232,36 @@ export default function CostingInputPage() {
             </div>
           </div>
 
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-gray-800">Jejak Alokasi Biaya</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Rincian biaya dari pusat biaya sumber hingga unit penerima.</p>
+              </div>
+              <button onClick={() => setShowAuditTrail(value => !value)} className="text-xs font-semibold px-3 py-2 rounded-lg border border-teal-200 text-teal-700 hover:bg-teal-50">
+                {showAuditTrail ? 'Sembunyikan rincian' : `Lihat ${config.allocationTraces?.length || 0} alokasi`}
+              </button>
+            </div>
+            {showAuditTrail && (
+              <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 sticky top-0"><tr>{['Tahap', 'Sumber Biaya', 'Penerima', 'Dasar Alokasi', 'Nilai Dasar', 'Tarif Alokasi', 'Biaya Dialokasikan'].map(head => <th key={head} className="px-3 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">{head}</th>)}</tr></thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {(config.allocationTraces || []).map((trace, index) => <tr key={`${trace.sumberId}-${trace.penerimaId}-${index}`} className="hover:bg-gray-50"><td className="px-3 py-2 font-semibold text-teal-700">{trace.tahap}</td><td className="px-3 py-2">{trace.sumberNama}</td><td className="px-3 py-2">{trace.penerimaNama}</td><td className="px-3 py-2">{trace.dasarAlokasi.replace(/_/g, ' ')}</td><td className="px-3 py-2 text-right">{trace.nilaiDasar.toLocaleString('id-ID')}</td><td className="px-3 py-2 text-right">{formatRupiah(trace.tarifAlokasi)}</td><td className="px-3 py-2 text-right font-semibold">{formatRupiah(trace.nilaiAlokasi)}</td></tr>)}
+                    {(config.allocationTraces || []).length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Isi biaya dan volume dasar alokasi untuk menampilkan jejak alokasi.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
           {/* Tombol Sinkronisasi ke Patient Level Costing */}
           <div className="bg-gradient-to-br from-[#041E42] to-teal-800 rounded-2xl p-6 text-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-lg">Sinkronkan ke Patient Level Costing</h3>
                 <p className="text-sm text-white/70 mt-1">
-                  Distribusikan biaya {config.intermediateCenters.length} unit penunjang dan {config.finalCenters.length} unit layanan ke 18 komponen tarif e-klaim pasien (Step 3 — Hal. 50 Materi).
+                  Step 3: distribusikan biaya {config.intermediateCenters.length} unit penunjang dan {config.finalCenters.length} unit layanan ke 18 komponen tarif E-Klaim pasien secara proporsional.
                 </p>
               </div>
               <button

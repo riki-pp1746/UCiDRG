@@ -117,10 +117,10 @@ export function runRVUAllocation(
       }
       biayaTidakLangsung = unitCostDihitung - biayaLangsung; // Sekadar formalitas matematis untuk laporan
     } else {
-      // Fallback ke metode lama (Naif Overhead Factor) jika user belum input Global Cost
-      const totalOverheadFactor = config.overheadFactor + config.administrasiFactor + config.depresiasiFactor + config.jaminanMutuFactor;
-      biayaTidakLangsung = biayaLangsung * totalOverheadFactor;
-      unitCostDihitung = biayaLangsung + biayaTidakLangsung;
+      // Tanpa hasil alokasi biaya RS, tampilkan billing aktual apa adanya.
+      // Sistem tidak lagi menambahkan persentase overhead asumsi.
+      unitCostDihitung = biayaLangsung;
+      biayaTidakLangsung = 0;
     }
 
     const tarifINACBG = r.total_tarif || r.tarif_inacbg || 0;
@@ -231,6 +231,9 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
         selisihPersen: type === 'INACBG' ? selisihPersenINACBG : selisihPersenIDRG,
         crr,
         avgCostWeight: totalCostWeight / n,
+        cov: rataUnitCost > 0 && n > 1
+          ? Math.sqrt(groupResults.reduce((sum, item) => sum + Math.pow(item.unitCostDihitung - rataUnitCost, 2), 0) / (n - 1)) / rataUnitCost
+          : 0,
         status: type === 'INACBG' ? statusINACBG : statusIDRG
       });
     });
@@ -273,6 +276,8 @@ export function generateSummary(
       totalSelisih: 0,
       crr: 0,
       cmi: 0,
+      riv: 0,
+      rataCov: 0,
       jumlahDRGUntung: 0,
       jumlahDRGImpas: 0,
       jumlahDRGRugi: 0,
@@ -289,6 +294,22 @@ export function generateSummary(
   const totalSelisih = totalBiayaRS - totalTarif;
   
   const cmi = calcCMI(results.map(r => r.patient));
+  // RIV = proporsi variasi biaya yang dapat dijelaskan oleh pengelompokan DRG.
+  const rataBiaya = totalBiayaRS / results.length;
+  const groupMap = new Map<string, PatientCostResult[]>();
+  results.forEach(result => {
+    const key = type === 'INACBG' ? result.patient.inacbg : result.patient.idrg?.drg_code;
+    const grouped = groupMap.get(key || 'UNKNOWN') || [];
+    grouped.push(result);
+    groupMap.set(key || 'UNKNOWN', grouped);
+  });
+  const totalVariance = results.reduce((sum, result) => sum + Math.pow(result.unitCostDihitung - rataBiaya, 2), 0);
+  const residualVariance = [...groupMap.values()].reduce((sum, group) => {
+    const mean = group.reduce((value, result) => value + result.unitCostDihitung, 0) / group.length;
+    return sum + group.reduce((value, result) => value + Math.pow(result.unitCostDihitung - mean, 2), 0);
+  }, 0);
+  const riv = totalVariance > 0 ? 1 - (residualVariance / totalVariance) : 0;
+  const rataCov = drgResults.length ? drgResults.reduce((sum, group) => sum + group.cov, 0) / drgResults.length : 0;
   const crr = totalBiayaRS > 0 ? (totalTarif / totalBiayaRS) * 100 : 0;
 
   const drgUntung = drgResults.filter(d => d.status === 'UNTUNG');
@@ -313,6 +334,8 @@ export function generateSummary(
     totalSelisih,
     crr,
     cmi,
+    riv,
+    rataCov,
     jumlahDRGUntung: drgUntung.length,
     jumlahDRGImpas: drgImpas.length,
     jumlahDRGRugi: drgRugi.length,

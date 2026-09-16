@@ -8,11 +8,14 @@ import {
   KOMPONEN_LABELS,
   makeEmptyPatient
 } from '../types/tarifPasien.types';
+import type { HospitalCostConfig } from '../types/hospitalCost.types';
+import type { ValidationIssue } from '../types/tarifPasien.types';
 
 interface TarifPasienState {
   patients: PatientRecord[];
   biayaRSMap: Partial<Record<keyof KomponenTarif18, number>>; // Total biaya RS inputan per komponen
   distribusi: KomponenDistribusi[]; // Ringkasan distribusi
+  validationIssues: ValidationIssue[];
   
   // Actions
   setPatients: (patients: PatientRecord[]) => void;
@@ -24,6 +27,7 @@ interface TarifPasienState {
   
   // Kalkulasi Utama (Step 3)
   calculateDistribution: (unitCostKamar?: Record<string, number>) => void;
+  validateAgainstHospital: (config: HospitalCostConfig) => void;
 }
 
 export const useTarifPasienStore = create<TarifPasienState>()(
@@ -32,6 +36,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       patients: [],
       biayaRSMap: {},
       distribusi: [],
+      validationIssues: [],
 
       setPatients: (patients) => set({ patients }),
       addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }] })),
@@ -115,7 +120,53 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         });
 
         set({ distribusi, patients: updatedPatients });
-      }
+      },
+
+      validateAgainstHospital: (config) => {
+        const { patients, biayaRSMap } = get();
+        const basic = config.dataDasar;
+        const issues: ValidationIssue[] = [];
+        const addMismatch = (id: string, label: string, expected: number, actual: number, message: string) => {
+          if (expected > 0 && Math.abs(expected - actual) > 0.5) {
+            issues.push({ id, severity: 'error', label, expected, actual, message });
+          }
+        };
+
+        // Jumlah LHR pasien JKN harus konsisten dengan data dasar RS (hal. 39-40).
+        const lhrPasien = patients.filter(p => p.kelasRawat !== 'rawat_jalan' && p.kelasRawat !== 'igd')
+          .reduce((sum, p) => sum + (p.lhr || 0), 0);
+        addMismatch('lhr-jkn', 'Lama Hari Rawat JKN', basic.lamaHariRawatJKN, lhrPasien,
+          'Total LHR pasien harus sama dengan LHR JKN pada Data Dasar RS.');
+
+        const totalTT = config.finalCenters
+          .filter(c => c.kategori === 'rawat_inap' || c.kategori === 'icu')
+          .reduce((sum, c) => sum + (c.jumlahTempat || 0), 0);
+        addMismatch('tempat-tidur', 'Jumlah Tempat Tidur', basic.jumlahTempaTidur, totalTT,
+          'Total tempat tidur pada pusat biaya final harus sama dengan Data Dasar RS.');
+
+        const totalGajiCenter = [...config.overheadCenters, ...config.intermediateCenters, ...config.finalCenters]
+          .reduce((sum, c) => sum + (c.biayaPegawai || 0), 0);
+        addMismatch('biaya-gaji', 'Biaya Gaji', basic.biayaGajiTotal, totalGajiCenter,
+          'Akumulasi biaya pegawai seluruh cost center harus sama dengan Biaya Gaji Data Dasar RS.');
+
+        const totalAlokasi = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
+        const biayaTersedia = (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+        if (totalAlokasi > 0 && biayaTersedia > 0 && totalAlokasi > biayaTersedia) {
+          issues.push({
+            id: 'biaya-alokasi', severity: 'error', label: 'Total biaya dialokasikan',
+            expected: biayaTersedia, actual: totalAlokasi,
+            message: 'Total biaya 18 variabel tidak boleh melebihi biaya hasil Step-Down RS.'
+          });
+        }
+
+        ALL_KOMPONEN_KEYS.forEach(key => {
+          if ((biayaRSMap[key] || 0) > 0 && !patients.some(p => (p[key] || 0) > 0)) {
+            issues.push({ id: `tanpa-bobot-${key}`, severity: 'error', label: KOMPONEN_LABELS[key], expected: 0, actual: biayaRSMap[key] || 0,
+              message: 'Biaya RS terisi tetapi tidak ada tagihan E-Klaim pasien sebagai dasar pembagian proporsional.' });
+          }
+        });
+        set({ validationIssues: issues });
+      },
     }),
     {
       name: 'unitcost-tarif-pasien-v1'

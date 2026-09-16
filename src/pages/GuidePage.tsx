@@ -1,7 +1,7 @@
 // ============================================================
 // PAGE: GuidePage.tsx
 // Halaman Panduan Penggunaan Aplikasi
-// Sesuai Materi Workshop Kemenkes Hal. 26-56
+// Panduan alur Patient Level Costing
 // ============================================================
 
 import { useNavigate } from 'react-router-dom';
@@ -133,30 +133,30 @@ const LANGKAH_PENGGUNAAN = [
     color: 'from-blue-500 to-blue-600',
     bgLight: 'bg-blue-50',
     borderColor: 'border-blue-200',
-    desc: 'Masukkan data identitas RS, lalu data dasar (BOR, ALOS, LHR), kemudian biaya tiap Pusat Biaya Overhead, Penunjang, dan Layanan secara berurutan.',
+    desc: 'Unduh template, isi sheet Data Dasar RS dan Costing Template, lalu impor. Periksa penanda merah sebelum melanjutkan alokasi.',
     substeps: [
-      '🏥 Tab "Info RS" — isi identitas dan kesiapan RS',
-      '📊 Tab "Data Dasar RS" — BOR, ALOS, LHR JKN/Non JKN, Pendapatan',
-      '📋 Tab "A. Overhead" — isi 12 pusat biaya non-layanan',
-      '🔬 Tab "B. Penunjang" — isi 12 pusat biaya penunjang medik',
-      '🛏️ Tab "C. Layanan" — isi semua unit Rawat Inap & Rawat Jalan',
-      '📈 Tab "Hasil" — lihat Unit Cost & klik "Sinkronkan ke Engine Mikro"',
+      '📄 Sheet "Data Dasar RS" — identitas, BOR, ALOS, LHR, TT, SDM, pendapatan dan biaya RS',
+      '📋 Sheet "Costing Template" — biaya dan volume setiap pusat biaya',
+      '📋 Step 1: Overhead — alokasikan pusat biaya penunjang umum',
+      '🔬 Step 3: Intermediate Cost — isi volume sesuai dasar alokasi, misalnya resep, tes atau jam operasi',
+      '🛏️ Step 2: Layanan — hitung unit cost rawat inap dan rawat jalan',
+      '📈 Hasil Unit Cost — periksa penanda merah dan Jejak Alokasi Biaya sebelum sinkronisasi',
     ],
   },
   {
     step: '02',
-    path: '/upload',
-    label: 'Upload Data E-Klaim',
+    path: '/tarif-pasien',
+    label: 'Step 3: Tarif Pasien',
     icon: '📤',
     color: 'from-violet-500 to-violet-600',
     bgLight: 'bg-violet-50',
     borderColor: 'border-violet-200',
-    desc: 'Upload file Excel data klaim individu dari aplikasi E-Klaim BPJS. Pastikan file sudah berisi 18 komponen tarif per pasien.',
+    desc: 'Masukkan data klaim per pasien, lalu sistem membagi biaya RS secara proporsional ke 18 komponen tarif.',
     substeps: [
-      'Download template Excel dari aplikasi',
-      'Isi atau paste data klaim per pasien dari e-klaim',
-      'Upload file ke aplikasi',
-      'Validasi data berhasil diproses',
+      'Masukkan atau impor data pasien dari E-Klaim',
+      'Pastikan SEP, DRG, kelas rawat, LHR dan 18 komponen tarif tersedia',
+      'Isi total biaya RS untuk setiap komponen',
+      'Periksa validasi merah dan hasil pembagian proporsional per pasien',
     ],
   },
   {
@@ -314,11 +314,11 @@ export default function GuidePage() {
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-sm overflow-x-auto pb-1">
           {[
-            { icon: '📋', label: 'A. Overhead Cost', sub: '12 Pusat Biaya Non-Layanan', color: 'bg-blue-50 border-blue-200 text-blue-800' },
+            { icon: '📋', label: 'Step 1: Overhead', sub: 'Pusat Biaya Penunjang Umum', color: 'bg-blue-50 border-blue-200 text-blue-800' },
             { icon: '↓', label: 'Step 1', sub: 'Alokasikan ke Penunjang & Layanan', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '🔬', label: 'B. Penunjang Medik', sub: '12 Unit (Farmasi, Lab, Radiologi, dll)', color: 'bg-violet-50 border-violet-200 text-violet-800' },
-            { icon: '↓', label: 'Step 2 & 3', sub: 'Alokasikan ke Pasien', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '🛏️', label: 'C. Layanan Pasien', sub: 'Rawat Inap & Rawat Jalan', color: 'bg-green-50 border-green-200 text-green-800' },
+            { icon: '🔬', label: 'Step 3: Intermediate Cost', sub: 'Farmasi, Lab, Radiologi, dan lainnya', color: 'bg-violet-50 border-violet-200 text-violet-800' },
+            { icon: '↓', label: 'Step 2', sub: 'Alokasikan ke Layanan Pasien', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: '🛏️', label: 'Step 2: Layanan Pasien', sub: 'Rawat Inap & Rawat Jalan', color: 'bg-green-50 border-green-200 text-green-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
             { icon: '👤', label: 'Cost per Pasien', sub: 'Unit Cost tiap pasien JKN', color: 'bg-teal-50 border-teal-200 text-teal-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },

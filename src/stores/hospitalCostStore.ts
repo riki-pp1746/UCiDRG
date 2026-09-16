@@ -75,6 +75,7 @@ function calcAllocationBase(center: {
 
 export function runStepDownCalculation(config: HospitalCostConfig): HospitalCostConfig {
   const updated = { ...config };
+  const allocationTraces: HospitalCostConfig['allocationTraces'] = [];
 
   // STEP 1a: Hitung total cost langsung per overhead center
   const overheads = updated.overheadCenters.map(c => {
@@ -111,6 +112,10 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
 
     if (totalBase > 0) {
       const allocRate = oh.totalCost / totalBase;
+      [...intermediates, ...finals].forEach(target => {
+        const nilaiDasar = calcAllocationBase({ ...target, dasarAlokasi: dasar });
+        if (nilaiDasar > 0) allocationTraces.push({ tahap: 'Step 1', sumberId: oh.id, sumberNama: oh.nama, penerimaId: target.id, penerimaNama: target.nama, dasarAlokasi: dasar, nilaiDasar, tarifAlokasi: allocRate, nilaiAlokasi: nilaiDasar * allocRate });
+      });
       intermediates = intermediates.map(im => ({
         ...im,
         totalCostAfterOverhead: im.totalCostAfterOverhead + (calcAllocationBase({ ...im, dasarAlokasi: dasar }) * allocRate)
@@ -134,6 +139,10 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
 
     if (totalBase > 0) {
       const allocRate = im.totalCostAfterOverhead / totalBase;
+      finals.forEach(target => {
+        const nilaiDasar = calcAllocationBase({ ...target, dasarAlokasi: dasar });
+        if (nilaiDasar > 0) allocationTraces.push({ tahap: 'Step 2', sumberId: im.id, sumberNama: im.nama, penerimaId: target.id, penerimaNama: target.nama, dasarAlokasi: dasar, nilaiDasar, tarifAlokasi: allocRate, nilaiAlokasi: nilaiDasar * allocRate });
+      });
       finals = finals.map(fn => ({
         ...fn,
         totalCostAfterIntermediate: fn.totalCostAfterIntermediate + (calcAllocationBase({ ...fn, dasarAlokasi: dasar }) * allocRate)
@@ -157,6 +166,7 @@ export function runStepDownCalculation(config: HospitalCostConfig): HospitalCost
     totalOverheadCost,
     totalIntermediateCost: intermediates.reduce((s, c) => s + c.totalCostAfterOverhead, 0),
     totalFinalCost: finals.reduce((s, c) => s + c.totalCostAfterIntermediate, 0),
+    allocationTraces,
     isCalculated: true,
     lastCalculatedAt: new Date().toISOString(),
   };
@@ -195,12 +205,14 @@ const makeDefaultConfig = (): HospitalCostConfig => ({
   kepemilikan: 'Pemerintah Daerah',
   tahunData: new Date().getFullYear(),
   dataDasar: { ...DEFAULT_DATA_DASAR },
+  dataLayanan: [],
   overheadCenters: DEFAULT_OVERHEAD_CENTERS.map(c => ({ ...c })),
   intermediateCenters: DEFAULT_INTERMEDIATE_CENTERS.map(c => ({ ...c })),
   finalCenters: DEFAULT_FINAL_CENTERS.map(c => ({ ...c })),
   totalOverheadCost: 0,
   totalIntermediateCost: 0,
   totalFinalCost: 0,
+  allocationTraces: [],
   isCalculated: false,
   lastCalculatedAt: '',
 });

@@ -8,7 +8,7 @@ import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCosting';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  PieChart, Pie, Cell, ResponsiveContainer, ReferenceLine
+  PieChart, Pie, Cell, ResponsiveContainer, ReferenceLine, ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import {
   Users, TrendingUp, TrendingDown, AlertTriangle,
@@ -118,12 +118,30 @@ export default function DashboardPage() {
     'Tarif': Math.round(d.rataTarif / 1000),
     status: d.status,
   })), [drgResults]);
+  const covScatter = React.useMemo(() => drgResults.filter(d => d.jumlahKasus > 0).map(d => ({
+    code: d.group_code, cases: d.jumlahKasus, cov: d.cov * 100, cost: d.rataUnitCost,
+  })), [drgResults]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+        <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">RIV total</p><p className="text-xl font-bold text-violet-700">{(summary.riv * 100).toFixed(1)}%</p></div></div>
+        <ResponsiveContainer width="99%" height={280}>
+          <ScatterChart margin={{ top: 12, right: 30, bottom: 16, left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis type="number" dataKey="cases" name="Kasus" tick={{ fontSize: 11 }} label={{ value: 'Jumlah kasus', position: 'bottom', fontSize: 11 }} />
+            <YAxis type="number" dataKey="cov" name="CoV" tick={{ fontSize: 11 }} tickFormatter={value => `${value}%`} label={{ value: 'CoV biaya', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+            <ZAxis type="number" dataKey="cost" range={[55, 260]} />
+            <Tooltip formatter={(value, name) => [name === 'CoV' ? `${Number(value).toFixed(1)}%` : value, name]} labelFormatter={(_, payload) => payload?.[0]?.payload?.code || 'DRG'} />
+            <ReferenceLine y={100} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'CoV = 1', fill: '#ef4444', fontSize: 11 }} />
+            <Scatter data={covScatter} fill="#0d9488" />
+          </ScatterChart>
+        </ResponsiveContainer>
       </div>
 
       {/* BENTO GRID SUMMARY */}
@@ -157,6 +175,11 @@ export default function DashboardPage() {
             </div>
             <p className="text-3xl font-bold text-gray-900 truncate">{summary.cmi.toFixed(3)}</p>
             <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
+          </div>
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
+            <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">RIV</p></div>
+            <p className="text-3xl font-bold text-gray-900 truncate">{(summary.riv * 100).toFixed(1)}%</p>
+            <p className="text-xs text-gray-400 mt-1">Reduksi variasi oleh DRG</p>
           </div>
           
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">

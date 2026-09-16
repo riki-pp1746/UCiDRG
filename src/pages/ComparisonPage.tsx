@@ -19,7 +19,7 @@ const STATUS_BADGE = {
   RUGI: 'bg-red-100 text-red-700 border-red-200',
 };
 
-type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen';
+type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen' | 'cov';
 
 export default function ComparisonPage() {
   const drgResults = useFilteredDRGResults();
@@ -183,6 +183,7 @@ export default function ComparisonPage() {
                       { key: 'rataUnitCost', label: 'Unit Cost RS' },
                       { key: 'rataTarif', label: `Tarif ${viewMode}` },
                       { key: 'selisih', label: 'Selisih' },
+                      { key: 'cov', label: 'CoV' },
                       { key: null, label: 'Status' },
                     ].map(col => (
                       <th
@@ -225,6 +226,9 @@ export default function ComparisonPage() {
                       )}>
                         {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                       </td>
+                      <td className={clsx('px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap', drg.cov < 1 ? 'text-green-600' : 'text-red-600')}>
+                        {(drg.cov * 100).toFixed(1)}%
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(
                           'inline-block px-2 py-0.5 rounded-full text-xs font-semibold border',
@@ -237,7 +241,7 @@ export default function ComparisonPage() {
                   ))}
                   {paginated.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                      <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                         Tidak ada data yang sesuai filter
                       </td>
                     </tr>

@@ -202,6 +202,7 @@ export interface DRGGroupResult {
   
   // Cost Weight
   avgCostWeight: number;
+  cov: number; // Coefficient of Variation biaya dalam grup DRG
   
   status: 'UNTUNG' | 'IMPAS' | 'RUGI';
 }
@@ -218,6 +219,8 @@ export interface CostingSummary {
   crr: number;
   
   cmi: number;  // Case Mix Index
+  riv: number;  // Reduction in Variance (0-1)
+  rataCov: number;
   
   jumlahDRGUntung: number;
   jumlahDRGImpas: number;

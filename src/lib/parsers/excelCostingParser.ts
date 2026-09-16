@@ -15,7 +15,7 @@
 // ============================================================
 
 import * as XLSX from 'xlsx';
-import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig } from '../../types/hospitalCost.types';
+import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
 // Bersihkan string dan lowercase
 function clean(val: any): string {
@@ -84,6 +84,48 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
+
+        // Data dasar disimpan pada sheet tersendiri agar template tetap mudah dibaca.
+        const dataDasarSheetName = workbook.SheetNames.find(s => /data\s*dasar/i.test(s));
+        const parsedDataDasar = { ...DEFAULT_DATA_DASAR };
+        let parsedInfo: Partial<HospitalCostConfig> = {};
+        if (dataDasarSheetName) {
+          const basicRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataDasarSheetName], { header: 1, defval: null }) as any[][];
+          basicRows.forEach(row => {
+            const label = clean(row[0]);
+            const value = safeFloat(row[1]);
+            if (label.includes('bor')) parsedDataDasar.bor = value;
+            else if (label.includes('alos')) parsedDataDasar.alos = value;
+            else if (label.includes('tempat tidur')) parsedDataDasar.jumlahTempaTidur = value;
+            else if (label.includes('hari rawat jkn')) parsedDataDasar.lamaHariRawatJKN = value;
+            else if (label.includes('hari rawat non')) parsedDataDasar.lamaHariRawatNonJKN = value;
+            else if (label.includes('sdm dokter')) parsedDataDasar.jumlahSDMDokter = value;
+            else if (label.includes('sdm nakes')) parsedDataDasar.jumlahSDMNakes = value;
+            else if (label.includes('sdm non')) parsedDataDasar.jumlahSDMNonNakes = value;
+            else if (label.includes('biaya gaji')) parsedDataDasar.biayaGajiTotal = value;
+            else if (label.includes('jasa') || label.includes('remunerasi')) parsedDataDasar.biayaJasaRemunerasi = value;
+            else if (label.includes('operasional')) parsedDataDasar.biayaOperasionalLain = value;
+            else if (label.includes('penyusutan')) parsedDataDasar.biayaPenyusutan = value;
+            else if (label.includes('pendapatan fungsional jkn')) parsedDataDasar.pendapatanJKN = value;
+            else if (label.includes('pendapatan fungsional non')) parsedDataDasar.pendapatanNonJKN = value;
+            else if (label.includes('pendapatan lainnya')) parsedDataDasar.pendapatanLain = value;
+            else if (label.includes('subsidi') || label.includes('pendanaan pemerintah')) parsedDataDasar.subsidiPemerintah = value;
+            else if (label === 'nama rumah sakit' && row[1]) parsedInfo.namaRS = String(row[1]);
+            else if (label === 'tipe rs' && row[1]) parsedInfo.tipeRS = String(row[1]) as HospitalCostConfig['tipeRS'];
+            else if (label === 'kepemilikan rs' && row[1]) parsedInfo.kepemilikan = String(row[1]);
+            else if (label === 'tahun data' && value) parsedInfo.tahunData = value;
+          });
+        }
+
+        const dataOperasionalSheetName = workbook.SheetNames.find(s => /data\s*operasional/i.test(s));
+        const parsedDataLayanan: DataLayananKelas[] = [];
+        if (dataOperasionalSheetName) {
+          const operationRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataOperasionalSheetName], { header: 1, defval: null }) as any[][];
+          operationRows.slice(1).forEach(row => {
+            const namaUnit = String(row[0] ?? '').trim();
+            if (namaUnit) parsedDataLayanan.push({ namaUnit, kunjunganJKN: safeFloat(row[1]), kunjunganNonJKN: safeFloat(row[2]), hariRawatJKN: safeFloat(row[3]), hariRawatNonJKN: safeFloat(row[4]) });
+          });
+        }
 
         // ── Pilih sheet yang tepat ──────────────────────────────────
         // Prioritas:
@@ -316,7 +358,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ overheadCenters, intermediateCenters, finalCenters });
+        resolve({ ...parsedInfo, ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);

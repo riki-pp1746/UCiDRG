@@ -34,8 +34,12 @@ export default function App() {
           <Route index element={<GuidePage />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="upload" element={<UploadPage />} />
+          <Route path="costing" element={<CostingInputPage />} />
           <Route path="input-biaya" element={<CostingInputPage />} />
+          <Route path="tarif-pasien" element={<TarifPasienPage />} />
+          <Route path="compare" element={<ComparisonPage />} />
           <Route path="comparison" element={<ComparisonPage />} />
+          <Route path="reports" element={<ReportPage />} />
           <Route path="report" element={<ReportPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>

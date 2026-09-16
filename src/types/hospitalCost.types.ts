@@ -152,6 +152,19 @@ export interface DataLayananKelas {
   hariRawatNonJKN: number;    // Khusus rawat inap
 }
 
+/** Catatan audit setiap perpindahan biaya antar pusat biaya. */
+export interface AllocationTrace {
+  tahap: 'Step 1' | 'Step 2';
+  sumberId: string;
+  sumberNama: string;
+  penerimaId: string;
+  penerimaNama: string;
+  dasarAlokasi: string;
+  nilaiDasar: number;
+  tarifAlokasi: number;
+  nilaiAlokasi: number;
+}
+
 // ============================================================
 // HOSPITAL COST CONFIG (Konfigurasi Lengkap)
 // ============================================================
@@ -163,6 +176,7 @@ export interface HospitalCostConfig {
   tahunData: number;
   // Data Dasar
   dataDasar: DataDasarRS;
+  dataLayanan: DataLayananKelas[];
   // Pusat Biaya
   overheadCenters: OverheadCenter[];
   intermediateCenters: IntermediateCenter[];
@@ -171,6 +185,7 @@ export interface HospitalCostConfig {
   totalOverheadCost: number;
   totalIntermediateCost: number;
   totalFinalCost: number;
+  allocationTraces: AllocationTrace[];
   isCalculated: boolean;
   lastCalculatedAt: string;
 }
