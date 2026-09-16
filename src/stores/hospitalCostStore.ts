@@ -328,6 +328,14 @@ export const useHospitalCostStore = create<HospitalCostState>()(
     }),
     {
       name: 'unitcost-hospital-cost-store-v5',
+      // Setelah data dimuat dari localStorage, jalankan ulang kalkulasi
+      // agar nilai totalFinalCost, unitCostPerHariRawat, dll selalu up-to-date
+      onRehydrateStorage: () => (state) => {
+        if (state && state.config) {
+          const recalculated = runStepDownCalculation(state.config);
+          state.config = recalculated;
+        }
+      },
     }
   )
 );

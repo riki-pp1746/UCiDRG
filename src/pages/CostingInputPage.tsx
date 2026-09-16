@@ -150,44 +150,111 @@ function calcTotalBiaya(c: { biayaPegawai?: number; biayaJasaMedis?: number; bia
   );
 }
 
-// ── Sub-komponen form biaya (reusable untuk overhead/intermediate/final) ──
-function BiayaForm({ label, prefix, data, onChange }: {
+// ── BiayaForm: tabel 18 variabel sesuai format Excel Workshop Kemenkes ──
+// Variabel: Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | TT | Luas Lantai
+//           Biaya Pegawai | Jasa Medis | Jasa Medis Lain | Operasional
+//           Nilai Alat | Investasi Gedung | Dep. Alat (auto) | Dep. Gedung (auto) | Total Biaya (auto)
+function BiayaForm({ label, type, data, onChange, showStatOnly = false }: {
   label: string;
-  prefix: string;
+  type: 'overhead' | 'intermediate' | 'final';
   data: any;
   onChange: (field: string, val: number) => void;
+  showStatOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const depAlat = Math.round((data.hargaPeralatan5Tahun || 0) / 5);
+  const depGedung = Math.round((data.biayaInvestasiGedung || 0) / 40);
+  const total = (data.biayaPegawai || 0) + (data.biayaJasaMedis || 0) + (data.biayaJasaMedisLain || 0) +
+                (data.biayaOperasional || 0) + depAlat + depGedung;
+
+  // Field statistik berbeda per type
+  const statFields: { field: string; label: string; show: boolean }[] = [
+    { field: 'jumlahStaf',        label: 'Jml Staf',     show: true },
+    { field: 'jumlahHariRawat',   label: 'Hari Rawat',   show: type === 'final' },
+    { field: 'jumlahPasienPulang',label: 'Pasien Pulang',show: type === 'final' },
+    { field: 'jumlahKunjungan',   label: type === 'intermediate' ? 'Jml Kunjungan*' : 'Jml Kunjungan', show: type !== 'overhead' },
+    { field: 'alos',              label: 'ALOS',         show: type === 'final' },
+    { field: 'jumlahTempat',      label: 'Jml TT',       show: type === 'final' },
+    { field: 'luasLantai',        label: 'Luas (m²)',    show: true },
+  ].filter(f => f.show);
+
+  const biayaFields = [
+    { field: 'biayaPegawai',        label: '① Biaya Gaji & Remunerasi Pegawai' },
+    { field: 'biayaJasaMedis',      label: '② Biaya Jasa Medis Dokter' },
+    { field: 'biayaJasaMedisLain',  label: '③ Biaya Jasa Tenaga Medis Lain' },
+    { field: 'biayaOperasional',    label: '④ Biaya Operasional (Persediaan, Pemeliharaan, dll)' },
+    { field: 'hargaPeralatan5Tahun',label: '⑤ Nilai Perolehan Peralatan (5 thn terakhir)' },
+    { field: 'biayaInvestasiGedung',label: '⑥ Nilai Investasi Gedung (40 thn terakhir)' },
+  ];
+
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
+      {/* Header row — klik untuk expand biaya */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
       >
-        <span>{label}</span>
-        <span className="text-xs text-teal-600 font-semibold">{formatRupiah(calcTotalBiaya(data))} {open ? '▲' : '▼'}</span>
+        <span className="flex items-center gap-2">
+          {label}
+          {total > 0 && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Total: {formatRupiah(total)}</span>}
+        </span>
+        <span className="text-xs text-gray-400">{open ? '▲ Tutup' : '▼ Input Biaya'}</span>
       </button>
-      {open && (
-        <div className="p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[
-            { field: 'biayaPegawai',         label: 'Biaya Gaji Pegawai' },
-            { field: 'biayaJasaMedis',        label: 'Biaya Jasa Medis/Remunerasi' },
-            { field: 'biayaJasaMedisLain',    label: 'Biaya Jasa Medis Lain' },
-            { field: 'biayaOperasional',      label: 'Biaya Operasional Lainnya' },
-            { field: 'hargaPeralatan5Tahun',  label: 'Nilai Aset Alat (penyusutan 5 th)' },
-            { field: 'biayaInvestasiGedung',  label: 'Nilai Investasi Gedung (penyusutan 40 th)' },
-          ].map(f => (
-            <div key={f.field}>
-              <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
-              <RpInput value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
+
+      {/* Data Statistik — selalu tampil ringkas */}
+      <div className="px-4 py-2 bg-white border-t border-gray-50">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {statFields.map(f => (
+            <div key={f.field} className="flex items-center gap-1.5 min-w-[100px]">
+              <span className="text-xs text-gray-400 whitespace-nowrap">{f.label}:</span>
+              <input
+                type="number"
+                defaultValue={data[f.field] || undefined}
+                key={String(data[f.field])}
+                onChange={e => onChange(f.field, parseFloat(e.target.value) || 0)}
+                onBlur={e => onChange(f.field, parseFloat(e.target.value) || 0)}
+                placeholder="0"
+                min={0}
+                className="w-20 px-1.5 py-0.5 border border-gray-200 rounded text-right text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 bg-gray-50"
+              />
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Biaya expandable */}
+      {open && (
+        <div className="p-4 bg-white border-t border-gray-100 space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {biayaFields.map(f => (
+              <div key={f.field}>
+                <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+                <RpInput value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
+              </div>
+            ))}
+          </div>
+          {/* Auto-calculated fields */}
+          <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
+            <div className="bg-gray-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-gray-400">⑦ Dep. Peralatan (÷5)</p>
+              <p className="text-sm font-semibold text-gray-700">{formatRupiah(depAlat)}</p>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-2 text-center">
+              <p className="text-xs text-gray-400">⑧ Dep. Gedung (÷40)</p>
+              <p className="text-sm font-semibold text-gray-700">{formatRupiah(depGedung)}</p>
+            </div>
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-2 text-center">
+              <p className="text-xs text-teal-600">Total Biaya Langsung</p>
+              <p className="text-sm font-bold text-teal-800">{formatRupiah(total)}</p>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
 
 export default function CostingInputPage() {
   const [activeTab, setActiveTab] = useState<Tab>('info');
@@ -690,7 +757,7 @@ export default function CostingInputPage() {
                 {/* Biaya */}
                 <BiayaForm
                   label="Komponen Biaya (klik untuk expand)"
-                  prefix="oh"
+                  type="overhead"
                   data={center}
                   onChange={(field, val) => updateOverhead(center.id, { [field]: val })}
                 />
@@ -773,7 +840,7 @@ export default function CostingInputPage() {
 
                 <BiayaForm
                   label="Komponen Biaya (klik untuk expand)"
-                  prefix="im"
+                  type="intermediate"
                   data={center}
                   onChange={(field, val) => updateIntermediate(center.id, { [field]: val })}
                 />
@@ -890,7 +957,7 @@ export default function CostingInputPage() {
 
                         <BiayaForm
                           label="Komponen Biaya (klik untuk expand)"
-                          prefix="fn"
+                          type="final"
                           data={center}
                           onChange={(field, val) => updateFinal(center.id, { [field]: val })}
                         />
