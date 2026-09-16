@@ -1,7 +1,7 @@
 import { useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
-import { useHospitalCostStore } from '../stores/hospitalCostStore';
+import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { UploadSession } from '../types/costing.types';
@@ -65,13 +65,18 @@ export default function UploadPage() {
         try {
           const parsedData = await parseExcelTemplate(file);
           useHospitalCostStore.setState(s => ({
-            config: {
+            config: runStepDownCalculation({
               ...s.config,
+              namaRS: parsedData.namaRS || s.config.namaRS,
+              tipeRS: parsedData.tipeRS || s.config.tipeRS,
+              kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,
+              tahunData: parsedData.tahunData || s.config.tahunData,
+              dataDasar: parsedData.dataDasar || s.config.dataDasar,
+              dataLayanan: parsedData.dataLayanan || s.config.dataLayanan,
               overheadCenters: parsedData.overheadCenters || s.config.overheadCenters,
               intermediateCenters: parsedData.intermediateCenters || s.config.intermediateCenters,
               finalCenters: parsedData.finalCenters || s.config.finalCenters,
-              isCalculated: false
-            }
+            })
           }));
           processResult.excelFiles.push(file.name);
         } catch (e: any) {
