@@ -11,7 +11,6 @@ import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { FileDown, Printer, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import PptxGenJS from 'pptxgenjs';
 import clsx from 'clsx';
 
 const STATUS_BADGE = {
@@ -134,6 +133,7 @@ export default function ReportPage() {
     XLSX.writeFile(wb, filename);
   };
 
+  /* Export PPTX dinonaktifkan sementara sampai bundler browser memakai paket PPTX yang kompatibel.
   const exportPptx = async () => {
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
@@ -187,7 +187,7 @@ export default function ReportPage() {
     ];
     recommendations.forEach((text, i) => { const y = 1.55 + i * 1.2; slide.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.05, w: 0.32, h: 0.32, fill: { color: teal }, line: { color: teal } }); slide.addText(String(i + 1), { x: 0.85, y: y + 0.08, w: 0.32, h: 0.15, fontFace: 'Aptos', fontSize: 9, bold: true, color: 'FFFFFF', align: 'center' }); slide.addText(text, { x: 1.4, y, w: 10.7, h: 0.65, fontFace: 'Aptos', fontSize: 16, color: navy, breakLine: false }); }); addFooter(slide, 6);
     await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(user?.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
-  };
+  }; */
 
   // Print / PDF
   const handlePrint = () => window.print();
@@ -207,9 +207,6 @@ export default function ReportPage() {
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export to Excel (.xlsx)
-          </button>
-          <button onClick={exportPptx} className="flex items-center gap-2 px-5 py-2.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl hover:bg-violet-100 text-sm font-semibold transition-colors shadow-sm">
-            <FileDown className="w-4 h-4" /> Export Presentasi (.pptx)
           </button>
           <button
             onClick={handlePrint}
