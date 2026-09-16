@@ -6,6 +6,7 @@ import GuidePage from './pages/GuidePage';
 import DashboardPage from './pages/DashboardPage';
 import UploadPage from './pages/UploadPage';
 import CostingInputPage from './pages/CostingInputPage';
+import TarifPasienPage from './pages/TarifPasienPage';
 import ComparisonPage from './pages/ComparisonPage';
 import ReportPage from './pages/ReportPage';
 import SettingsPage from './pages/SettingsPage';

@@ -19,6 +19,7 @@ import {
   X,
   ChevronRight,
   BookOpen,
+  Pill
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -28,9 +29,10 @@ const navItems = [
   { path: '/', icon: BookOpen, label: 'Panduan', exact: true },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
-  { path: '/input-biaya', icon: Calculator, label: 'Input Biaya RS' },
-  { path: '/comparison', icon: BarChart3, label: 'Perbandingan' },
-  { path: '/report', icon: FileText, label: 'Laporan' },
+  { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
+  { path: '/tarif-pasien', icon: Pill, label: 'Tarif Pasien' },
+  { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
+  { path: '/reports', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
 ];
 
