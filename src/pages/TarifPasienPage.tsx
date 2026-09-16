@@ -37,12 +37,12 @@ export default function TarifPasienPage() {
     return ucKamar;
   };
 
-  // Recalculate setiap kali tab pindah ke distribusi/hasil
+  // Recalculate saat tab pindah
   useEffect(() => {
     if (activeTab !== 'input') {
       calculateDistribution(mapUnitCostKamar());
     }
-  }, [activeTab, patients, biayaRSMap]);
+  }, [activeTab]);
 
   // Load defaults for total Biaya RS dari intermediate centers jika masih kosong
   useEffect(() => {
@@ -201,6 +201,7 @@ export default function TarifPasienPage() {
                           onChange={e => {
                             const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
                             setBiayaRS(d.key, val);
+                            calculateDistribution(mapUnitCostKamar()); // Live update
                           }}
                           placeholder="Rp 0"
                           className="w-36 px-2 py-1.5 border border-gray-300 rounded-lg text-right text-sm font-semibold text-teal-700 focus:ring-2 focus:ring-teal-500"
