@@ -183,7 +183,7 @@ export default function ComparisonPage() {
                       { key: 'rataUnitCost', label: 'Unit Cost RS' },
                       { key: 'rataTarif', label: `Tarif ${viewMode}` },
                       { key: 'selisih', label: 'Selisih' },
-                      { key: 'cov', label: 'CoV' },
+                      { key: 'cov', label: 'CoV Variasi' },
                       { key: null, label: 'Status' },
                     ].map(col => (
                       <th
@@ -226,8 +226,8 @@ export default function ComparisonPage() {
                       )}>
                         {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                       </td>
-                      <td className={clsx('px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap', drg.cov < 1 ? 'text-green-600' : 'text-red-600')}>
-                        {(drg.cov * 100).toFixed(1)}%
+                      <td className={clsx('px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap', drg.cov < 1 ? 'text-blue-600' : 'text-red-600')} title={drg.cov < 1 ? 'Variasi biaya masih homogen (CoV < 1)' : 'Variasi biaya tinggi (CoV ≥ 1)'}>
+                        {(drg.cov * 100).toFixed(1)}%{drg.cov < 1 ? ' · Homogen' : ' · Tinggi'}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(
