@@ -52,7 +52,6 @@ export const useTarifPasienStore = create<TarifPasienState>()(
 
       calculateDistribution: (unitCostKamar = {}) => {
         const { patients, biayaRSMap } = get();
-        if (patients.length === 0) return;
 
         // 1. Hitung total klaim per komponen dari semua pasien
         const totalEKlaim: Record<keyof KomponenTarif18, number> = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
@@ -78,6 +77,12 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           acc[curr.key] = curr.rasio;
           return acc;
         }, {} as Record<keyof KomponenTarif18, number>);
+
+        // Jika tidak ada pasien, cukup update distribusi saja
+        if (patients.length === 0) {
+          set({ distribusi });
+          return;
+        }
 
         // 3. Distribusikan ke pasien
         const updatedPatients = patients.map((p) => {

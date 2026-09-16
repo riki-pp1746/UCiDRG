@@ -23,53 +23,46 @@ export default function TarifPasienPage() {
   const { config } = useHospitalCostStore();
   const { rawRecords } = useCostingStore();
 
-  const handleImportEKlaim = () => {
-    if (rawRecords.length === 0) {
-      alert('Data E-Klaim kosong! Silakan upload file TXT INA-CBG di menu "Upload Data" terlebih dahulu.');
-      return;
-    }
-    
-    // Konfirmasi karena ini akan mereplace data yang ada
-    if (patients.length > 0) {
-      if (!window.confirm('Tarik data E-Klaim akan menghapus data yang sudah ada di tabel ini. Lanjutkan?')) {
-        return;
-      }
-    }
 
-    const mapped = rawRecords.map(r => ({
-      ...makeEmptyPatient(),
-      id: `sep-${r.sep}-${Date.now()}`,
-      noSEP: r.sep || '',
-      inaCBGs: r.inacbg || '',
-      drg: r.idrg?.drg_code || r.inacbg || '',
-      diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
-      kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
-      lhr: r.los || 0,
-      
-      // Map 18 komponen dari E-Klaim billing
-      procedure_amt: r.billing?.procedure_amt || 0,
-      surgical_amt: r.billing?.surgical_amt || 0,
-      consul_amt: r.billing?.consul_amt || 0,
-      expert_amt: r.billing?.expert_amt || 0,
-      nursing_amt: r.billing?.nursing_amt || 0,
-      ancillary_amt: r.billing?.ancillary_amt || 0,
-      radiology_amt: r.billing?.radiology_amt || 0,
-      laboratory_amt: r.billing?.laboratory_amt || 0,
-      blood_amt: r.billing?.blood_amt || 0,
-      rehab_amt: r.billing?.rehab_amt || 0,
-      room_amt: r.billing?.room_amt || 0,
-      intensive_amt: r.billing?.intensive_amt || 0,
-      drug_amt: r.billing?.drug_amt || 0,
-      chronic_drug_amt: r.billing?.drug_chronic_amt || 0,
-      chemo_drug_amt: r.billing?.drug_chemo_amt || 0,
-      device_amt: r.billing?.device_amt || 0,
-      consumable_amt: r.billing?.consumable_amt || 0,
-      device_rent_amt: r.billing?.device_rent_amt || 0,
-    }));
+  // Auto-sync patients dari rawRecords E-Klaim
+  useEffect(() => {
+    if (rawRecords.length > 0 && patients.length === 0) {
+      const mapped = rawRecords.map((r, i) => ({
+        ...makeEmptyPatient(),
+        id: `sep-${r.sep || i}-${Date.now()}`,
+        noSEP: r.sep || '',
+        inaCBGs: r.inacbg || '',
+        drg: r.idrg?.drg_code || r.inacbg || '',
+        diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
+        kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
+        lhr: r.los || 0,
+        
+        // Map 18 komponen dari E-Klaim billing
+        procedure_amt: r.billing?.procedure_amt || 0,
+        surgical_amt: r.billing?.surgical_amt || 0,
+        consul_amt: r.billing?.consul_amt || 0,
+        expert_amt: r.billing?.expert_amt || 0,
+        nursing_amt: r.billing?.nursing_amt || 0,
+        ancillary_amt: r.billing?.ancillary_amt || 0,
+        radiology_amt: r.billing?.radiology_amt || 0,
+        laboratory_amt: r.billing?.laboratory_amt || 0,
+        blood_amt: r.billing?.blood_amt || 0,
+        rehab_amt: r.billing?.rehab_amt || 0,
+        room_amt: r.billing?.room_amt || 0,
+        intensive_amt: r.billing?.intensive_amt || 0,
+        drug_amt: r.billing?.drug_amt || 0,
+        chronic_drug_amt: r.billing?.drug_chronic_amt || 0,
+        chemo_drug_amt: r.billing?.drug_chemo_amt || 0,
+        device_amt: r.billing?.device_amt || 0,
+        consumable_amt: r.billing?.consumable_amt || 0,
+        device_rent_amt: r.billing?.device_rent_amt || 0,
+      }));
 
-    useTarifPasienStore.getState().setPatients(mapped);
-    alert(`Berhasil menarik ${mapped.length} data pasien dari E-Klaim.`);
-  };
+      useTarifPasienStore.getState().setPatients(mapped);
+      // Auto-calculate after sync
+      setTimeout(() => calculateDistribution(mapUnitCostKamar()), 100);
+    }
+  }, [rawRecords, patients.length, calculateDistribution]);
 
   // Mapping Unit Cost dari Step-Down Costing ke mapping kelas
   const mapUnitCostKamar = () => {
@@ -96,20 +89,6 @@ export default function TarifPasienPage() {
       calculateDistribution(mapUnitCostKamar());
     }
   }, [activeTab]);
-
-  // Load defaults for total Biaya RS dari intermediate centers jika masih kosong
-  useEffect(() => {
-    if (Object.keys(biayaRSMap).length === 0 && config.intermediateCenters.length > 0) {
-      const im = config.intermediateCenters;
-      const findCost = (kw: string) => im.find(c => c.nama.toLowerCase().includes(kw))?.totalCostAfterOverhead || 0;
-      
-      setBiayaRS('drug_amt', findCost('farmasi'));
-      setBiayaRS('radiology_amt', findCost('radiologi'));
-      setBiayaRS('laboratory_amt', findCost('lab'));
-      setBiayaRS('blood_amt', findCost('darah'));
-      setBiayaRS('rehab_amt', findCost('rehab'));
-    }
-  }, [config, biayaRSMap]);
 
   useEffect(() => {
     validateAgainstHospital(config);
@@ -184,9 +163,6 @@ export default function TarifPasienPage() {
               <p className="text-xs text-gray-500 mt-0.5">Input atau import data pasien beserta 18 komponen tagihannya.</p>
             </div>
             <div className="flex gap-2">
-              <button onClick={handleImportEKlaim} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700">
-                <Download className="w-3.5 h-3.5" /> Tarik Data E-Klaim
-              </button>
               <button onClick={() => addPatient()} className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white rounded-lg text-xs font-semibold hover:bg-teal-700">
                 <Plus className="w-3.5 h-3.5" /> Tambah Manual
               </button>
