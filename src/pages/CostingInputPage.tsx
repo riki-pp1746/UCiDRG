@@ -35,16 +35,13 @@ function RpInput({ value, onChange, placeholder = '0' }: {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setDraft(e.target.value);
-    // Live update untuk responsivitas
-    const parsed = parseFloat(e.target.value.replace(/,/g, '')) || 0;
-    onChange(parsed);
+    const clean = e.target.value.replace(/[^0-9]/g, '');
+    setDraft(clean);
+    onChange(parseFloat(clean) || 0);
   };
 
   const handleBlur = () => {
     setFocused(false);
-    const parsed = parseFloat(draft.replace(/[^0-9.]/g, '')) || 0;
-    onChange(parsed);
     setDraft('');
   };
 
@@ -54,40 +51,48 @@ function RpInput({ value, onChange, placeholder = '0' }: {
 
   return (
     <input
-      type={focused ? 'number' : 'text'}
+      type="text"
+      inputMode="numeric"
       value={displayValue}
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
       placeholder={placeholder}
-      min={0}
       className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
     />
   );
 }
 
 // ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
-function NumInput({ value, onChange, placeholder = '0', invalid = false }: {
+function NumInput({ value, onChange, placeholder = '0', invalid = false, className }: {
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
   invalid?: boolean;
+  className?: string;
 }) {
-  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // Commit nilai final saat blur untuk pastikan store terupdate
-    const v = parseFloat(e.target.value) || 0;
-    onChange(v);
+  const [local, setLocal] = useState(value > 0 ? String(value) : '');
+
+  useEffect(() => {
+    if (parseFloat(local || '0') !== value) {
+      setLocal(value > 0 ? String(value) : '');
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocal(e.target.value);
+    onChange(parseFloat(e.target.value) || 0);
   };
+
   return (
     <input
       type="number"
-      defaultValue={value || undefined}
-      key={value} // force re-render saat value berubah dari luar (misal reset)
-      onChange={e => onChange(parseFloat(e.target.value) || 0)}
-      onBlur={handleBlur}
+      value={local}
+      onChange={handleChange}
       placeholder={placeholder}
       min={0}
-      className={clsx('w-full px-2 py-1.5 border rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white', invalid ? 'border-red-400 bg-red-50 text-red-800' : 'border-gray-200')}
+      step="any"
+      className={clsx(className || 'w-full px-2 py-1.5 border rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white', invalid ? 'border-red-400 bg-red-50 text-red-800' : (className ? '' : 'border-gray-200'))}
       aria-invalid={invalid}
     />
   );
@@ -213,15 +218,11 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
           {statFields.map(f => (
             <div key={f.field} className="flex items-center gap-1.5 min-w-[100px]">
               <span className="text-xs text-gray-400 whitespace-nowrap">{f.label}:</span>
-              <input
-                type="number"
-                defaultValue={data[f.field] || undefined}
-                key={String(data[f.field])}
-                onChange={e => onChange(f.field, parseFloat(e.target.value) || 0)}
-                onBlur={e => onChange(f.field, parseFloat(e.target.value) || 0)}
+              <NumInput
+                value={data[f.field] || 0}
+                onChange={v => onChange(f.field, v)}
                 placeholder="0"
-                min={0}
-                className="w-20 px-1.5 py-0.5 border border-gray-200 rounded text-right text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 bg-gray-50"
+                className="w-20 px-1.5 py-0.5 border rounded text-right text-xs focus:outline-none focus:ring-1 focus:ring-teal-400 bg-gray-50"
               />
             </div>
           ))}
