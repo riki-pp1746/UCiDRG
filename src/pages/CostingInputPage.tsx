@@ -299,6 +299,14 @@ export default function CostingInputPage() {
   // Recalculate otomatis saat masuk ke tab distribusi18
   useEffect(() => {
     if (activeTab === 'distribusi18') {
+      // 1. Sinkronisasi data TXT E-Klaim terlebih dahulu
+      const rawRecords = useCostingStore.getState().rawRecords;
+      const currentPatients = useTarifPasienStore.getState().patients;
+      if (rawRecords.length > 0 && currentPatients.length === 0) {
+        useTarifPasienStore.getState().syncFromCosting(rawRecords);
+      }
+
+      // 2. Kalkulasi rasio unit cost
       const ucKamar: Record<string, number> = {};
       const finals = config.finalCenters || [];
       finals.forEach(f => {

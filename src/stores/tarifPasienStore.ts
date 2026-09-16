@@ -23,6 +23,7 @@ interface TarifPasienState {
   updatePatient: (id: string, data: Partial<PatientRecord>) => void;
   removePatient: (id: string) => void;
   clearPatients: () => void;
+  syncFromCosting: (rawRecords: any[]) => void;
   setBiayaRS: (key: keyof KomponenTarif18, amount: number) => void;
   
   // Kalkulasi Utama (Step 3)
@@ -45,6 +46,38 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       })),
       removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id) })),
       clearPatients: () => set({ patients: [] }),
+      syncFromCosting: (rawRecords: any[]) => {
+        if (!rawRecords || rawRecords.length === 0) return;
+        const mapped = rawRecords.map((r, i) => ({
+          ...makeEmptyPatient(),
+          id: `sep-${r.sep || i}-${Date.now()}`,
+          noSEP: r.sep || '',
+          inaCBGs: r.inacbg || '',
+          drg: r.idrg?.drg_code || r.inacbg || '',
+          diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
+          kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as any,
+          lhr: r.los || 0,
+          procedure_amt: r.billing?.procedure_amt || 0,
+          surgical_amt: r.billing?.surgical_amt || 0,
+          consul_amt: r.billing?.consul_amt || 0,
+          expert_amt: r.billing?.expert_amt || 0,
+          nursing_amt: r.billing?.nursing_amt || 0,
+          ancillary_amt: r.billing?.ancillary_amt || 0,
+          radiology_amt: r.billing?.radiology_amt || 0,
+          laboratory_amt: r.billing?.laboratory_amt || 0,
+          blood_amt: r.billing?.blood_amt || 0,
+          rehab_amt: r.billing?.rehab_amt || 0,
+          room_amt: r.billing?.room_amt || 0,
+          intensive_amt: r.billing?.intensive_amt || 0,
+          drug_amt: r.billing?.drug_amt || 0,
+          chronic_drug_amt: r.billing?.drug_chronic_amt || 0,
+          chemo_drug_amt: r.billing?.drug_chemo_amt || 0,
+          device_amt: r.billing?.device_amt || 0,
+          consumable_amt: r.billing?.consumable_amt || 0,
+          device_rent_amt: r.billing?.device_rent_amt || 0,
+        }));
+        set({ patients: mapped });
+      },
       
       setBiayaRS: (key, amount) => set((s) => ({
         biayaRSMap: { ...s.biayaRSMap, [key]: amount }
