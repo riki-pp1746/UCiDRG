@@ -6,7 +6,7 @@ import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { Calculator, Users, FileSpreadsheet, Download, Trash2, Plus, Info, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_SHORT, KELAS_RAWAT_LABELS, KelasRawat, makeEmptyPatient } from '../types/tarifPasien.types';
 
-type Tab = 'input' | 'distribusi' | 'hasil';
+type Tab = 'input' | 'hasil';
 
 export default function TarifPasienPage() {
   const [activeTab, setActiveTab] = useState<Tab>('input');
@@ -149,8 +149,7 @@ export default function TarifPasienPage() {
       <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1">
         {[
           { id: 'input', label: '1. Input Data Pasien (E-Klaim)', icon: Users },
-          { id: 'distribusi', label: '2. Distribusi Biaya RS', icon: FileSpreadsheet },
-          { id: 'hasil', label: '3. Hasil Cost per Pasien', icon: Calculator },
+          { id: 'hasil', label: '2. Hasil Cost per Pasien', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
@@ -254,63 +253,7 @@ export default function TarifPasienPage() {
         </div>
       )}
 
-      {/* Tab 2: Distribusi Biaya */}
-      {activeTab === 'distribusi' && (
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-            <p className="flex items-start gap-2">
-              <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
-              <span>
-                <strong>Metode Distribusi Step 3:</strong> Masukkan Total Biaya RS (hasil Step Down Costing) untuk setiap komponen tarif. Sistem akan menghitung bobot proporsional (Rasio) dari tagihan E-Klaim untuk mendistribusikannya ke setiap pasien.
-              </span>
-            </p>
-          </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3">18 Variabel Tarif</th>
-                  <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
-                  <th className="px-4 py-3 text-right">Total Biaya RS (Step-Down)</th>
-                  <th className="px-4 py-3 text-center">Rasio Alokasi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {distribusi.map(d => (
-                  <tr key={d.key} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}</td>
-                    <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex justify-end">
-                        <input
-                          type="text"
-                          value={biayaRSMap[d.key] || ''}
-                          onChange={e => {
-                            const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
-                            setBiayaRS(d.key, val);
-                            calculateDistribution(mapUnitCostKamar()); // Live update
-                          }}
-                          placeholder="Rp 0"
-                          className={`w-36 px-2 py-1.5 border rounded-lg text-right text-sm font-semibold focus:ring-2 focus:ring-teal-500 ${hasIssue(`tanpa-bobot-${d.key}`) || hasIssue('biaya-alokasi') ? 'border-red-400 bg-red-50 text-red-800' : 'border-gray-300 text-teal-700'}`}
-                          aria-invalid={hasIssue(`tanpa-bobot-${d.key}`) || hasIssue('biaya-alokasi')}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-center text-xs">
-                      {d.rasio > 0 ? (
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-mono">{(d.rasio).toFixed(4)}</span>
-                      ) : (
-                        <span className="text-gray-400 italic">0 (N/A)</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Tab 3: Hasil Cost per Pasien */}
       {activeTab === 'hasil' && (

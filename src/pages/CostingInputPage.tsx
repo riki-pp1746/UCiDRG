@@ -9,6 +9,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { RVUInputForm } from '../components/costing/RVUInputForm';
 import {
@@ -129,7 +130,7 @@ const FINAL_KATEGORI_LABELS: Record<FinalKategori, string> = {
   lainnya: 'Lainnya',
 };
 
-type Tab = 'info' | 'dataDasar' | 'overhead' | 'intermediate' | 'final' | 'hasil';
+type Tab = 'info' | 'dataDasar' | 'overhead' | 'intermediate' | 'final' | 'hasil' | 'distribusi18';
 
 const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: 'info',         label: 'Info RS',       icon: '🏥', desc: 'Identitas & kesiapan RS' },
@@ -138,6 +139,7 @@ const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: 'intermediate', label: 'Step 3: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
   { id: 'final',        label: 'Step 2: Layanan', icon: '🛏️', desc: 'Alokasi layanan ke pasien' },
   { id: 'hasil',        label: 'Hasil Unit Cost', icon: '📈', desc: 'Unit cost per pusat biaya' },
+  { id: 'distribusi18', label: 'Distribusi 18 Var', icon: '💊', desc: 'Mapping ke 18 variabel E-Klaim' },
 ];
 
 // ── Helper hitung biaya langsung untuk tampilan ──
@@ -275,6 +277,8 @@ export default function CostingInputPage() {
     updateFinal, addFinal, removeFinal,
     resetToDefault,
   } = useHospitalCostStore();
+
+  const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
   const { setOverheadConfig } = useCostingStore();
 
@@ -1253,6 +1257,86 @@ export default function CostingInputPage() {
                 </table>
               </div>
             )}
+          </div>
+
+          {/* Tombol Lanjut ke Distribusi 18 Var */}
+          <div className="flex justify-end">
+             <button onClick={() => setActiveTab('distribusi18')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut Mapping 18 Variabel E-Klaim <ArrowRight className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════
+          TAB 7: DISTRIBUSI 18 VAR
+      ════════════════════════════════════════════════════════ */}
+      {activeTab === 'distribusi18' && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+            <p className="flex items-start gap-2">
+              <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
+              <span>
+                <strong>Mapping ke 18 Variabel Tarif (E-Klaim):</strong> Bagian ini memetakan Total Biaya RS ke masing-masing 18 variabel E-Klaim. Mapping ini nantinya akan dipakai di menu <strong>Tarif Pasien</strong> untuk didistribusikan secara proporsional.
+              </span>
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3">18 Variabel Tarif E-Klaim</th>
+                  <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
+                  <th className="px-4 py-3 text-right">Total Biaya RS (Step-Down)</th>
+                  <th className="px-4 py-3 text-center">Rasio Alokasi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {distribusi.map(d => (
+                  <tr key={d.key} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}</td>
+                    <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
+                    <td className="px-4 py-2 text-right">
+                      <div className="flex justify-end">
+                        <input
+                          type="text"
+                          value={biayaRSMap[d.key] || ''}
+                          onChange={e => {
+                            const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
+                            setBiayaRS(d.key, val);
+                            
+                            // Map UC Kamar
+                            const ucKamar: Record<string, number> = {};
+                            const finals = config.finalCenters || [];
+                            finals.forEach(f => {
+                              const nama = f.nama.toLowerCase();
+                              const unitCostLHR = f.jumlahHariRawat > 0 ? (f.totalCostAfterIntermediate / f.jumlahHariRawat) : 0;
+                              const unitCostKJ = f.jumlahKunjungan > 0 ? (f.totalCostAfterIntermediate / f.jumlahKunjungan) : 0;
+                              if (nama.includes('kelas iii') || nama.includes('kelas 3')) ucKamar['kelas3'] = unitCostLHR;
+                              if (nama.includes('kelas ii') || nama.includes('kelas 2')) ucKamar['kelas2'] = unitCostLHR;
+                              if (nama.includes('kelas i') || nama.includes('kelas 1')) ucKamar['kelas1'] = unitCostLHR;
+                              if (nama.includes('icu') || nama.includes('intensif')) ucKamar['icu'] = unitCostLHR;
+                              if (nama.includes('igd') || nama.includes('gawat')) ucKamar['igd'] = unitCostKJ;
+                              if (nama.includes('rawat jalan') || nama.includes('poliklinik')) ucKamar['rawat_jalan'] = unitCostKJ;
+                            });
+
+                            calculateDistribution(ucKamar); // Trigger update ratio
+                          }}
+                          placeholder="Rp 0"
+                          className="w-36 px-2 py-1.5 border border-gray-300 rounded-lg text-right text-sm font-semibold text-teal-700 focus:ring-2 focus:ring-teal-500"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-2 text-center text-xs">
+                      {d.rasio > 0 ? (
+                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-mono">{(d.rasio).toFixed(4)}</span>
+                      ) : (
+                        <span className="text-gray-400 italic">0 (N/A)</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* Tombol Sinkronisasi ke Patient Level Costing */}
