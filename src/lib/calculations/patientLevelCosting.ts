@@ -291,7 +291,7 @@ export function generateSummary(
   const totalBiayaRS = results.reduce((s, r) => s + r.unitCostDihitung, 0);
   const totalTarif = results.reduce((s, r) => s + (type === 'INACBG' ? r.tarifINACBG : r.tarifIDRG), 0);
   
-  const totalSelisih = totalBiayaRS - totalTarif;
+  const totalSelisih = totalTarif - totalBiayaRS;
   
   const cmi = calcCMI(results.map(r => r.patient));
   // RIV = proporsi variasi biaya yang dapat dijelaskan oleh pengelompokan DRG.

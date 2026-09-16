@@ -15,7 +15,7 @@ import { RVUInputForm } from '../components/costing/RVUInputForm';
 import {
   Building2, Calculator, Database, Plus, Trash2, RotateCcw,
   CheckCircle, AlertCircle, Info, TrendingUp, Upload as UploadIcon,
-  FileSpreadsheet, ArrowRight, Layers, Activity, ClipboardList, RefreshCw
+  FileSpreadsheet, ArrowRight, Layers, Activity, ClipboardList, RefreshCw, X
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
@@ -267,6 +267,7 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
 export default function CostingInputPage() {
   const [activeTab, setActiveTab] = useState<Tab>('info');
   const [showAuditTrail, setShowAuditTrail] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -715,14 +716,72 @@ export default function CostingInputPage() {
       </div>
 
       {validation.errors.size > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-none" />
-          <div className="text-sm text-red-800">
-            <p className="font-bold">{validation.errors.size} data perlu disesuaikan sebelum alokasi dilanjutkan</p>
-            <ul className="mt-1 list-disc list-inside text-xs space-y-1">
-              {[...validation.errors.values()].slice(0, 3).map((message, index) => <li key={index}>{message}</li>)}
-              {validation.errors.size > 3 && <li>Periksa penanda merah pada setiap input terkait.</li>}
-            </ul>
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-none" />
+            <div className="text-sm text-red-800">
+              <p className="font-bold">{validation.errors.size} Peringatan Data</p>
+              <p className="text-xs mt-0.5">Ada data yang belum lengkap atau tidak konsisten sehingga alokasi tidak dapat dilanjutkan.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setShowValidationModal(true)}
+            className="flex items-center gap-1.5 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl text-sm font-semibold transition-colors whitespace-nowrap shadow-sm border border-red-200"
+          >
+            Lihat Detail Error
+          </button>
+        </div>
+      )}
+
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+                <h3 className="text-lg font-bold text-gray-900">Detail Peringatan Data</h3>
+              </div>
+              <button onClick={() => setShowValidationModal(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-4 text-sm">
+                <h4 className="font-bold text-blue-900 mb-1 flex items-center gap-1.5"><Info className="w-4 h-4" /> Apa Artinya Ini?</h4>
+                <p className="text-blue-800 text-xs leading-relaxed">
+                  Peringatan muncul ketika Anda mengisi nilai biaya pada suatu unit, namun <strong>Dasar Alokasi</strong> (seperti Jumlah Staf, Luas Lantai, atau Kunjungan) masih bernilai 0. Sistem memerlukan nilai dasar alokasi agar dapat mendistribusikan biaya ke unit lain.
+                </p>
+              </div>
+              
+              {[...validation.errors.entries()].map(([id, message], idx) => {
+                const isGajiError = id === 'biayaGaji';
+                return (
+                  <div key={idx} className="bg-white border border-red-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                    <h4 className="font-bold text-red-800 text-sm mb-1">
+                      {isGajiError ? 'Ketidaksesuaian Biaya Gaji' : 'Dasar Alokasi Kosong (0)'}
+                    </h4>
+                    <p className="text-sm text-gray-700 font-medium mb-3">{message}</p>
+                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
+                      <strong className="text-gray-700 text-xs block mb-1">Solusi:</strong>
+                      <p className="text-gray-600 text-xs leading-relaxed">
+                        {isGajiError 
+                          ? 'Pastikan total isian "Biaya Gaji & Remunerasi Pegawai" di seluruh unit (Overhead, Penunjang, Layanan) sama dengan Total Biaya Gaji di Data Dasar RS (Tab Info RS).'
+                          : 'Isi angka Dasar Alokasi yang sesuai pada form bergaris merah, atau hapus komponen biaya (set ke 0) jika memang unit ini tidak digunakan.'}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button 
+                onClick={() => setShowValidationModal(false)}
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Tutup & Perbaiki
+              </button>
+            </div>
           </div>
         </div>
       )}

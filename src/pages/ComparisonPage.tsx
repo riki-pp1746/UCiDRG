@@ -222,7 +222,7 @@ export default function ComparisonPage() {
                       </td>
                       <td className={clsx(
                         'px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap',
-                        drg.selisih > 0 ? 'text-red-600' : drg.selisih < 0 ? 'text-green-600' : 'text-gray-500'
+                        drg.selisih < 0 ? 'text-red-600' : drg.selisih > 0 ? 'text-green-600' : 'text-gray-500'
                       )}>
                         {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                       </td>

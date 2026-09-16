@@ -278,15 +278,15 @@ export default function ReportPage() {
         {/* Selisih Summary */}
         <div className={clsx(
           'rounded-xl p-5 border',
-          summary.totalSelisih > 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+          summary.totalSelisih < 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
         )}>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <p className={clsx('text-lg font-bold', summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700')}>
-                {summary.totalSelisih > 0 ? '⚠ RS Merugi Secara Agregat' : '✓ RS Untung Secara Agregat'}
+              <p className={clsx('text-lg font-bold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
+                {summary.totalSelisih < 0 ? '⚠ RS Merugi Secara Agregat' : '✓ RS Untung Secara Agregat'}
               </p>
               <p className="text-sm text-gray-600 mt-1">
-                Total selisih: <strong className={summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700'}>
+                Total selisih: <strong className={summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700'}>
                   {summary.totalSelisih >= 0 ? '+' : ''}{formatRupiah(summary.totalSelisih)}
                 </strong>
               </p>
@@ -339,10 +339,10 @@ export default function ReportPage() {
                     <td className="px-3 py-2 text-center text-gray-700 font-medium">{drg.jumlahKasus}</td>
                     <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td>
                     <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataTarif)}</td>
-                    <td className={clsx('px-3 py-2 text-right font-mono font-semibold whitespace-nowrap', drg.selisih > 0 ? 'text-red-600' : 'text-green-600')}>
+                    <td className={clsx('px-3 py-2 text-right font-mono font-semibold whitespace-nowrap', drg.selisih < 0 ? 'text-red-600' : 'text-green-600')}>
                       {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                     </td>
-                    <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersen > 0 ? 'text-red-500' : 'text-green-500')}>
+                    <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersen < 0 ? 'text-red-500' : 'text-green-500')}>
                       {drg.selisihPersen >= 0 ? '+' : ''}{drg.selisihPersen.toFixed(1)}%
                     </td>
                     <td className="px-3 py-2 text-center">

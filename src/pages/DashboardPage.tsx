@@ -224,18 +224,18 @@ export default function DashboardPage() {
       {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
-        summary.totalSelisih > 0
+        summary.totalSelisih < 0
           ? 'bg-red-50 border border-red-200'
           : 'bg-green-50 border border-green-200'
       )}>
-        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisih > 0 ? 'text-red-500' : 'text-green-500')} />
+        <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisih < 0 ? 'text-red-500' : 'text-green-500')} />
         <div>
-          <p className={clsx('font-semibold', summary.totalSelisih > 0 ? 'text-red-700' : 'text-green-700')}>
-            {summary.totalSelisih > 0 ? `⚠ Total Unit Cost LEBIH TINGGI dari Tarif ${viewMode}` : `✓ Total Unit Cost LEBIH RENDAH dari Tarif ${viewMode}`}
+          <p className={clsx('font-semibold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
+            {summary.totalSelisih < 0 ? `⚠ Total Unit Cost LEBIH TINGGI dari Tarif ${viewMode}` : `✓ Total Unit Cost LEBIH RENDAH dari Tarif ${viewMode}`}
           </p>
-          <p className={clsx('text-sm', summary.totalSelisih > 0 ? 'text-red-600' : 'text-green-600')}>
+          <p className={clsx('text-sm', summary.totalSelisih < 0 ? 'text-red-600' : 'text-green-600')}>
             Selisih: {formatRupiah(Math.abs(summary.totalSelisih))} 
-            {summary.totalSelisih > 0 ? ' (RS merugi)' : ' (RS untung)'}
+            {summary.totalSelisih < 0 ? ' (RS merugi)' : ' (RS untung)'}
           </p>
         </div>
       </div>
@@ -306,7 +306,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                  +{formatRupiah(drg.selisih)}
+                  {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
                 </span>
               </div>
             ))}
@@ -331,7 +331,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-green-600 whitespace-nowrap">
-                  {formatRupiah(drg.selisih)}
+                  {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
                 </span>
               </div>
             ))}
