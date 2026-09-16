@@ -54,7 +54,7 @@ export default function ReportPage() {
       [`Total Tarif ${viewMode}`, summary.totalTarif],
       ['Total Selisih', summary.totalSelisih],
       ['Case Mix Index (CMI)', summary.cmi.toFixed(3)],
-      ['Reduction in Variance (RIV)', (summary.riv * 100).toFixed(2) + '%'],
+      ['Reduction of Variance (ROV)', (summary.riv * 100).toFixed(2) + '%'],
       ['Rata-rata CoV DRG', (summary.rataCov * 100).toFixed(2) + '%'],
       ['% DRG Rugi', summary.persenRugi.toFixed(1) + '%'],
       ['% DRG Untung', summary.persenUntung.toFixed(1) + '%'],
@@ -157,7 +157,7 @@ export default function ReportPage() {
     slide.addText(`${user?.namaRS || 'Rumah Sakit'}\nPeriode data: ${summary.periodeData}`, { x: 0.8, y: 4.15, w: 11.5, h: 0.65, fontFace: 'Aptos', fontSize: 15, color: 'FFFFFF', align: 'center', breakLine: false });
 
     slide = pptx.addSlide(); title(slide, 'Ringkasan Hasil', `Tarif pembanding: ${viewMode}`);
-    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total Unit Cost', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summary.cmi.toFixed(3)], ['RIV', `${(summary.riv * 100).toFixed(1)}%`]];
+    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total Unit Cost', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summary.cmi.toFixed(3)], ['ROV', `${(summary.riv * 100).toFixed(1)}%`]];
     kpis.forEach((item, i) => { const x = 0.7 + (i % 3) * 4.15; const y = 1.55 + Math.floor(i / 3) * 2.05; slide.addShape(pptx.ShapeType.roundRect, { x, y, w: 3.65, h: 1.45, rectRadius: 0.08, fill: { color: light }, line: { color: 'D7E2E8', width: 0.8 } }); slide.addText(item[0], { x: x + 0.25, y: y + 0.28, w: 3.1, h: 0.25, fontFace: 'Aptos', fontSize: 11, color: gray }); slide.addText(item[1], { x: x + 0.25, y: y + 0.67, w: 3.1, h: 0.38, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); });
     slide.addText(`Status DRG: ${summary.jumlahDRGUntung} untung, ${summary.jumlahDRGImpas} impas, ${summary.jumlahDRGRugi} rugi.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
 
@@ -170,11 +170,11 @@ export default function ReportPage() {
     const rows = summary.top10Rugi.slice(0, 8).map(d => [d.group_code, d.group_description.slice(0, 52), String(d.jumlahKasus), formatRupiah(d.rataUnitCost), formatRupiah(d.rataTarif), formatRupiah(d.selisih)]);
     slide.addTable([['Kode', 'DRG', 'Kasus', 'Unit Cost', 'Tarif', 'Selisih'], ...rows] as any, { x: 0.55, y: 1.45, w: 12.2, h: 4.85, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, color: navy, fill: { color: 'FFFFFF' }, rowH: 0.44, colW: [1.1, 3.7, 0.8, 2.0, 2.0, 2.0], bold: false, }); addFooter(slide, 4);
 
-    slide = pptx.addSlide(); title(slide, 'Kualitas Pengelompokan DRG', 'CoV mengukur homogenitas biaya, RIV mengukur variasi yang dijelaskan DRG');
-    slide.addText(`RIV total: ${(summary.riv * 100).toFixed(1)}%`, { x: 0.8, y: 1.6, w: 5.2, h: 0.55, fontFace: 'Aptos Display', fontSize: 27, bold: true, color: navy });
+    slide = pptx.addSlide(); title(slide, 'Kualitas Pengelompokan DRG', 'CoV mengukur homogenitas biaya, ROV mengukur variasi yang dijelaskan DRG');
+    slide.addText(`ROV total: ${(summary.riv * 100).toFixed(1)}%`, { x: 0.8, y: 1.6, w: 5.2, h: 0.55, fontFace: 'Aptos Display', fontSize: 27, bold: true, color: navy });
     slide.addText(`Rata-rata CoV DRG: ${(summary.rataCov * 100).toFixed(1)}%`, { x: 0.8, y: 2.3, w: 5.6, h: 0.4, fontFace: 'Aptos', fontSize: 17, color: gray });
     slide.addText('Interpretasi', { x: 7.0, y: 1.55, w: 2, h: 0.3, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy });
-    slide.addText('CoV di bawah 1 menunjukkan biaya dalam grup DRG relatif homogen. RIV yang lebih tinggi menunjukkan DRG menjelaskan lebih banyak variasi biaya.', { x: 7.0, y: 2.1, w: 5.3, h: 1.0, fontFace: 'Aptos', fontSize: 16, color: gray, breakLine: false });
+    slide.addText('CoV di bawah 1 menunjukkan biaya dalam grup DRG relatif homogen. ROV yang lebih tinggi menunjukkan DRG menjelaskan lebih banyak variasi biaya.', { x: 7.0, y: 2.1, w: 5.3, h: 1.0, fontFace: 'Aptos', fontSize: 16, color: gray, breakLine: false });
     const covRows = drgResults.slice().sort((a, b) => b.cov - a.cov).slice(0, 5).map(d => [d.group_code, d.group_description.slice(0, 38), `${(d.cov * 100).toFixed(1)}%`]);
     slide.addTable([['DRG', 'Deskripsi', 'CoV'], ...covRows] as any, { x: 0.8, y: 3.65, w: 11.5, h: 2.0, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, colW: [1.4, 7.8, 1.6] }); addFooter(slide, 5);
 

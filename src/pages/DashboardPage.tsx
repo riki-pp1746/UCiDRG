@@ -130,7 +130,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">RIV total</p><p className="text-xl font-bold text-violet-700">{(summary.riv * 100).toFixed(1)}%</p></div></div>
+        <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">ROV total</p><p className="text-xl font-bold text-violet-700">{(summary.riv * 100).toFixed(1)}%</p></div></div>
         <ResponsiveContainer width="99%" height={280}>
           <ScatterChart margin={{ top: 12, right: 30, bottom: 16, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -177,9 +177,9 @@ export default function DashboardPage() {
             <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">RIV</p></div>
+            <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>
             <p className="text-3xl font-bold text-gray-900 truncate">{(summary.riv * 100).toFixed(1)}%</p>
-            <p className="text-xs text-gray-400 mt-1">Reduksi variasi oleh DRG</p>
+            <p className="text-xs text-gray-400 mt-1">Reduction of Variance</p>
           </div>
           
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
