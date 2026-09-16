@@ -1324,17 +1324,55 @@ export default function CostingInputPage() {
             </div>
             <button
               onClick={() => {
-                const im = config.intermediateCenters;
-                const findCost = (kw: string) => im.find(c => c.nama.toLowerCase().includes(kw))?.totalCostAfterOverhead || 0;
-                setBiayaRS('drug_amt', findCost('farmasi'));
-                setBiayaRS('radiology_amt', findCost('radiologi'));
-                setBiayaRS('laboratory_amt', findCost('lab'));
-                setBiayaRS('blood_amt', findCost('darah'));
-                setBiayaRS('rehab_amt', findCost('rehab'));
-                setBiayaRS('surgical_amt', findCost('bedah') || findCost('ibs'));
+                const im = config.intermediateCenters || [];
+                const finals = config.finalCenters || [];
+                
+                // Helper untuk mencari total cost dari penunjang (Intermediate)
+                const findIM = (keywords: string[]) => {
+                  return im.filter(c => keywords.some(kw => c.nama.toLowerCase().includes(kw)))
+                           .reduce((sum, c) => sum + (c.totalCostAfterOverhead || 0), 0);
+                };
+
+                // Helper untuk mencari total cost dari layanan (Final)
+                const findFinal = (keywords: string[], byCategory?: FinalKategori) => {
+                  return finals.filter(c => {
+                    if (byCategory && c.kategori !== byCategory) return false;
+                    if (keywords.length === 0) return true;
+                    return keywords.some(kw => c.nama.toLowerCase().includes(kw));
+                  }).reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
+                };
+
+                // 1. Map dari Intermediate (Penunjang Medik)
+                setBiayaRS('drug_amt', findIM(['farmasi', 'obat']));
+                setBiayaRS('radiology_amt', findIM(['radiologi', 'citra']));
+                setBiayaRS('laboratory_amt', findIM(['lab']));
+                setBiayaRS('blood_amt', findIM(['darah']));
+                setBiayaRS('rehab_amt', findIM(['rehab', 'fisioterapi']));
+                setBiayaRS('surgical_amt', findIM(['bedah', 'ibs', 'ok']));
+                setBiayaRS('consumable_amt', findIM(['cssd', 'gas', 'oksigen', 'sterilisasi'])); // BMHP
+
+                // Sisa penunjang medik yang belum ter-map masukkan ke 'Penunjang'
+                const mappedIM = ['farmasi', 'obat', 'radiologi', 'citra', 'lab', 'darah', 'rehab', 'fisioterapi', 'bedah', 'ibs', 'ok', 'cssd', 'gas', 'oksigen', 'sterilisasi'];
+                const sisaPenunjang = im.filter(c => !mappedIM.some(kw => c.nama.toLowerCase().includes(kw)))
+                                        .reduce((sum, c) => sum + (c.totalCostAfterOverhead || 0), 0);
+                setBiayaRS('ancillary_amt', sisaPenunjang);
+
+                // 2. Map dari Final (Layanan)
+                setBiayaRS('intensive_amt', findFinal(['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif']));
+                
+                // Kamar / Akomodasi (semua rawat inap selain intensif/perina yang spesifik)
+                const roomCost = finals.filter(c => c.kategori === 'rawat_inap' && !['icu','iccu','picu','nicu','hcu','intensif'].some(kw => c.nama.toLowerCase().includes(kw)))
+                                       .reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
+                setBiayaRS('room_amt', roomCost);
+
+                // Prosedur Non Bedah (IGD + Rawat Jalan + Lainnya)
+                const procedureCost = finals.filter(c => c.kategori === 'igd' || c.kategori === 'rawat_jalan' || c.kategori === 'lainnya')
+                                            .reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
+                setBiayaRS('procedure_amt', procedureCost);
+
                 // Trigger recalculation immediately
                 calculateDistribution();
-                alert('Berhasil memetakan total biaya dari hasil perhitungan Unit Cost (Penunjang Medik). Silakan sesuaikan manual untuk variabel yang belum terpetakan.');
+                alert('Berhasil memetakan total biaya dari Pusat Biaya Penunjang & Layanan (Final). Sisa biaya penunjang yang tidak spesifik dimasukkan ke "Penunjang" dan biaya poliklinik/IGD dimasukkan ke "Prosedur Non Bedah".');
               }}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-semibold text-sm transition-colors whitespace-nowrap"
             >

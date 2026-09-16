@@ -1,9 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
-import { Calculator, Users, FileSpreadsheet, Download, Trash2, Plus, Info, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
+import { 
+  Calculator, Users, FileSpreadsheet, Download, Trash2, Plus, Info, 
+  AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw, 
+  Save, Upload, Building2, X, AlertCircle 
+} from 'lucide-react';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_SHORT, KELAS_RAWAT_LABELS, KelasRawat, makeEmptyPatient } from '../types/tarifPasien.types';
 
 type Tab = 'input' | 'hasil';
@@ -12,6 +16,8 @@ export default function TarifPasienPage() {
   const [activeTab, setActiveTab] = useState<Tab>('input');
   const [inputPage, setInputPage] = useState(1);
   const [resultPage, setResultPage] = useState(1);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+
   const pageSize = 10;
 
   const {
@@ -147,10 +153,22 @@ export default function TarifPasienPage() {
         <div className="flex items-start gap-3">
           {validationIssues.length ? <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-none" /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-none" />}
           <div className="min-w-0 flex-1">
-            <p className={`font-semibold text-sm ${validationIssues.length ? 'text-red-800' : 'text-emerald-800'}`}>{validationIssues.length ? `${validationIssues.length} data belum sesuai dengan data dasar RS` : 'Validasi data dasar RS: sesuai'}</p>
-            {validationIssues.length ? <ul className="mt-2 space-y-1 text-xs text-red-700">{validationIssues.slice(0, 4).map(issue => <li key={issue.id}><span className="font-semibold">{issue.label}:</span> {issue.message} <span className="font-mono">(isian {formatRupiah(issue.actual)}; acuan {formatRupiah(issue.expected)})</span></li>)}{validationIssues.length > 4 && <li>+ {validationIssues.length - 4} ketidaksesuaian lain.</li>}</ul> : <p className="mt-1 text-xs text-emerald-700">LHR, tempat tidur, biaya gaji, serta dasar pembagian 18 komponen telah konsisten.</p>}
+            <p className={`font-semibold text-sm ${validationIssues.length ? 'text-red-800' : 'text-emerald-800'}`}>{validationIssues.length ? `${validationIssues.length} Peringatan: Ada ketidaksesuaian data RS dengan tagihan` : 'Validasi data dasar RS: sesuai'}</p>
+            {validationIssues.length ? (
+              <p className="mt-1 text-xs text-red-700">Terdapat komponen biaya dari Step-Down Costing yang tidak memiliki dasar pembagi di data E-Klaim. Klik tombol Periksa untuk melihat detail dan solusinya.</p>
+            ) : (
+              <p className="mt-1 text-xs text-emerald-700">LHR, tempat tidur, biaya gaji, serta dasar pembagian 18 komponen telah konsisten.</p>
+            )}
           </div>
-          <button onClick={() => validateAgainstHospital(config)} className="flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"><RefreshCw className="w-3.5 h-3.5" /> Periksa</button>
+          <button 
+            onClick={() => {
+              validateAgainstHospital(config);
+              setShowValidationModal(true);
+            }} 
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <AlertCircle className="w-4 h-4 text-red-500" /> Periksa
+          </button>
         </div>
       </div>
 
@@ -289,6 +307,75 @@ export default function TarifPasienPage() {
             </table>
           </div>
           <Pagination page={Math.min(resultPage, resultTotalPages)} pages={resultTotalPages} setPage={setResultPage} />
+        </div>
+      )}
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+                <h3 className="text-lg font-bold text-gray-900">Hasil Pemeriksaan Validasi Data</h3>
+              </div>
+              <button onClick={() => setShowValidationModal(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {validationIssues.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                  <h4 className="text-lg font-semibold text-gray-900">Validasi Berhasil</h4>
+                  <p className="text-gray-500">Semua data RS dan tagihan E-Klaim telah konsisten.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <p className="text-sm text-gray-600 border-b border-gray-100 pb-4">
+                    Ditemukan <strong className="text-red-600">{validationIssues.length} ketidaksesuaian</strong> yang perlu diperbaiki agar perhitungan Unit Cost per Pasien proporsional dan tidak ada biaya yang hilang.
+                  </p>
+                  <div className="space-y-4">
+                    {validationIssues.map((issue) => (
+                      <div key={issue.id} className="bg-white border border-red-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                        <h4 className="font-bold text-red-800 text-sm mb-1">{issue.label}</h4>
+                        <p className="text-sm text-gray-700 font-medium mb-3">{issue.message}</p>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 rounded-lg text-sm">
+                          <div>
+                            <span className="text-gray-500 text-xs block mb-0.5">Biaya RS (Hasil Unit Cost)</span>
+                            <span className="font-semibold font-mono text-gray-900">{formatRupiah(issue.actual)}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 text-xs block mb-0.5">Total Tagihan E-Klaim</span>
+                            <span className="font-semibold font-mono text-red-600">{formatRupiah(issue.expected)}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-sm">
+                          <strong className="text-blue-800 flex items-center gap-1.5 text-xs uppercase tracking-wide mb-1">
+                            <Info className="w-3.5 h-3.5" /> Cara Memperbaiki
+                          </strong>
+                          <p className="text-blue-900 text-xs leading-relaxed">
+                            Karena Total Tagihan E-Klaim untuk <strong>{issue.label}</strong> bernilai Rp 0, sistem tidak bisa mendistribusikan biaya RS (Rp {formatRupiah(issue.actual)}) ke pasien secara proporsional. 
+                            <br/><br/>
+                            <strong>Solusi:</strong> Buka menu <strong>Input Biaya RS &rarr; Tab Distribusi 18 Var</strong>. Pindahkan (hapus lalu jumlahkan manual) biaya {issue.label} ke komponen variabel lain yang mirip dan memiliki nilai tagihan E-Klaim lebih dari Rp 0 (contohnya: Penunjang atau Alkes).
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+              <button 
+                onClick={() => setShowValidationModal(false)}
+                className="px-4 py-2 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+              >
+                Tutup & Perbaiki
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
