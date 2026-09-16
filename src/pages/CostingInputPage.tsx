@@ -15,7 +15,7 @@ import { RVUInputForm } from '../components/costing/RVUInputForm';
 import {
   Building2, Calculator, Database, Plus, Trash2, RotateCcw,
   CheckCircle, AlertCircle, Info, TrendingUp, Upload as UploadIcon,
-  FileSpreadsheet, ArrowRight, Layers, Activity, ClipboardList
+  FileSpreadsheet, ArrowRight, Layers, Activity, ClipboardList, RefreshCw
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
@@ -1305,13 +1305,33 @@ export default function CostingInputPage() {
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'distribusi18' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-            <p className="flex items-start gap-2">
-              <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
-              <span>
-                <strong>Mapping ke 18 Variabel Tarif (E-Klaim):</strong> Bagian ini memetakan Total Biaya RS ke masing-masing 18 variabel E-Klaim. Mapping ini nantinya akan dipakai di menu <strong>Tarif Pasien</strong> untuk didistribusikan secara proporsional.
-              </span>
-            </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex-1">
+              <p className="flex items-start gap-2">
+                <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
+                <span>
+                  <strong>Distribusi Step 3 (Sesuai Materi Hal 50):</strong> Total Biaya RS dari hasil Unit Cost (Penunjang/Intermediate) dipetakan ke 18 Variabel. Rasio proporsional didapat dari Tagihan E-Klaim. Rumus: <code>(Tagihan Pasien / Total Tagihan E-Klaim) × Total Biaya RS</code>.
+                </span>
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const im = config.intermediateCenters;
+                const findCost = (kw: string) => im.find(c => c.nama.toLowerCase().includes(kw))?.totalCostAfterOverhead || 0;
+                setBiayaRS('drug_amt', findCost('farmasi'));
+                setBiayaRS('radiology_amt', findCost('radiologi'));
+                setBiayaRS('laboratory_amt', findCost('lab'));
+                setBiayaRS('blood_amt', findCost('darah'));
+                setBiayaRS('rehab_amt', findCost('rehab'));
+                setBiayaRS('surgical_amt', findCost('bedah') || findCost('ibs'));
+                // Trigger recalculation immediately
+                calculateDistribution();
+                alert('Berhasil memetakan total biaya dari hasil perhitungan Unit Cost (Penunjang Medik). Silakan sesuaikan manual untuk variabel yang belum terpetakan.');
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-semibold text-sm transition-colors whitespace-nowrap"
+            >
+              <RefreshCw className="w-4 h-4" /> Auto-Map dari Unit Cost
+            </button>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -1319,23 +1339,23 @@ export default function CostingInputPage() {
               <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3">18 Variabel Tarif E-Klaim</th>
+                  <th className="px-4 py-3 text-right">Total Biaya RS (Dari Unit Cost)</th>
                   <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
-                  <th className="px-4 py-3 text-right">Total Biaya RS (Step-Down)</th>
-                  <th className="px-4 py-3 text-center">Rasio Alokasi</th>
+                  <th className="px-4 py-3 text-center">Rasio Distribusi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {distribusi.map(d => (
                   <tr key={d.key} className="hover:bg-gray-50">
                     <td className="px-4 py-2 font-medium text-gray-700">{d.label}</td>
-                    <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
                     <td className="px-4 py-2 text-right">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end items-center gap-2">
+                        <span className="text-xs text-gray-400">Rp</span>
                         <input
                           type="text"
-                          value={biayaRSMap[d.key] || ''}
+                          value={biayaRSMap[d.key] ? biayaRSMap[d.key]?.toLocaleString('id-ID') : ''}
                           onChange={e => {
-                            const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
+                            const val = parseFloat(e.target.value.replace(/[^0-9.-]+/g, '')) || 0;
                             setBiayaRS(d.key, val);
                             
                             // Map UC Kamar
@@ -1355,11 +1375,12 @@ export default function CostingInputPage() {
 
                             calculateDistribution(ucKamar); // Trigger update ratio
                           }}
-                          placeholder="Rp 0"
-                          className="w-36 px-2 py-1.5 border border-gray-300 rounded-lg text-right text-sm font-semibold text-teal-700 focus:ring-2 focus:ring-teal-500"
+                          placeholder="0"
+                          className="w-32 px-2 py-1 border border-gray-300 rounded text-right text-sm font-semibold text-indigo-700 focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
                     </td>
+                    <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
                     <td className="px-4 py-2 text-center text-xs">
                       {d.rasio > 0 ? (
                         <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-mono">{(d.rasio).toFixed(4)}</span>
