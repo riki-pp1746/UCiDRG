@@ -126,16 +126,16 @@ export function runRVUAllocation(
     const tarifINACBG = r.total_tarif || r.tarif_inacbg || 0;
     const tarifIDRG = r.idrg.total_tarif || 0;
     
-    const selisihINACBG = unitCostDihitung - tarifINACBG;
-    const selisihIDRG = unitCostDihitung - tarifIDRG;
+    const selisihINACBG = tarifINACBG - unitCostDihitung;
+    const selisihIDRG = tarifIDRG - unitCostDihitung;
     
     const selisihPersenINACBG = tarifINACBG > 0 ? (selisihINACBG / tarifINACBG) * 100 : 0;
     const selisihPersenIDRG = tarifIDRG > 0 ? (selisihIDRG / tarifIDRG) * 100 : 0;
     const crr = unitCostDihitung > 0 ? (tarifINACBG / unitCostDihitung) * 100 : 0;
 
     const getStatus = (selisih: number) => {
-      if (selisih < -50000) return 'UNTUNG';
-      if (selisih > 50000) return 'RUGI';
+      if (selisih > 50000) return 'UNTUNG'; // Positive selisih (Tarif > Cost) is Untung
+      if (selisih < -50000) return 'RUGI';  // Negative selisih (Tarif < Cost) is Rugi
       return 'IMPAS';
     };
 
@@ -196,8 +196,8 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       const rataINACBG = totalINACBG / n;
       const rataIDRG = totalIDRG / n;
 
-      const selisihINACBG = rataUnitCost - rataINACBG;
-      const selisihIDRG = rataUnitCost - rataIDRG;
+      const selisihINACBG = rataINACBG - rataUnitCost;
+      const selisihIDRG = rataIDRG - rataUnitCost;
 
       const selisihPersenINACBG = rataINACBG === 0 ? 0 : (selisihINACBG / rataINACBG) * 100;
       const selisihPersenIDRG = rataIDRG === 0 ? 0 : (selisihIDRG / rataIDRG) * 100;
@@ -205,12 +205,12 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       const crr = rataINACBG === 0 ? 0 : (rataUnitCost / rataINACBG) * 100;
 
       let statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
-      if (rataUnitCost < rataINACBG) statusINACBG = 'UNTUNG';
-      if (rataUnitCost > rataINACBG) statusINACBG = 'RUGI';
+      if (selisihINACBG > 50000) statusINACBG = 'UNTUNG'; // Tarif > Cost
+      if (selisihINACBG < -50000) statusINACBG = 'RUGI';  // Tarif < Cost
 
       let statusIDRG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
-      if (rataUnitCost < rataIDRG) statusIDRG = 'UNTUNG';
-      if (rataUnitCost > rataIDRG) statusIDRG = 'RUGI';
+      if (selisihIDRG > 50000) statusIDRG = 'UNTUNG';
+      if (selisihIDRG < -50000) statusIDRG = 'RUGI';
 
       groups.push({
         group_code: groupCode,
