@@ -9,15 +9,44 @@ import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCost
 import { useAuthStore } from '../stores/authStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
-import { FileDown, Printer, FileSpreadsheet } from 'lucide-react';
+import { FileDown, Printer, FileSpreadsheet, Presentation } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import PptxGenJS from 'pptxgenjs';
 import clsx from 'clsx';
+import type { BillingGroup } from '../types/costing.types';
 
 const STATUS_BADGE = {
   UNTUNG: 'text-green-700 bg-green-50',
   IMPAS: 'text-amber-700 bg-amber-50',
   RUGI: 'text-red-700 bg-red-50',
 };
+
+const STATUS_LABEL = {
+  UNTUNG: 'PROFIT',
+  IMPAS: 'BREAK EVEN POINT (BEP)',
+  RUGI: 'DEFISIT',
+};
+
+const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
+  { key: 'procedure_amt', label: 'Prosedur Non Bedah' },
+  { key: 'surgical_amt', label: 'Prosedur Bedah' },
+  { key: 'consul_amt', label: 'Konsultasi' },
+  { key: 'expert_amt', label: 'Tenaga Ahli' },
+  { key: 'nursing_amt', label: 'Keperawatan' },
+  { key: 'ancillary_amt', label: 'Penunjang' },
+  { key: 'radiology_amt', label: 'Radiologi' },
+  { key: 'laboratory_amt', label: 'Laboratorium' },
+  { key: 'blood_amt', label: 'Pelayanan Darah' },
+  { key: 'rehab_amt', label: 'Rehabilitasi' },
+  { key: 'room_amt', label: 'Kamar/Akomodasi' },
+  { key: 'intensive_amt', label: 'Rawat Intensif' },
+  { key: 'drug_amt', label: 'Obat' },
+  { key: 'device_amt', label: 'Alkes' },
+  { key: 'consumable_amt', label: 'BMHP' },
+  { key: 'device_rent_amt', label: 'Sewa Alat' },
+  { key: 'drug_chronic_amt', label: 'Obat Kronis' },
+  { key: 'drug_chemo_amt', label: 'Obat Kemoterapi' },
+];
 
 export default function ReportPage() {
   const viewMode = useCostingStore(s => s.viewMode);
@@ -56,8 +85,8 @@ export default function ReportPage() {
       ['Case Mix Index (CMI)', summary.cmi.toFixed(3)],
       ['Reduction of Variance (ROV)', (summary.riv * 100).toFixed(2) + '%'],
       ['Rata-rata CoV DRG', (summary.rataCov * 100).toFixed(2) + '%'],
-      ['% DRG Rugi', summary.persenRugi.toFixed(1) + '%'],
-      ['% DRG Untung', summary.persenUntung.toFixed(1) + '%'],
+      ['% DRG Defisit', summary.persenRugi.toFixed(1) + '%'],
+      ['% DRG Profit', summary.persenUntung.toFixed(1) + '%'],
     ];
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
@@ -72,46 +101,41 @@ export default function ReportPage() {
       d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || '-',
       d.jumlahKasus, d.rataUnitCost, d.rataTarif,
       d.selisih, d.selisihPersen.toFixed(1) + '%', (d.cov * 100).toFixed(2) + '%',
-      d.totalBiayaRS, d.totalTarif, d.status
+      d.totalBiayaRS, d.totalTarif, STATUS_LABEL[d.status]
     ]);
     const ws2 = XLSX.utils.aoa_to_sheet([drgHeader, ...drgData]);
     XLSX.utils.book_append_sheet(wb, ws2, `${viewMode} Comparison`);
 
-    // Sheet 3: Patient Detail (max 5000 rows for performance)
+    // Sheet 3: Patient Detail. Data dan urutan komponen sama dengan frontend.
     const patHeader = [
       'Nama Pasien', 'MRN', 'SEP', 'Tgl Masuk', 'Tgl Keluar', 'LOS',
       'Kelas Rawat', `Kode ${viewMode}`, `Deskripsi ${viewMode}`, 'Diagnosa', 'Prosedur',
-      'Prosedur Non Bedah', 'Prosedur Bedah', 'Konsultasi', 'Keperawatan',
-      'Lab', 'Radiologi', 'Kamar', 'ICU', 'Obat', 'Alkes',
+      ...BILLING_EXPORT.map(item => item.label),
       'Unit Cost Dihitung', `Tarif ${viewMode}`, 'Selisih', 'Status'
     ];
-    const patData = patientResults.slice(0, 5000).map(r => [
+    const patData = patientResults.map(r => [
       r.patient.nama_pasien, r.patient.mrn, r.patient.sep,
       r.patient.admission_date, r.patient.discharge_date, r.patient.los,
       r.patient.kelas_rawat,
       viewMode === 'INACBG' ? r.patient.inacbg : r.patient.idrg?.drg_code,
       viewMode === 'INACBG' ? r.patient.deskripsi_inacbg : r.patient.idrg?.drg_description,
       r.patient.diaglist, r.patient.proclist,
-      r.patient.billing.procedure_amt, r.patient.billing.surgical_amt,
-      r.patient.billing.consul_amt, r.patient.billing.nursing_amt,
-      r.patient.billing.laboratory_amt, r.patient.billing.radiology_amt,
-      r.patient.billing.room_amt, r.patient.billing.intensive_amt,
-      r.patient.billing.drug_amt, r.patient.billing.device_amt,
+      ...BILLING_EXPORT.map(item => r.patient.billing[item.key] || 0),
       r.unitCostDihitung, viewMode === 'INACBG' ? r.tarifINACBG : r.tarifIDRG,
       viewMode === 'INACBG' ? r.selisihINACBG : r.selisihIDRG,
-      viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG
+      STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG]
     ]);
     const ws3 = XLSX.utils.aoa_to_sheet([patHeader, ...patData]);
     XLSX.utils.book_append_sheet(wb, ws3, 'Detail Pasien');
 
     // Sheet 4: Top Rugi
     const rugiData = [
-      ['TOP DRG PALING RUGI'],
+      ['TOP DRG DEFISIT TERTINGGI'],
       [`Kode ${viewMode}`, `Nama ${viewMode}`, 'Kasus', 'Unit Cost', `Tarif ${viewMode}`, 'Selisih'],
       ...summary.top10Rugi.map(d => [d.group_code, d.group_description, d.jumlahKasus, d.rataUnitCost, d.rataTarif, d.selisih]),
     ];
     const ws4 = XLSX.utils.aoa_to_sheet(rugiData);
-    XLSX.utils.book_append_sheet(wb, ws4, 'Top DRG Rugi');
+    XLSX.utils.book_append_sheet(wb, ws4, 'Top DRG Defisit');
 
     // Sheet 5: Audit alokasi dan validasi data dasar
     const auditHeader = ['Tahap', 'Sumber Biaya', 'Penerima', 'Dasar Alokasi', 'Nilai Dasar', 'Tarif Alokasi', 'Biaya Dialokasikan'];
@@ -133,7 +157,6 @@ export default function ReportPage() {
     XLSX.writeFile(wb, filename);
   };
 
-  /* Export PPTX dinonaktifkan sementara sampai bundler browser memakai paket PPTX yang kompatibel.
   const exportPptx = async () => {
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
@@ -159,10 +182,10 @@ export default function ReportPage() {
     slide = pptx.addSlide(); title(slide, 'Ringkasan Hasil', `Tarif pembanding: ${viewMode}`);
     const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total Unit Cost', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summary.cmi.toFixed(3)], ['ROV', `${(summary.riv * 100).toFixed(1)}%`]];
     kpis.forEach((item, i) => { const x = 0.7 + (i % 3) * 4.15; const y = 1.55 + Math.floor(i / 3) * 2.05; slide.addShape(pptx.ShapeType.roundRect, { x, y, w: 3.65, h: 1.45, rectRadius: 0.08, fill: { color: light }, line: { color: 'D7E2E8', width: 0.8 } }); slide.addText(item[0], { x: x + 0.25, y: y + 0.28, w: 3.1, h: 0.25, fontFace: 'Aptos', fontSize: 11, color: gray }); slide.addText(item[1], { x: x + 0.25, y: y + 0.67, w: 3.1, h: 0.38, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); });
-    slide.addText(`Status DRG: ${summary.jumlahDRGUntung} untung, ${summary.jumlahDRGImpas} impas, ${summary.jumlahDRGRugi} rugi.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
+    slide.addText(`Status DRG: ${summary.jumlahDRGUntung} profit, ${summary.jumlahDRGImpas} BEP, ${summary.jumlahDRGRugi} defisit.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
 
     slide = pptx.addSlide(); title(slide, 'Alur Patient Level Costing', 'Biaya RS ditelusuri hingga level pasien');
-    const steps = [['Step 1', 'Overhead Cost', 'Alokasi ke pusat biaya penunjang dan layanan'], ['Step 2', 'Layanan Pasien', 'Unit cost per hari rawat atau kunjungan'], ['Step 3', 'Intermediate Cost', 'Pembagian proporsional ke 18 komponen tarif pasien']];
+    const steps = [['Step 1', 'Overhead', 'Biaya penunjang umum'], ['Step 2', 'Intermediate Cost', 'Biaya penunjang medik'], ['Step 3–5', 'Distribusi hingga Grouping', '18 variabel, Cost per Pasien, dan DRG']];
     steps.forEach((item, i) => { const x = 0.8 + i * 4.15; slide.addShape(pptx.ShapeType.roundRect, { x, y: 2.0, w: 3.45, h: 2.25, rectRadius: 0.08, fill: { color: i === 1 ? 'E7F7F4' : 'EEF4FA' }, line: { color: i === 1 ? '91D8CF' : 'BFD4E5' } }); slide.addText(item[0], { x: x + 0.25, y: 2.35, w: 2.9, h: 0.25, fontFace: 'Aptos', fontSize: 13, bold: true, color: teal }); slide.addText(item[1], { x: x + 0.25, y: 2.8, w: 2.9, h: 0.4, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); slide.addText(item[2], { x: x + 0.25, y: 3.4, w: 2.9, h: 0.45, fontFace: 'Aptos', fontSize: 11, color: gray, breakLine: false }); });
     slide.addText(`Jejak alokasi yang tercatat: ${(config.allocationTraces || []).length} baris.`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray, align: 'center' }); addFooter(slide, 3);
 
@@ -187,7 +210,7 @@ export default function ReportPage() {
     ];
     recommendations.forEach((text, i) => { const y = 1.55 + i * 1.2; slide.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.05, w: 0.32, h: 0.32, fill: { color: teal }, line: { color: teal } }); slide.addText(String(i + 1), { x: 0.85, y: y + 0.08, w: 0.32, h: 0.15, fontFace: 'Aptos', fontSize: 9, bold: true, color: 'FFFFFF', align: 'center' }); slide.addText(text, { x: 1.4, y, w: 10.7, h: 0.65, fontFace: 'Aptos', fontSize: 16, color: navy, breakLine: false }); }); addFooter(slide, 6);
     await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(user?.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
-  }; */
+  };
 
   // Print / PDF
   const handlePrint = () => window.print();
@@ -207,6 +230,13 @@ export default function ReportPage() {
           >
             <FileSpreadsheet className="w-4 h-4" />
             Export to Excel (.xlsx)
+          </button>
+          <button
+            onClick={exportPptx}
+            className="flex items-center gap-2 px-5 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-100 text-sm font-semibold transition-colors shadow-sm"
+          >
+            <Presentation className="w-4 h-4" />
+            Export to PowerPoint (.pptx)
           </button>
           <button
             onClick={handlePrint}
@@ -283,7 +313,7 @@ export default function ReportPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className={clsx('text-lg font-bold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
-                {summary.totalSelisih < 0 ? '⚠ RS Merugi Secara Agregat' : '✓ RS Untung Secara Agregat'}
+                {summary.totalSelisih < 0 ? '⚠ RS Defisit Secara Agregat' : '✓ RS Profit Secara Agregat'}
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 Total selisih: <strong className={summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700'}>
@@ -294,15 +324,15 @@ export default function ReportPage() {
             <div className="flex gap-6 text-center">
               <div>
                 <p className="text-2xl font-bold text-red-600">{summary.jumlahDRGRugi}</p>
-                <p className="text-xs text-gray-500">DRG Rugi</p>
+                <p className="text-xs text-gray-500">DRG Defisit</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-amber-600">{summary.jumlahDRGImpas}</p>
-                <p className="text-xs text-gray-500">DRG Impas</p>
+                <p className="text-xs text-gray-500">DRG BEP</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-green-600">{summary.jumlahDRGUntung}</p>
-                <p className="text-xs text-gray-500">DRG Untung</p>
+                <p className="text-xs text-gray-500">DRG Profit</p>
               </div>
             </div>
           </div>
@@ -347,7 +377,7 @@ export default function ReportPage() {
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span className={clsx('inline-block px-2 py-0.5 rounded-full font-semibold', STATUS_BADGE[drg.status])}>
-                        {drg.status}
+                        {STATUS_LABEL[drg.status]}
                       </span>
                     </td>
                   </tr>
@@ -363,7 +393,7 @@ export default function ReportPage() {
             <h3 className="font-bold text-amber-800 mb-3">⚠️ Rekomendasi Tindak Lanjut</h3>
             <ul className="space-y-2 text-sm text-amber-700">
               <li>• <strong>{summary.jumlahDRGRugi} grup {viewMode}</strong> memiliki unit cost melebihi tarif {viewMode} — perlu negosiasi tarif atau efisiensi biaya</li>
-              <li>• {viewMode} dengan selisih terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> (+{formatRupiah(summary.top10Rugi[0]?.selisih || 0)} per kasus)</li>
+              <li>• {viewMode} dengan defisit terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> ({formatRupiah(summary.top10Rugi[0]?.selisih || 0)} per kasus)</li>
               <li>• Review komponen biaya dominan (surgical, kamar, obat) untuk {viewMode} defisit</li>
               <li>• Pertimbangkan clinical pathway optimization untuk {viewMode} high-cost</li>
               <li>• Lakukan rekonsiliasi tarif dengan BPJS untuk periode berikutnya</li>

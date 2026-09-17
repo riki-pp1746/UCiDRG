@@ -30,14 +30,14 @@ const navItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
   { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
-  { path: '/tarif-pasien', icon: Pill, label: 'Tarif Pasien' },
+  { path: '/tarif-pasien', icon: Pill, label: 'Step 4: Cost per Pasien' },
   { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
 ];
 
 export default function AppLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
@@ -47,12 +47,19 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F5F5F7] text-[#1D1D1F]">
+    <div className="flex min-h-screen lg:h-screen bg-[#F5F5F7] text-[#1D1D1F]">
+      {sidebarOpen && (
+        <button
+          aria-label="Tutup navigasi"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/30 z-30 lg:hidden"
+        />
+      )}
       {/* Sidebar - Clean B2B SaaS Style */}
       <aside
         className={clsx(
-          'bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-20',
-          sidebarOpen ? 'w-64' : 'w-20'
+          'fixed inset-y-0 left-0 lg:relative bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-40',
+          sidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-20'
         )}
       >
         {/* Logo Area */}
@@ -73,6 +80,7 @@ export default function AppLayout() {
               key={item.path}
               to={item.path}
               end={item.exact}
+              onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false); }}
               className={({ isActive }) =>
                 clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
@@ -121,9 +129,9 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen lg:h-screen overflow-hidden relative">
         {/* Header - Solid Clean */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 sticky top-0 z-10">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}

@@ -202,7 +202,8 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       const selisihPersenINACBG = rataINACBG === 0 ? 0 : (selisihINACBG / rataINACBG) * 100;
       const selisihPersenIDRG = rataIDRG === 0 ? 0 : (selisihIDRG / rataIDRG) * 100;
       
-      const crr = rataINACBG === 0 ? 0 : (rataUnitCost / rataINACBG) * 100;
+      const selectedTarif = type === 'INACBG' ? rataINACBG : rataIDRG;
+      const crr = rataUnitCost === 0 ? 0 : (selectedTarif / rataUnitCost) * 100;
 
       let statusINACBG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
       if (selisihINACBG > 50000) statusINACBG = 'UNTUNG'; // Tarif > Cost
@@ -225,7 +226,7 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
         jumlahKasus: n,
         rataUnitCost,
         rataTarif: type === 'INACBG' ? rataINACBG : rataIDRG,
-        totalBiayaRS: groupResults.reduce((s, r) => s + r.patient.tarif_rs, 0),
+        totalBiayaRS: totalUnitCost,
         totalTarif: type === 'INACBG' ? totalINACBG : totalIDRG,
         selisih: type === 'INACBG' ? selisihINACBG : selisihIDRG,
         selisihPersen: type === 'INACBG' ? selisihPersenINACBG : selisihPersenIDRG,
@@ -341,8 +342,8 @@ export function generateSummary(
     jumlahDRGRugi: drgRugi.length,
     persenRugi: (drgRugi.length / (drgResults.length || 1)) * 100,
     persenUntung: (drgUntung.length / (drgResults.length || 1)) * 100,
-    top10Rugi: drgRugi.sort((a, b) => b.selisih - a.selisih).slice(0, 10),
-    top10Untung: drgUntung.sort((a, b) => a.selisih - b.selisih).slice(0, 10),
+    top10Rugi: drgRugi.sort((a, b) => a.selisih - b.selisih).slice(0, 10),
+    top10Untung: drgUntung.sort((a, b) => b.selisih - a.selisih).slice(0, 10),
   };
 }
 

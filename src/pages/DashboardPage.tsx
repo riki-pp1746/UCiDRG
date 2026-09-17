@@ -60,6 +60,22 @@ export default function DashboardPage() {
   const processProgress = useCostingStore(s => s.processProgress);
   const navigate = useNavigate();
 
+  const pieData = React.useMemo(() => summary ? [
+    { name: 'Profit', value: summary.jumlahDRGUntung, color: COLORS.UNTUNG },
+    { name: 'BEP', value: summary.jumlahDRGImpas, color: COLORS.IMPAS },
+    { name: 'Defisit', value: summary.jumlahDRGRugi, color: COLORS.RUGI },
+  ].filter(d => d.value > 0) : [], [summary]);
+  const top10DRG = React.useMemo(() => drgResults.slice(0, 10).map(d => ({
+    name: d.group_code,
+    label: d.group_description.slice(0, 30) + '...',
+    'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
+    'Tarif': Math.round(d.rataTarif / 1000),
+    status: d.status,
+  })), [drgResults]);
+  const covScatter = React.useMemo(() => drgResults.filter(d => d.jumlahKasus > 0).map(d => ({
+    code: d.group_code, cases: d.jumlahKasus, cov: d.cov * 100, cost: d.rataUnitCost,
+  })), [drgResults]);
+
   // No data state
   if (!summary && !isProcessing) {
     return (
@@ -102,25 +118,6 @@ export default function DashboardPage() {
   }
 
   if (!summary) return null;
-
-  // Pie chart data for DRG status
-  const pieData = React.useMemo(() => [
-    { name: 'Untung', value: summary.jumlahDRGUntung, color: COLORS.UNTUNG },
-    { name: 'Impas', value: summary.jumlahDRGImpas, color: COLORS.IMPAS },
-    { name: 'Rugi', value: summary.jumlahDRGRugi, color: COLORS.RUGI },
-  ].filter(d => d.value > 0), [summary.jumlahDRGUntung, summary.jumlahDRGImpas, summary.jumlahDRGRugi]);
-
-  // Top DRG for bar chart (top 10 by kasus)
-  const top10DRG = React.useMemo(() => drgResults.slice(0, 10).map(d => ({
-    name: d.group_code,
-    label: d.group_description.slice(0, 30) + '...',
-    'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
-    'Tarif': Math.round(d.rataTarif / 1000),
-    status: d.status,
-  })), [drgResults]);
-  const covScatter = React.useMemo(() => drgResults.filter(d => d.jumlahKasus > 0).map(d => ({
-    code: d.group_code, cases: d.jumlahKasus, cov: d.cov * 100, cost: d.rataUnitCost,
-  })), [drgResults]);
 
   return (
     <div className="space-y-6">
@@ -289,13 +286,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Rugi & Untung Tables */}
+      {/* Top Defisit & Profit Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Rugi */}
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-red-500" />
-            Top 5 DRG Paling Rugi
+            Top 5 DRG Defisit Tertinggi
           </h3>
           <div className="space-y-2">
             {summary.top10Rugi.slice(0, 5).map((drg, i) => (
@@ -316,7 +313,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Untung */}
+        {/* Top Profit */}
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <span className="w-3 h-3 rounded-full bg-green-500" />

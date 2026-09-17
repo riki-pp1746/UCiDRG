@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
+import type { RVUGlobalCosts } from '../types/costing.types';
 
 // ── Reusable Rupiah input — simpan draft string, commit ke store saat blur ──
 function RpInput({ value, onChange, placeholder = '0' }: {
@@ -141,10 +142,10 @@ const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: 'info',         label: 'Info RS',       icon: '🏥', desc: 'Identitas & kesiapan RS' },
   { id: 'dataDasar',    label: 'Data Dasar RS',  icon: '📊', desc: 'BOR, ALOS, LHR, Pendapatan' },
   { id: 'overhead',     label: 'Step 1: Overhead', icon: '📋', desc: 'Pusat biaya penunjang umum' },
-  { id: 'intermediate', label: 'Step 3: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
-  { id: 'final',        label: 'Step 2: Layanan', icon: '🛏️', desc: 'Alokasi layanan ke pasien' },
-  { id: 'hasil',        label: 'Hasil Unit Cost', icon: '📈', desc: 'Unit cost per pusat biaya' },
-  { id: 'distribusi18', label: 'Distribusi 18 Var', icon: '💊', desc: 'Mapping ke 18 variabel E-Klaim' },
+  { id: 'intermediate', label: 'Step 2: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
+  { id: 'final',        label: 'Alokasi Layanan', icon: '🛏️', desc: 'Proses pendukung Step-Down' },
+  { id: 'hasil',        label: 'Hasil Step-Down', icon: '📈', desc: 'Unit cost per pusat biaya' },
+  { id: 'distribusi18', label: 'Step 3: Distribusi 18 Var', icon: '💊', desc: 'Proporsi sesuai tagihan TXT E-Klaim' },
 ];
 
 // ── Helper hitung biaya langsung untuk tampilan ──
@@ -360,9 +361,7 @@ export default function CostingInputPage() {
 
   // Sinkronisasi hasil step-down ke engine Patient Level Costing
   const handleSyncToPatientLevel = () => {
-    const { intermediateCenters, finalCenters } = config;
-
-    const rvu: any = {
+    const rvu: RVUGlobalCosts = {
       procedure_amt: 0, surgical_amt: 0, consul_amt: 0, expert_amt: 0,
       nursing_amt: 0, ancillary_amt: 0, radiology_amt: 0, laboratory_amt: 0,
       blood_amt: 0, rehab_amt: 0, room_amt: 0, intensive_amt: 0,
@@ -370,33 +369,22 @@ export default function CostingInputPage() {
       drug_chronic_amt: 0, drug_chemo_amt: 0,
     };
 
-    // Mapping Intermediate → Komponen Tarif e-klaim
-    intermediateCenters.forEach(c => {
-      const cost = c.totalCostAfterOverhead;
-      const name = c.nama.toLowerCase();
-      if (name.includes('farmasi') || name.includes('obat')) rvu.drug_amt += cost;
-      else if (name.includes('radiologi') || name.includes('citra')) rvu.radiology_amt += cost;
-      else if (name.includes('lab')) rvu.laboratory_amt += cost;
-      else if (name.includes('rehab')) rvu.rehab_amt += cost;
-      else if (name.includes('bedah') || name.includes('ibs')) rvu.surgical_amt += cost;
-      else if (name.includes('darah')) rvu.blood_amt += cost;
-      else if (name.includes('gas') || name.includes('oksigen') || name.includes('cssd')) rvu.consumable_amt += cost;
-      else rvu.ancillary_amt += cost;
+    // Gunakan mapping 18 variabel yang sedang terlihat di frontend sebagai
+    // sumber tunggal untuk Dashboard, Perbandingan, Excel, PDF, dan PPT.
+    (Object.keys(rvu) as (keyof RVUGlobalCosts)[]).forEach(key => {
+      const tarifKey = key === 'drug_chronic_amt'
+        ? 'chronic_drug_amt'
+        : key === 'drug_chemo_amt'
+          ? 'chemo_drug_amt'
+          : key;
+      rvu[key] = biayaRSMap[tarifKey as keyof typeof biayaRSMap] || 0;
     });
 
-    // Mapping Final → Komponen Tarif e-klaim
-    finalCenters.forEach(c => {
-      const cost = c.totalCostAfterIntermediate;
-      const name = c.nama.toLowerCase();
-      if (name.includes('icu') || name.includes('hcu') || name.includes('picu') || name.includes('nicu') || name.includes('iccu')) rvu.intensive_amt += cost;
-      else if (c.kategori === 'rawat_inap') rvu.room_amt += cost;
-      else rvu.procedure_amt += cost;
-    });
-
+    calculateDistribution();
     useCostingStore.getState().setRVUGlobalCosts(rvu);
     setOverheadConfig({ overheadFactor: 0, administrasiFactor: 0, depresiasiFactor: 0, jaminanMutuFactor: 0, useActualBilling: false });
 
-    alert(`✅ Sinkronisasi Berhasil!\n\nBiaya dari seluruh ${intermediateCenters.length} unit penunjang dan ${finalCenters.length} unit layanan telah diproporsikan ke 18 komponen tarif e-klaim.\n\nBuka Dashboard atau Perbandingan untuk melihat Unit Cost per Pasien.`);
+    alert('✅ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -682,13 +670,15 @@ export default function CostingInputPage() {
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Alur Patient Level Costing</p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {[
-            { icon: '📋', label: 'Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+            { icon: '📋', label: 'Step 1: Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🔬', label: 'Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+            { icon: '🔬', label: 'Step 2: Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🛏️', label: 'Layanan Pasien', color: 'bg-green-50 text-green-700 border-green-200' },
+            { icon: '🛏️', label: 'Alokasi Layanan', color: 'bg-green-50 text-green-700 border-green-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '👤', label: 'Cost per Pasien', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+            { icon: '📈', label: 'Hasil Step-Down', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+            { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
+            { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', color: 'bg-amber-50 text-amber-700 border-amber-200' },
           ].map((s, i) => (
             <span key={i} className={clsx('px-3 py-1.5 rounded-lg border font-medium text-xs', s.color)}>
               {s.icon} {s.label}
@@ -1290,8 +1280,8 @@ export default function CostingInputPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { step: 'Step 1', label: 'Total Overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Dialokasikan ke Penunjang & Layanan' },
-              { step: 'Step 3', label: 'Total Intermediate Cost', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Dasar pembagian proporsional ke pasien' },
-              { step: 'Step 2', label: 'Total Biaya Layanan RS', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Dasar penghitungan unit cost pasien' },
+              { step: 'Step 2', label: 'Total Intermediate Cost', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Dialokasikan ke 18 variabel billing E-Klaim' },
+              { step: 'Pendukung', label: 'Total Biaya Layanan RS', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Dasar penghitungan unit cost pasien' },
             ].map(c => (
               <div key={c.step} className={clsx('rounded-xl p-4 border', c.color)}>
                 <p className="text-xs font-bold opacity-60">{c.step}</p>
@@ -1378,7 +1368,7 @@ export default function CostingInputPage() {
               <p className="flex items-start gap-2">
                 <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
                 <span>
-                  <strong>Distribusi Step 3 (Sesuai Materi Hal 50):</strong> Total Biaya RS dari hasil Unit Cost (Penunjang/Intermediate) dipetakan ke 18 Variabel. Rasio proporsional didapat dari Tagihan E-Klaim. Rumus: <code>(Tagihan Pasien / Total Tagihan E-Klaim) × Total Biaya RS</code>.
+                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya Overhead dan Intermediate didistribusikan langsung ke 18 variabel. Proporsinya mengikuti data tagihan pada TXT E-Klaim, dengan rumus <code>(Tagihan Pasien / Total Tagihan E-Klaim) × Total Biaya RS</code>.
                 </span>
               </p>
             </div>

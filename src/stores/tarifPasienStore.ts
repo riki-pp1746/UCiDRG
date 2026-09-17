@@ -130,24 +130,11 @@ export const useTarifPasienStore = create<TarifPasienState>()(
             totalDist += alokasi;
           });
 
-          // Step 2: Akomodasi (misal di-set lewat UC Kamar / Rawat Jalan)
-          // Default logic: jika room_amt di e-klaim adalah acuan, ia akan tergabung di atas.
-          // Tapi secara teori materi Hal 49: LHR * UC Kamar
-          let akomodasi = 0;
-          if (p.lhr > 0 && unitCostKamar[p.kelasRawat]) {
-            akomodasi = p.lhr * unitCostKamar[p.kelasRawat];
-          } else if (p.kelasRawat === 'rawat_jalan' && unitCostKamar['rawat_jalan']) {
-            akomodasi = 1 * unitCostKamar['rawat_jalan']; // per kunjungan
-          } else {
-            // fallback gunakan distribusi room_amt dari klaim
-            akomodasi = distributedCosts['room_amt'] || 0; 
-          }
-
-          // Mencegah double counting room_amt jika sudah dihitung di akomodasi
-          if (akomodasi > 0 && akomodasi !== distributedCosts['room_amt']) {
-              // Jika kita pakai pendekatan LHR * UC, maka room_amt tidak perlu di-sum dua kali
-              totalDist = totalDist - (distributedCosts['room_amt'] || 0) + akomodasi;
-          }
+          // Satu sumber kebenaran: seluruh 18 komponen, termasuk kamar, memakai
+          // proporsi tagihan TXT E-Klaim yang sama dengan engine laporan.
+          // unitCostKamar dipertahankan di signature untuk kompatibilitas pemanggil lama.
+          void unitCostKamar;
+          const akomodasi = distributedCosts['room_amt'] || 0;
 
           return {
             ...p,

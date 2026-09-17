@@ -19,6 +19,12 @@ const STATUS_BADGE = {
   RUGI: 'bg-red-100 text-red-700 border-red-200',
 };
 
+const STATUS_LABEL = {
+  UNTUNG: 'Profit',
+  IMPAS: 'Break Even Point (BEP)',
+  RUGI: 'Defisit',
+};
+
 type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen' | 'cov';
 
 export default function ComparisonPage() {
@@ -71,9 +77,9 @@ export default function ComparisonPage() {
     code: d.group_code,
     name: d.group_description.slice(0, 25),
     'Unit Cost (Rp Rb)': Math.round(d.rataUnitCost / 1000),
-    'Tarif (Rp Rb)': Math.round(d.rataTarif / 1000),
+    [`Tarif ${viewMode} (Rp Rb)`]: Math.round(d.rataTarif / 1000),
     Kasus: d.jumlahKasus,
-  })), [sorted]);
+  })), [sorted, viewMode]);
 
   const SortIcon = ({ k }: { k: SortKey }) => {
     if (sortKey !== k) return <ChevronsUpDown className="w-3 h-3 text-gray-300" />;
@@ -95,7 +101,7 @@ export default function ComparisonPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs INA-CBG</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs {viewMode}</h1>
           <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
@@ -146,16 +152,16 @@ export default function ComparisonPage() {
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
           >
             <option value="ALL">Semua Status</option>
-            <option value="UNTUNG">Untung</option>
-            <option value="IMPAS">Impas</option>
-            <option value="RUGI">Rugi</option>
+            <option value="UNTUNG">Profit</option>
+            <option value="IMPAS">Break Even Point (BEP)</option>
+            <option value="RUGI">Defisit</option>
           </select>
         </div>
       </div>
 
       {activeTab === 'chart' ? (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif INA-CBG (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
           <ResponsiveContainer width="99%" height={400}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
@@ -164,7 +170,7 @@ export default function ComparisonPage() {
               <Tooltip formatter={(v, name) => [formatRupiah((v as number) * 1000), name as string]} />
               <Legend />
               <Bar dataKey="Unit Cost (Rp Rb)" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              <Bar dataKey="Tarif INA-CBG (Rp Rb)" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey={`Tarif ${viewMode} (Rp Rb)`} fill="#8b5cf6" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -234,7 +240,7 @@ export default function ComparisonPage() {
                           'inline-block px-2 py-0.5 rounded-full text-xs font-semibold border',
                           STATUS_BADGE[drg.status]
                         )}>
-                          {drg.status}
+                          {STATUS_LABEL[drg.status]}
                         </span>
                       </td>
                     </tr>

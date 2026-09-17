@@ -126,7 +126,7 @@ export default function TarifPasienPage() {
           18 Variabel Tarif Pasien (Patient Level Costing)
         </h1>
         <p className="text-gray-500 mt-1">
-          Distribusi total biaya RS ke 18 variabel tarif untuk menghasilkan Unit Cost per Pasien sesuai data E-Klaim (Step 3).
+          Step 4: menghasilkan Cost per Pasien dari distribusi 18 variabel billing sesuai data TXT E-Klaim.
         </p>
       </div>
 
@@ -134,7 +134,7 @@ export default function TarifPasienPage() {
       <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1">
         {[
           { id: 'input', label: '1. Input Data Pasien (E-Klaim)', icon: Users },
-          { id: 'hasil', label: '2. Hasil Cost per Pasien', icon: Calculator },
+          { id: 'hasil', label: 'Step 4: Hasil Cost per Pasien', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
