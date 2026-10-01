@@ -341,7 +341,7 @@ export default function UploadPage() {
             <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><FileSpreadsheet className="w-5 h-5"/></div>
             <div>
               <p className="font-semibold text-[#041E42]">Template Costing (.XLSX)</p>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke Step-Down Costing.</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke input biaya RS.</p>
             </div>
           </div>
         </div>

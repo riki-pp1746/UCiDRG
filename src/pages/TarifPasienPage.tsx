@@ -4,9 +4,9 @@ import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { 
-  Calculator, Users, FileSpreadsheet, Download, Trash2, Plus, Info, 
-  AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw, 
-  Save, Upload, Building2, X, AlertCircle 
+  Calculator, Users, Download, Trash2, Plus, Info,
+  AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
+  X, AlertCircle
 } from 'lucide-react';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_SHORT, KELAS_RAWAT_LABELS, KelasRawat, makeEmptyPatient } from '../types/tarifPasien.types';
 
@@ -21,9 +21,9 @@ export default function TarifPasienPage() {
   const pageSize = 10;
 
   const {
-    patients, biayaRSMap, distribusi,
+    patients, biayaRSMap,
     addPatient, updatePatient, removePatient, clearPatients,
-    setBiayaRS, calculateDistribution, validationIssues, validateAgainstHospital
+    calculateDistribution, validationIssues, validateAgainstHospital
   } = useTarifPasienStore();
 
   const { config } = useHospitalCostStore();
@@ -66,35 +66,16 @@ export default function TarifPasienPage() {
 
       useTarifPasienStore.getState().setPatients(mapped);
       // Auto-calculate after sync
-      setTimeout(() => calculateDistribution(mapUnitCostKamar()), 100);
+      setTimeout(() => calculateDistribution(), 100);
     }
   }, [rawRecords, patients.length, calculateDistribution]);
-
-  // Mapping Unit Cost dari Step-Down Costing ke mapping kelas
-  const mapUnitCostKamar = () => {
-    const ucKamar: Record<string, number> = {};
-    const finals = config.finalCenters || [];
-    finals.forEach(f => {
-      const nama = f.nama.toLowerCase();
-      const unitCostLHR = f.jumlahHariRawat > 0 ? (f.totalCostAfterIntermediate / f.jumlahHariRawat) : 0;
-      const unitCostKJ = f.jumlahKunjungan > 0 ? (f.totalCostAfterIntermediate / f.jumlahKunjungan) : 0;
-
-      if (nama.includes('kelas iii') || nama.includes('kelas 3')) ucKamar['kelas3'] = unitCostLHR;
-      if (nama.includes('kelas ii') || nama.includes('kelas 2')) ucKamar['kelas2'] = unitCostLHR;
-      if (nama.includes('kelas i') || nama.includes('kelas 1')) ucKamar['kelas1'] = unitCostLHR;
-      if (nama.includes('icu') || nama.includes('intensif')) ucKamar['icu'] = unitCostLHR;
-      if (nama.includes('igd') || nama.includes('gawat')) ucKamar['igd'] = unitCostKJ;
-      if (nama.includes('rawat jalan') || nama.includes('poliklinik')) ucKamar['rawat_jalan'] = unitCostKJ;
-    });
-    return ucKamar;
-  };
 
   // Recalculate saat tab pindah
   useEffect(() => {
     if (activeTab !== 'input') {
-      calculateDistribution(mapUnitCostKamar());
+      calculateDistribution();
     }
-  }, [activeTab]);
+  }, [activeTab, calculateDistribution]);
 
   useEffect(() => {
     validateAgainstHospital(config);
@@ -155,7 +136,7 @@ export default function TarifPasienPage() {
           <div className="min-w-0 flex-1">
             <p className={`font-semibold text-sm ${validationIssues.length ? 'text-red-800' : 'text-emerald-800'}`}>{validationIssues.length ? `${validationIssues.length} Peringatan: Ada ketidaksesuaian data RS dengan tagihan` : 'Validasi data dasar RS: sesuai'}</p>
             {validationIssues.length ? (
-              <p className="mt-1 text-xs text-red-700">Terdapat komponen biaya dari Step-Down Costing yang tidak memiliki dasar pembagi di data E-Klaim. Klik tombol Periksa untuk melihat detail dan solusinya.</p>
+              <p className="mt-1 text-xs text-red-700">Terdapat komponen biaya RS yang tidak memiliki dasar pembagi pada 18 variabel E-Klaim. Klik tombol Periksa untuk melihat detail dan solusinya.</p>
             ) : (
               <p className="mt-1 text-xs text-emerald-700">LHR, tempat tidur, biaya gaji, serta dasar pembagian 18 komponen telah konsisten.</p>
             )}

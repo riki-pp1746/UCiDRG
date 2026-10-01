@@ -1,6 +1,6 @@
 // ============================================================
 // PAGE: CostingInputPage.tsx
-// Form input biaya RS — Step-Down Costing
+// Form input biaya RS — distribusi langsung ke 18 variabel E-Klaim
 // Alur Patient Level Costing bertahap
 // Tab: Info RS | Data Dasar | A. Overhead | B. Penunjang | C. Layanan | Hasil
 // ============================================================
@@ -11,15 +11,15 @@ import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
-import { RVUInputForm } from '../components/costing/RVUInputForm';
 import {
-  Building2, Calculator, Database, Plus, Trash2, RotateCcw,
-  CheckCircle, AlertCircle, Info, TrendingUp, Upload as UploadIcon,
-  FileSpreadsheet, ArrowRight, Layers, Activity, ClipboardList, RefreshCw, X
+  Building2, Database, Plus, Trash2, RotateCcw,
+  CheckCircle, AlertCircle, Info, HelpCircle, Upload as UploadIcon,
+  FileSpreadsheet, ArrowRight, Layers, Activity, RefreshCw, X
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
 import type { RVUGlobalCosts } from '../types/costing.types';
+import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.types';
 
 // ── Reusable Rupiah input — simpan draft string, commit ke store saat blur ──
 function RpInput({ value, onChange, placeholder = '0' }: {
@@ -143,8 +143,8 @@ const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
   { id: 'dataDasar',    label: 'Data Dasar RS',  icon: '📊', desc: 'BOR, ALOS, LHR, Pendapatan' },
   { id: 'overhead',     label: 'Step 1: Overhead', icon: '📋', desc: 'Pusat biaya penunjang umum' },
   { id: 'intermediate', label: 'Step 2: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
-  { id: 'final',        label: 'Alokasi Layanan', icon: '🛏️', desc: 'Proses pendukung Step-Down' },
-  { id: 'hasil',        label: 'Hasil Step-Down', icon: '📈', desc: 'Unit cost per pusat biaya' },
+  { id: 'final',        label: 'Pusat Biaya Utama', icon: '🛏️', desc: 'Biaya langsung layanan pasien' },
+  { id: 'hasil',        label: 'Ringkasan Biaya RS', icon: '📈', desc: 'Rekonsiliasi laporan keuangan' },
   { id: 'distribusi18', label: 'Step 3: Distribusi 18 Var', icon: '💊', desc: 'Proporsi sesuai tagihan TXT E-Klaim' },
 ];
 
@@ -268,8 +268,15 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
 
 export default function CostingInputPage() {
   const [activeTab, setActiveTab] = useState<Tab>('info');
-  const [showAuditTrail, setShowAuditTrail] = useState(false);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [formulaDetail, setFormulaDetail] = useState<null | {
+    title: string;
+    unitName: string;
+    numerator: number;
+    denominator: number;
+    denominatorLabel: string;
+    result: number;
+  }>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -285,20 +292,6 @@ export default function CostingInputPage() {
 
   const { setOverheadConfig } = useCostingStore();
 
-  // Load defaults for total Biaya RS dari intermediate centers jika masih kosong
-  useEffect(() => {
-    if (Object.keys(biayaRSMap).length === 0 && config.intermediateCenters.length > 0) {
-      const im = config.intermediateCenters;
-      const findCost = (kw: string) => im.find(c => c.nama.toLowerCase().includes(kw))?.totalCostAfterOverhead || 0;
-      
-      setBiayaRS('drug_amt', findCost('farmasi'));
-      setBiayaRS('radiology_amt', findCost('radiologi'));
-      setBiayaRS('laboratory_amt', findCost('lab'));
-      setBiayaRS('blood_amt', findCost('darah'));
-      setBiayaRS('rehab_amt', findCost('rehab'));
-    }
-  }, [config, biayaRSMap, setBiayaRS]);
-
   // Recalculate otomatis saat masuk ke tab distribusi18
   useEffect(() => {
     if (activeTab === 'distribusi18') {
@@ -309,23 +302,13 @@ export default function CostingInputPage() {
         useTarifPasienStore.getState().syncFromCosting(rawRecords);
       }
 
-      // 2. Kalkulasi rasio unit cost
-      const ucKamar: Record<string, number> = {};
-      const finals = config.finalCenters || [];
-      finals.forEach(f => {
-        const nama = f.nama.toLowerCase();
-        const unitCostLHR = f.jumlahHariRawat > 0 ? (f.totalCostAfterIntermediate / f.jumlahHariRawat) : 0;
-        const unitCostKJ = f.jumlahKunjungan > 0 ? (f.totalCostAfterIntermediate / f.jumlahKunjungan) : 0;
-        if (nama.includes('kelas iii') || nama.includes('kelas 3')) ucKamar['kelas3'] = unitCostLHR;
-        if (nama.includes('kelas ii') || nama.includes('kelas 2')) ucKamar['kelas2'] = unitCostLHR;
-        if (nama.includes('kelas i') || nama.includes('kelas 1')) ucKamar['kelas1'] = unitCostLHR;
-        if (nama.includes('icu') || nama.includes('intensif')) ucKamar['icu'] = unitCostLHR;
-        if (nama.includes('igd') || nama.includes('gawat')) ucKamar['igd'] = unitCostKJ;
-        if (nama.includes('rawat jalan') || nama.includes('poliklinik')) ucKamar['rawat_jalan'] = unitCostKJ;
-      });
-      calculateDistribution(ucKamar);
+      calculateDistribution();
     }
-  }, [activeTab, config.finalCenters, biayaRSMap, calculateDistribution]);
+  }, [activeTab, biayaRSMap, calculateDistribution]);
+
+  const totalBiayaLaporan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
+  const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
+  const selisihNonJKN = totalBiayaLaporan - totalBiaya18Variabel;
 
   // Validasi sumber data dan dasar alokasi: biaya tidak boleh dialokasikan tanpa volume pemicu.
   const validation = useMemo(() => {
@@ -338,12 +321,8 @@ export default function CostingInputPage() {
       if (c.dasarAlokasi === 'jumlah_pasien') return c.jumlahPasienPulang || 0;
       return c.jumlahKunjungan || c.jumlahHariRawat || 0;
     };
-    config.overheadCenters.forEach(c => {
-      if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`overhead-${c.id}`, 'Biaya langsung terisi, tetapi dasar alokasi belum memiliki nilai.');
-    });
-    config.intermediateCenters.forEach(c => {
-      if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`intermediate-${c.id}`, 'Biaya langsung terisi, tetapi volume pemakaian belum diisi.');
-    });
+    // Distribusi langsung tidak membutuhkan dasar alokasi Overhead/Intermediate
+    // ke unit layanan karena keduanya langsung masuk ke 18 variabel E-Klaim.
     config.finalCenters.forEach(c => {
       if (direct(c) > 0 && allocationValue(c) <= 0) errors.set(`final-${c.id}`, 'Biaya langsung terisi, tetapi volume layanan untuk dasar alokasi belum diisi.');
     });
@@ -359,7 +338,53 @@ export default function CostingInputPage() {
 
   const hasBiayaGajiError = validation.errors.has('biaya-gaji');
 
-  // Sinkronisasi hasil step-down ke engine Patient Level Costing
+  const handleAutoMapBiaya = () => {
+    const state = useTarifPasienStore.getState();
+    const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+      acc[key] = state.patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
+      return acc;
+    }, {} as Record<keyof KomponenTarif18, number>);
+    const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
+
+    const mapped = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+      acc[key] = 0;
+      return acc;
+    }, {} as Record<keyof KomponenTarif18, number>);
+
+    // Biaya langsung Pusat Biaya Utama menjadi basis biaya 18 variabel.
+    config.finalCenters.forEach(center => {
+      const cost = center.totalCostDirect || 0;
+      const name = center.nama.toLowerCase();
+      if (center.kategori === 'icu' || ['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif'].some(keyword => name.includes(keyword))) {
+        mapped.intensive_amt += cost;
+      } else if (center.kategori === 'bedah' || ['bedah', 'ibs', 'operasi'].some(keyword => name.includes(keyword))) {
+        mapped.surgical_amt += cost;
+      } else if (center.kategori === 'rawat_inap' || center.kategori === 'perinatologi') {
+        mapped.room_amt += cost;
+      } else {
+        mapped.procedure_amt += cost;
+      }
+    });
+
+    // Overhead + Intermediate langsung dibagi ke 18 variabel mengikuti
+    // proporsi nilai tagihan masing-masing komponen pada TXT E-Klaim.
+    const indirectPool = config.totalOverheadCost + config.totalIntermediateCost;
+    if (grandTotalEKlaim > 0) {
+      ALL_KOMPONEN_KEYS.forEach(key => {
+        mapped[key] += indirectPool * (totalsEKlaim[key] / grandTotalEKlaim);
+      });
+    }
+
+    useTarifPasienStore.setState({ biayaRSMap: mapped });
+    useTarifPasienStore.getState().calculateDistribution();
+    alert(
+      grandTotalEKlaim > 0
+        ? 'Auto-map berhasil. Biaya langsung Pusat Biaya Utama dipetakan ke 18 variabel, lalu total Overhead + Intermediate dibagi mengikuti proporsi tagihan TXT E-Klaim.'
+        : 'Data tagihan TXT E-Klaim belum tersedia. Biaya langsung Pusat Biaya Utama sudah dipetakan, tetapi Overhead + Intermediate belum dapat dibagi ke 18 variabel.'
+    );
+  };
+
+  // Sinkronisasi mapping distribusi langsung ke engine Patient Level Costing
   const handleSyncToPatientLevel = () => {
     const rvu: RVUGlobalCosts = {
       procedure_amt: 0, surgical_amt: 0, consul_amt: 0, expert_amt: 0,
@@ -393,7 +418,7 @@ export default function CostingInputPage() {
     try {
       const parsedData = await parseExcelTemplate(file);
 
-      // Jalankan step-down calculation setelah import agar unit cost langsung terhitung
+      // Jalankan perhitungan setelah import agar unit cost langsung terhitung
       useHospitalCostStore.setState(s => {
         const newConfig = runStepDownCalculation({
           ...s.config,
@@ -560,8 +585,8 @@ export default function CostingInputPage() {
       ['2. Data Operasional', 'Isi kunjungan dan hari rawat JKN/Non-JKN per unit layanan.'],
       ['3. Costing Template', 'Isi volume, dasar alokasi, dan biaya langsung setiap pusat biaya. Semua biaya dalam Rupiah.'],
       ['4. Dasar alokasi', 'Gunakan dasar yang sesuai: staf, luas lantai, resep/DDD, pemeriksaan, tes, terapi, jam operasi, hari rawat, tindakan, penggunaan, darah, atau jaringan.'],
-      ['5. Pemeriksaan', 'Setelah impor, perbaiki seluruh input bertanda merah sebelum menjalankan alokasi dan distribusi tarif pasien.'],
-      ['6. Jejak alokasi', 'Gunakan Hasil Unit Cost untuk memeriksa perpindahan biaya dari sumber ke unit penerima.'],
+      ['5. Pemeriksaan', 'Setelah impor, perbaiki seluruh input bertanda merah sebelum menjalankan distribusi tarif pasien.'],
+      ['6. Metode distribusi', 'Overhead dan Intermediate langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim, tanpa dialokasikan ke Pusat Biaya Utama.'],
       [],
       ['DEFINISI OPERASIONAL', 'PENGERTIAN / CARA ISI'],
       ['Nama Rumah Sakit, Tipe RS, Kepemilikan, Tahun Data', 'Identitas RS dan periode pelaporan. Gunakan satu periode yang sama pada seluruh sheet.'],
@@ -611,7 +636,7 @@ export default function CostingInputPage() {
             <Layers className="w-6 h-6 text-teal-600" />
             Input Data Costing RS
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Metode Patient Level Costing dengan alokasi bertahap</p>
+          <p className="text-gray-500 text-sm mt-1">Biaya didistribusikan langsung ke 18 variabel E-Klaim</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
@@ -653,7 +678,7 @@ export default function CostingInputPage() {
           </p>
           <p className={clsx('text-xs mt-0.5', config.totalFinalCost > 0 ? 'text-teal-600' : 'text-gray-400')}>
             {config.totalFinalCost > 0
-              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Penunjang: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span></>
+              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(totalBiayaLaporan)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Intermediate: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span> · Pusat Biaya Utama: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span></>
               : 'Isi data biaya di tiap tab, kalkulasi akan berjalan otomatis setiap kali ada perubahan'
             }
           </p>
@@ -674,9 +699,9 @@ export default function CostingInputPage() {
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
             { icon: '🔬', label: 'Step 2: Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🛏️', label: 'Alokasi Layanan', color: 'bg-green-50 text-green-700 border-green-200' },
+            { icon: '🛏️', label: 'Pusat Biaya Utama', color: 'bg-green-50 text-green-700 border-green-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '📈', label: 'Hasil Step-Down', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+            { icon: '📈', label: 'Ringkasan Biaya RS', color: 'bg-teal-50 text-teal-700 border-teal-200' },
             { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
             { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', color: 'bg-amber-50 text-amber-700 border-amber-200' },
           ].map((s, i) => (
@@ -960,7 +985,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-sm text-blue-800 font-medium">
-              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang akan dialokasikan ke Penunjang Medik dan Layanan Pasien berdasarkan dasar alokasi masing-masing.
+              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang pada Step 3 langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
             </p>
           </div>
 
@@ -976,7 +1001,7 @@ export default function CostingInputPage() {
             </button>
           </div>
 
-          {config.overheadCenters.map((center, idx) => (
+          {config.overheadCenters.map((center) => (
             <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`overhead-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
               {/* Header Row */}
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
@@ -1054,7 +1079,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Intermediate Cost</strong> — Pusat biaya penunjang medik yang menerima alokasi dari Overhead Cost. Biayanya menjadi dasar pembagian proporsional ke pasien melalui komponen tarif sesuai pemakaian.
+              🔬 <strong>Intermediate Cost</strong> — Biaya pusat penunjang medik yang pada Step 3 langsung dibagikan bersama Overhead ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
             </p>
           </div>
 
@@ -1107,7 +1132,7 @@ export default function CostingInputPage() {
                   </div>
                   <div className="flex items-end">
                     <div className="w-full bg-violet-50 border border-violet-200 rounded-lg p-2 text-center">
-                      <p className="text-xs text-violet-600">Total setelah Overhead</p>
+                      <p className="text-xs text-violet-600">Total Biaya Langsung</p>
                       <p className="text-sm font-bold text-violet-800">{formatRupiah(center.totalCostAfterOverhead)}</p>
                     </div>
                   </div>
@@ -1127,7 +1152,7 @@ export default function CostingInputPage() {
 
           <div className="flex justify-between">
             <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
-            <button onClick={() => setActiveTab('final')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: C. Layanan <ArrowRight className="w-4 h-4" /></button>
+            <button onClick={() => setActiveTab('final')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: C. Pusat Biaya Utama <ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}
@@ -1139,12 +1164,12 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
             <p className="text-sm text-green-800 font-medium">
-              🛏️ <strong>Pusat Biaya Layanan Pasien (Final)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan akan dihitung di sini dan menjadi dasar alokasi ke tiap pasien.
+              🛏️ <strong>Pusat Biaya Utama (Layanan Pasien)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan dihitung dari biaya langsung sebagai informasi transparansi; biaya tidak menerima alokasi Overhead maupun Intermediate.
             </p>
           </div>
 
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">Total Layanan: <span className="font-bold text-green-700">{formatRupiah(config.totalFinalCost)}</span></p>
+            <p className="text-sm text-gray-500">Total Pusat Biaya Utama: <span className="font-bold text-green-700">{formatRupiah(config.totalFinalCost)}</span></p>
             <button onClick={addFinal} className="flex items-center gap-1.5 px-4 py-2 bg-green-50 text-green-600 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors">
               <Plus className="w-4 h-4" /> Tambah Unit
             </button>
@@ -1245,14 +1270,27 @@ export default function CostingInputPage() {
                         {center.totalCostAfterIntermediate > 0 && (
                           <div className="grid grid-cols-3 gap-2 mt-2">
                             {[
-                              { label: 'Unit Cost/Hari Rawat', value: center.unitCostPerHariRawat },
-                              { label: 'Unit Cost/Kunjungan', value: center.unitCostPerKunjungan },
-                              { label: 'Unit Cost/Pasien', value: center.unitCostPerPasien },
+                              { label: 'Unit Cost/Hari Rawat', value: center.unitCostPerHariRawat, denominator: center.jumlahHariRawat, denominatorLabel: 'Jumlah Hari Rawat' },
+                              { label: 'Unit Cost/Kunjungan', value: center.unitCostPerKunjungan, denominator: center.jumlahKunjungan, denominatorLabel: 'Jumlah Kunjungan' },
+                              { label: 'Unit Cost/Pasien', value: center.unitCostPerPasien, denominator: center.jumlahPasienPulang, denominatorLabel: 'Jumlah Pasien Pulang' },
                             ].map(u => (
-                              <div key={u.label} className="bg-teal-50 border border-teal-100 rounded-lg p-2 text-center">
-                                <p className="text-xs text-teal-600">{u.label}</p>
+                              <button
+                                type="button"
+                                key={u.label}
+                                onClick={() => setFormulaDetail({
+                                  title: u.label,
+                                  unitName: center.nama,
+                                  numerator: center.totalCostDirect,
+                                  denominator: u.denominator,
+                                  denominatorLabel: u.denominatorLabel,
+                                  result: u.value,
+                                })}
+                                className="bg-teal-50 border border-teal-100 rounded-lg p-2 text-center hover:bg-teal-100 hover:border-teal-300 transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                title="Klik untuk melihat rumus dan sumber angka"
+                              >
+                                <p className="text-xs text-teal-600 flex items-center justify-center gap-1">{u.label} <HelpCircle className="w-3 h-3" /></p>
                                 <p className="text-sm font-bold text-teal-800">{formatRupiah(u.value)}</p>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -1276,14 +1314,15 @@ export default function CostingInputPage() {
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'hasil' && (
         <div className="space-y-5">
-          {/* Ringkasan 3 Step */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {/* Ringkasan sesuai Excel laporan biaya RS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { step: 'Step 1', label: 'Total Overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Dialokasikan ke Penunjang & Layanan' },
-              { step: 'Step 2', label: 'Total Intermediate Cost', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Dialokasikan ke 18 variabel billing E-Klaim' },
-              { step: 'Pendukung', label: 'Total Biaya Layanan RS', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Dasar penghitungan unit cost pasien' },
+              { step: 'A', label: 'Pusat Biaya Penunjang Umum (Overhead)', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Biaya langsung kelompok Overhead' },
+              { step: 'B', label: 'Pusat Biaya Penunjang Medis (Intermediate)', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Biaya langsung kelompok Intermediate' },
+              { step: 'C', label: 'Pusat Biaya Utama (Layanan Pasien)', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Biaya langsung layanan pasien' },
+              { step: 'TOTAL', label: 'Total Biaya RS', value: totalBiayaLaporan, color: 'bg-teal-50 border-teal-200 text-teal-800', desc: 'A + B + C, sesuai laporan keuangan' },
             ].map(c => (
-              <div key={c.step} className={clsx('rounded-xl p-4 border', c.color)}>
+              <div key={c.label} className={clsx('rounded-xl p-4 border', c.color)}>
                 <p className="text-xs font-bold opacity-60">{c.step}</p>
                 <p className="text-xs font-medium opacity-70 mt-0.5">{c.label}</p>
                 <p className="text-xl font-bold mt-1">{formatRupiah(c.value)}</p>
@@ -1292,63 +1331,14 @@ export default function CostingInputPage() {
             ))}
           </div>
 
-          {/* Tabel Hasil per Unit Final */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-500" />
-              <h3 className="font-bold text-gray-800">Unit Cost per Pusat Biaya Layanan</h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    {['No', 'Unit Layanan', 'Kategori', 'Biaya Langsung', 'Setelah Overhead', 'Total Termasuk Penunjang', 'UC/Hari Rawat', 'UC/Kunjungan', 'UC/Pasien'].map(h => (
-                      <th key={h} className="px-3 py-3 text-left text-xs font-semibold text-gray-600 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {config.finalCenters.map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-3 py-2 text-gray-500">{c.nomor}</td>
-                      <td className="px-3 py-2 font-medium text-gray-800 max-w-[160px] truncate">{c.nama}</td>
-                      <td className="px-3 py-2">
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">{FINAL_KATEGORI_LABELS[c.kategori]}</span>
-                      </td>
-                      <td className="px-3 py-2 text-right font-mono text-xs">{formatRupiah(c.totalCostDirect)}</td>
-                      <td className="px-3 py-2 text-right font-mono text-xs">{formatRupiah(c.totalCostAfterOverhead)}</td>
-                      <td className="px-3 py-2 text-right font-mono text-xs font-semibold text-green-700">{formatRupiah(c.totalCostAfterIntermediate)}</td>
-                      <td className="px-3 py-2 text-right font-mono text-xs text-teal-700">{c.unitCostPerHariRawat > 0 ? formatRupiah(c.unitCostPerHariRawat) : '-'}</td>
-                      <td className="px-3 py-2 text-right font-mono text-xs text-teal-700">{c.unitCostPerKunjungan > 0 ? formatRupiah(c.unitCostPerKunjungan) : '-'}</td>
-                      <td className="px-3 py-2 text-right font-mono text-xs text-teal-700">{c.unitCostPerPasien > 0 ? formatRupiah(c.unitCostPerPasien) : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 text-sm text-blue-800">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
-                <h3 className="font-bold text-gray-800">Jejak Alokasi Biaya</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Rincian biaya dari pusat biaya sumber hingga unit penerima.</p>
+                <p className="font-bold">Distribusi Langsung ke 18 Variabel</p>
+                <p className="mt-1">Overhead dan Intermediate tidak dialokasikan ke Pusat Biaya Utama. Pada Step 3, total Overhead + Intermediate langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim. Biaya langsung Pusat Biaya Utama menjadi basis biaya layanan pada 18 variabel.</p>
               </div>
-              <button onClick={() => setShowAuditTrail(value => !value)} className="text-xs font-semibold px-3 py-2 rounded-lg border border-teal-200 text-teal-700 hover:bg-teal-50">
-                {showAuditTrail ? 'Sembunyikan rincian' : `Lihat ${config.allocationTraces?.length || 0} alokasi`}
-              </button>
             </div>
-            {showAuditTrail && (
-              <div className="overflow-x-auto max-h-96 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="bg-gray-50 sticky top-0"><tr>{['Tahap', 'Sumber Biaya', 'Penerima', 'Dasar Alokasi', 'Nilai Dasar', 'Tarif Alokasi', 'Biaya Dialokasikan'].map(head => <th key={head} className="px-3 py-2 text-left font-semibold text-gray-600 whitespace-nowrap">{head}</th>)}</tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(config.allocationTraces || []).map((trace, index) => <tr key={`${trace.sumberId}-${trace.penerimaId}-${index}`} className="hover:bg-gray-50"><td className="px-3 py-2 font-semibold text-teal-700">{trace.tahap}</td><td className="px-3 py-2">{trace.sumberNama}</td><td className="px-3 py-2">{trace.penerimaNama}</td><td className="px-3 py-2">{trace.dasarAlokasi.replace(/_/g, ' ')}</td><td className="px-3 py-2 text-right">{trace.nilaiDasar.toLocaleString('id-ID')}</td><td className="px-3 py-2 text-right">{formatRupiah(trace.tarifAlokasi)}</td><td className="px-3 py-2 text-right font-semibold">{formatRupiah(trace.nilaiAlokasi)}</td></tr>)}
-                    {(config.allocationTraces || []).length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">Isi biaya dan volume dasar alokasi untuk menampilkan jejak alokasi.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
 
           {/* Tombol Lanjut ke Distribusi 18 Var */}
@@ -1368,76 +1358,51 @@ export default function CostingInputPage() {
               <p className="flex items-start gap-2">
                 <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
                 <span>
-                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya Overhead dan Intermediate didistribusikan langsung ke 18 variabel. Proporsinya mengikuti data tagihan pada TXT E-Klaim, dengan rumus <code>(Tagihan Pasien / Total Tagihan E-Klaim) × Total Biaya RS</code>.
+                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya langsung Pusat Biaya Utama dipetakan ke komponen layanan. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim, tanpa melalui alokasi ke unit layanan final.
                 </span>
               </p>
             </div>
             <button
-              onClick={() => {
-                const im = config.intermediateCenters || [];
-                const finals = config.finalCenters || [];
-                
-                // Helper untuk mencari total cost dari penunjang (Intermediate)
-                const findIM = (keywords: string[]) => {
-                  return im.filter(c => keywords.some(kw => c.nama.toLowerCase().includes(kw)))
-                           .reduce((sum, c) => sum + (c.totalCostAfterOverhead || 0), 0);
-                };
-
-                // Helper untuk mencari total cost dari layanan (Final)
-                const findFinal = (keywords: string[], byCategory?: FinalKategori) => {
-                  return finals.filter(c => {
-                    if (byCategory && c.kategori !== byCategory) return false;
-                    if (keywords.length === 0) return true;
-                    return keywords.some(kw => c.nama.toLowerCase().includes(kw));
-                  }).reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
-                };
-
-                // 1. Map dari Intermediate (Penunjang Medik)
-                setBiayaRS('drug_amt', findIM(['farmasi', 'obat']));
-                setBiayaRS('radiology_amt', findIM(['radiologi', 'citra']));
-                setBiayaRS('laboratory_amt', findIM(['lab']));
-                setBiayaRS('blood_amt', findIM(['darah']));
-                setBiayaRS('rehab_amt', findIM(['rehab', 'fisioterapi']));
-                setBiayaRS('surgical_amt', findIM(['bedah', 'ibs', 'ok']));
-                setBiayaRS('consumable_amt', findIM(['cssd', 'gas', 'oksigen', 'sterilisasi'])); // BMHP
-
-                // Sisa penunjang medik yang belum ter-map masukkan ke 'Penunjang'
-                const mappedIM = ['farmasi', 'obat', 'radiologi', 'citra', 'lab', 'darah', 'rehab', 'fisioterapi', 'bedah', 'ibs', 'ok', 'cssd', 'gas', 'oksigen', 'sterilisasi'];
-                const sisaPenunjang = im.filter(c => !mappedIM.some(kw => c.nama.toLowerCase().includes(kw)))
-                                        .reduce((sum, c) => sum + (c.totalCostAfterOverhead || 0), 0);
-                setBiayaRS('ancillary_amt', sisaPenunjang);
-
-                // 2. Map dari Final (Layanan)
-                setBiayaRS('intensive_amt', findFinal(['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif']));
-                
-                // Kamar / Akomodasi (semua rawat inap selain intensif/perina yang spesifik)
-                const roomCost = finals.filter(c => c.kategori === 'rawat_inap' && !['icu','iccu','picu','nicu','hcu','intensif'].some(kw => c.nama.toLowerCase().includes(kw)))
-                                       .reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
-                setBiayaRS('room_amt', roomCost);
-
-                // Prosedur Non Bedah (IGD + Rawat Jalan + Lainnya)
-                const procedureCost = finals.filter(c => c.kategori === 'igd' || c.kategori === 'rawat_jalan' || c.kategori === 'lainnya')
-                                            .reduce((sum, c) => sum + (c.totalCostAfterIntermediate || 0), 0);
-                setBiayaRS('procedure_amt', procedureCost);
-
-                // Trigger recalculation immediately
-                calculateDistribution();
-                alert('Berhasil memetakan total biaya dari Pusat Biaya Penunjang & Layanan (Final). Sisa biaya penunjang yang tidak spesifik dimasukkan ke "Penunjang" dan biaya poliklinik/IGD dimasukkan ke "Prosedur Non Bedah".');
-              }}
+              onClick={handleAutoMapBiaya}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-semibold text-sm transition-colors whitespace-nowrap"
             >
-              <RefreshCw className="w-4 h-4" /> Auto-Map dari Unit Cost
+              <RefreshCw className="w-4 h-4" /> Auto-Map Biaya RS
             </button>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
+              <p className="text-xs text-gray-500">Total Biaya Laporan Keuangan</p>
+              <p className="font-bold text-gray-900 mt-1">{formatRupiah(totalBiayaLaporan)}</p>
+              <p className="text-[11px] text-gray-400 mt-1">Overhead + Intermediate + Pusat Biaya Utama</p>
+            </div>
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
+              <p className="text-xs text-indigo-600">Total Biaya 18 Variabel</p>
+              <p className="font-bold text-indigo-900 mt-1">{formatRupiah(totalBiaya18Variabel)}</p>
+              <p className="text-[11px] text-indigo-500 mt-1">Biaya yang dialokasikan ke pasien JKN</p>
+            </div>
+            <div className={clsx('rounded-xl border p-4', Math.abs(selisihNonJKN) < 1 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
+              <p className={clsx('text-xs', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-600' : 'text-amber-700')}>
+                {Math.abs(selisihNonJKN) < 1 ? 'Rekonsiliasi Sesuai' : selisihNonJKN > 0 ? 'Selisih / Usulan Biaya Non-JKN' : 'Kelebihan Alokasi 18 Variabel'}
+              </p>
+              <p className={clsx('font-bold mt-1', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-900' : 'text-amber-900')}>{formatRupiah(selisihNonJKN)}</p>
+              <p className="text-[11px] opacity-70 mt-1">Total laporan − total 18 variabel</p>
+            </div>
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+              <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
+              <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS komponen ÷ Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien × rasio.</p>
+            </div>
+          </div>
+
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left text-sm">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-200">
                 <tr>
                   <th className="px-4 py-3">18 Variabel Tarif E-Klaim</th>
-                  <th className="px-4 py-3 text-right">Total Biaya RS (Dari Unit Cost)</th>
+                  <th className="px-4 py-3 text-right">Total Biaya RS per Komponen</th>
                   <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
-                  <th className="px-4 py-3 text-center">Rasio Distribusi</th>
+                  <th className="px-4 py-3 text-center" title="Total Biaya RS komponen dibagi Total Tagihan E-Klaim komponen">Rasio Distribusi ⓘ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1453,23 +1418,7 @@ export default function CostingInputPage() {
                           onChange={e => {
                             const val = parseFloat(e.target.value.replace(/[^0-9.-]+/g, '')) || 0;
                             setBiayaRS(d.key, val);
-                            
-                            // Map UC Kamar
-                            const ucKamar: Record<string, number> = {};
-                            const finals = config.finalCenters || [];
-                            finals.forEach(f => {
-                              const nama = f.nama.toLowerCase();
-                              const unitCostLHR = f.jumlahHariRawat > 0 ? (f.totalCostAfterIntermediate / f.jumlahHariRawat) : 0;
-                              const unitCostKJ = f.jumlahKunjungan > 0 ? (f.totalCostAfterIntermediate / f.jumlahKunjungan) : 0;
-                              if (nama.includes('kelas iii') || nama.includes('kelas 3')) ucKamar['kelas3'] = unitCostLHR;
-                              if (nama.includes('kelas ii') || nama.includes('kelas 2')) ucKamar['kelas2'] = unitCostLHR;
-                              if (nama.includes('kelas i') || nama.includes('kelas 1')) ucKamar['kelas1'] = unitCostLHR;
-                              if (nama.includes('icu') || nama.includes('intensif')) ucKamar['icu'] = unitCostLHR;
-                              if (nama.includes('igd') || nama.includes('gawat')) ucKamar['igd'] = unitCostKJ;
-                              if (nama.includes('rawat jalan') || nama.includes('poliklinik')) ucKamar['rawat_jalan'] = unitCostKJ;
-                            });
-
-                            calculateDistribution(ucKamar); // Trigger update ratio
+                            calculateDistribution();
                           }}
                           placeholder="0"
                           className="w-32 px-2 py-1 border border-gray-300 rounded text-right text-sm font-semibold text-indigo-700 focus:ring-2 focus:ring-indigo-500"
@@ -1488,6 +1437,7 @@ export default function CostingInputPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Tombol Sinkronisasi ke Patient Level Costing */}
@@ -1496,7 +1446,7 @@ export default function CostingInputPage() {
               <div>
                 <h3 className="font-bold text-lg">Sinkronkan ke Patient Level Costing</h3>
                 <p className="text-sm text-white/70 mt-1">
-                  Step 3: distribusikan biaya {config.intermediateCenters.length} unit penunjang dan {config.finalCenters.length} unit layanan ke 18 komponen tarif E-Klaim pasien secara proporsional.
+                  Step 3: gunakan hasil rekonsiliasi 18 variabel di atas untuk menghitung Cost per Pasien secara proporsional berdasarkan tagihan TXT E-Klaim.
                 </p>
               </div>
               <button
@@ -1505,6 +1455,44 @@ export default function CostingInputPage() {
               >
                 <Activity className="w-5 h-5" /> Sinkronkan ke Engine Mikro
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {formulaDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setFormulaDetail(null)}>
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
+            <div className="flex items-start justify-between border-b border-gray-100 p-5">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-teal-600">Jejak Perhitungan</p>
+                <h3 className="mt-1 text-lg font-bold text-gray-900">{formulaDetail.title}</h3>
+                <p className="text-sm text-gray-500">{formulaDetail.unitName}</p>
+              </div>
+              <button type="button" onClick={() => setFormulaDetail(null)} className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Tutup popup rumus">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-4 p-5">
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
+                <p className="text-xs text-blue-600">Rumus</p>
+                <p className="mt-1 font-semibold text-blue-900">Total Biaya Langsung ÷ {formulaDetail.denominatorLabel}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-xl bg-gray-50 p-3 text-center">
+                  <p className="text-xs text-gray-500">Total Biaya Langsung</p>
+                  <p className="mt-1 font-bold text-gray-900">{formatRupiah(formulaDetail.numerator)}</p>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-3 text-center">
+                  <p className="text-xs text-gray-500">{formulaDetail.denominatorLabel}</p>
+                  <p className="mt-1 font-bold text-gray-900">{formulaDetail.denominator.toLocaleString('id-ID')}</p>
+                </div>
+                <div className="rounded-xl bg-teal-50 p-3 text-center">
+                  <p className="text-xs text-teal-600">Hasil</p>
+                  <p className="mt-1 font-bold text-teal-900">{formatRupiah(formulaDetail.result)}</p>
+                </div>
+              </div>
+              <p className="text-xs leading-relaxed text-gray-500">Angka ini hanya memakai biaya langsung Pusat Biaya Utama. Overhead dan Intermediate tidak ditambahkan ke unit layanan, tetapi didistribusikan langsung ke 18 variabel E-Klaim pada Step 3.</p>
             </div>
           </div>
         </div>

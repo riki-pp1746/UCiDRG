@@ -27,7 +27,7 @@ interface TarifPasienState {
   setBiayaRS: (key: keyof KomponenTarif18, amount: number) => void;
   
   // Kalkulasi Utama (Step 3)
-  calculateDistribution: (unitCostKamar?: Record<string, number>) => void;
+  calculateDistribution: () => void;
   validateAgainstHospital: (config: HospitalCostConfig) => void;
 }
 
@@ -83,7 +83,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         biayaRSMap: { ...s.biayaRSMap, [key]: amount }
       })),
 
-      calculateDistribution: (unitCostKamar = {}) => {
+      calculateDistribution: () => {
         const { patients, biayaRSMap } = get();
 
         // 1. Hitung total klaim per komponen dari semua pasien
@@ -132,8 +132,6 @@ export const useTarifPasienStore = create<TarifPasienState>()(
 
           // Satu sumber kebenaran: seluruh 18 komponen, termasuk kamar, memakai
           // proporsi tagihan TXT E-Klaim yang sama dengan engine laporan.
-          // unitCostKamar dipertahankan di signature untuk kompatibilitas pemanggil lama.
-          void unitCostKamar;
           const akomodasi = distributedCosts['room_amt'] || 0;
 
           return {
@@ -175,12 +173,12 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           'Akumulasi biaya pegawai seluruh cost center harus sama dengan Biaya Gaji Data Dasar RS.');
 
         const totalAlokasi = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-        const biayaTersedia = (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+        const biayaTersedia = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
         if (totalAlokasi > 0 && biayaTersedia > 0 && totalAlokasi > biayaTersedia) {
           issues.push({
             id: 'biaya-alokasi', severity: 'error', label: 'Total biaya dialokasikan',
             expected: biayaTersedia, actual: totalAlokasi,
-            message: 'Total biaya 18 variabel tidak boleh melebihi biaya hasil Step-Down RS.'
+            message: 'Total biaya 18 variabel tidak boleh melebihi total biaya pada Laporan Operasional/Keuangan RS.'
           });
         }
 
@@ -194,7 +192,9 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       },
     }),
     {
-      name: 'unitcost-tarif-pasien-v1',
+      // Versi baru agar mapping lama (metode alokasi ke layanan final) tidak
+      // terbawa ke alur distribusi langsung.
+      name: 'unitcost-tarif-pasien-v2-pak-adiet',
       partialize: (state) => ({
         biayaRSMap: state.biayaRSMap,
         distribusi: state.distribusi,

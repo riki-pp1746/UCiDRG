@@ -7,8 +7,8 @@
 import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle, AlertTriangle, FileText, Database, Building2,
-  BarChart3, ArrowRight, BookOpen, ClipboardList, Layers,
-  Activity, TrendingUp, Users, Receipt, HardDrive,
+  ArrowRight, BookOpen, ClipboardList, Layers,
+  Activity, Users, Receipt, HardDrive,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -133,15 +133,15 @@ const LANGKAH_PENGGUNAAN = [
     color: 'from-blue-500 to-blue-600',
     bgLight: 'bg-blue-50',
     borderColor: 'border-blue-200',
-    desc: 'Unduh template, isi sheet Data Dasar RS dan Costing Template, lalu impor. Periksa penanda merah sebelum melanjutkan alokasi.',
+    desc: 'Unduh template, isi sheet Data Dasar RS dan Costing Template, lalu impor. Periksa penanda merah sebelum melanjutkan distribusi.',
     substeps: [
       '📄 Sheet "Data Dasar RS" — identitas, BOR, ALOS, LHR, TT, SDM, pendapatan dan biaya RS',
       '📋 Sheet "Costing Template" — biaya dan volume setiap pusat biaya',
-      '📋 Step 1: Overhead — alokasikan pusat biaya penunjang umum',
-      '🔬 Step 2: Intermediate Cost — isi volume sesuai dasar alokasi, misalnya resep, tes atau jam operasi',
-      '🛏️ Alokasi Layanan — proses pendukung untuk menghitung hasil Step-Down',
-      '📈 Hasil Step-Down — periksa penanda merah dan Jejak Alokasi Biaya sebelum sinkronisasi',
-      '💊 Step 3: Distribusi 18 Variabel — proporsi mengikuti tagihan pada TXT E-Klaim',
+      '📋 Step 1: Overhead — hitung biaya langsung pusat biaya penunjang umum',
+      '🔬 Step 2: Intermediate Cost — hitung biaya langsung pusat biaya penunjang medis',
+      '🛏️ Pusat Biaya Utama — petakan biaya langsung layanan ke komponen E-Klaim',
+      '📈 Ringkasan Biaya RS — rekonsiliasi Overhead + Intermediate + Pusat Biaya Utama dengan laporan keuangan',
+      '💊 Step 3: Distribusi 18 Variabel — Overhead dan Intermediate langsung dibagi menurut proporsi tagihan TXT E-Klaim',
     ],
   },
   {
@@ -321,7 +321,7 @@ export default function GuidePage() {
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
             { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', sub: 'Proporsi sesuai tagihan TXT E-Klaim', color: 'bg-amber-50 border-amber-200 text-amber-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '👤', label: 'Step 4: Cost per Pasien', sub: 'Overhead + Intermediate + billing', color: 'bg-teal-50 border-teal-200 text-teal-800' },
+            { icon: '👤', label: 'Step 4: Cost per Pasien', sub: 'Total 18 variabel per pasien', color: 'bg-teal-50 border-teal-200 text-teal-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
             { icon: '🧩', label: 'Step 5: Grouping', sub: 'Diagnosis + prosedur ke DRG/CBG', color: 'bg-cyan-50 border-cyan-200 text-cyan-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },

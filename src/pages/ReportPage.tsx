@@ -55,8 +55,13 @@ export default function ReportPage() {
   const patientResults = useCostingStore(s => s.patientResults);
   const config = useHospitalCostStore(s => s.config);
   const validationIssues = useTarifPasienStore(s => s.validationIssues);
+  const biayaRSMap = useTarifPasienStore(s => s.biayaRSMap);
   const { user } = useAuthStore();
   const reportRef = useRef<HTMLDivElement>(null);
+
+  const totalBiayaLaporan = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+  const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
+  const selisihRekonsiliasi = totalBiayaLaporan - totalBiaya18Variabel;
 
   if (!summary) {
     return (
@@ -137,11 +142,19 @@ export default function ReportPage() {
     const ws4 = XLSX.utils.aoa_to_sheet(rugiData);
     XLSX.utils.book_append_sheet(wb, ws4, 'Top DRG Defisit');
 
-    // Sheet 5: Audit alokasi dan validasi data dasar
-    const auditHeader = ['Tahap', 'Sumber Biaya', 'Penerima', 'Dasar Alokasi', 'Nilai Dasar', 'Tarif Alokasi', 'Biaya Dialokasikan'];
-    const auditData = (config.allocationTraces || []).map(trace => [trace.tahap, trace.sumberNama, trace.penerimaNama, trace.dasarAlokasi, trace.nilaiDasar, trace.tarifAlokasi, trace.nilaiAlokasi]);
-    const ws5 = XLSX.utils.aoa_to_sheet([auditHeader, ...auditData]);
-    XLSX.utils.book_append_sheet(wb, ws5, 'Jejak Alokasi');
+    // Sheet 5: Rekonsiliasi biaya. Tidak ada alokasi ke layanan final.
+    const reconciliationData = [
+      ['REKONSILIASI BIAYA RS'],
+      ['Komponen', 'Nilai (Rp)', 'Keterangan'],
+      ['A. Pusat Biaya Penunjang Umum (Overhead)', config.totalOverheadCost || 0, 'Biaya langsung'],
+      ['B. Pusat Biaya Penunjang Medis (Intermediate)', config.totalIntermediateCost || 0, 'Biaya langsung'],
+      ['C. Pusat Biaya Utama (Layanan Pasien)', config.totalFinalCost || 0, 'Biaya langsung'],
+      ['Total Biaya Laporan Operasional/Keuangan', totalBiayaLaporan, 'A + B + C'],
+      ['Total Biaya yang Dipetakan ke 18 Variabel E-Klaim', totalBiaya18Variabel, 'Overhead dan Intermediate didistribusikan langsung berdasarkan proporsi TXT E-Klaim'],
+      ['Selisih Rekonsiliasi', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Usulan biaya Non-JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
+    ];
+    const ws5 = XLSX.utils.aoa_to_sheet(reconciliationData);
+    XLSX.utils.book_append_sheet(wb, ws5, 'Rekonsiliasi Biaya');
 
     const validationData = [
       ['VALIDASI DATA DASAR RS'],
@@ -184,10 +197,10 @@ export default function ReportPage() {
     kpis.forEach((item, i) => { const x = 0.7 + (i % 3) * 4.15; const y = 1.55 + Math.floor(i / 3) * 2.05; slide.addShape(pptx.ShapeType.roundRect, { x, y, w: 3.65, h: 1.45, rectRadius: 0.08, fill: { color: light }, line: { color: 'D7E2E8', width: 0.8 } }); slide.addText(item[0], { x: x + 0.25, y: y + 0.28, w: 3.1, h: 0.25, fontFace: 'Aptos', fontSize: 11, color: gray }); slide.addText(item[1], { x: x + 0.25, y: y + 0.67, w: 3.1, h: 0.38, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); });
     slide.addText(`Status DRG: ${summary.jumlahDRGUntung} profit, ${summary.jumlahDRGImpas} BEP, ${summary.jumlahDRGRugi} defisit.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
 
-    slide = pptx.addSlide(); title(slide, 'Alur Patient Level Costing', 'Biaya RS ditelusuri hingga level pasien');
-    const steps = [['Step 1', 'Overhead', 'Biaya penunjang umum'], ['Step 2', 'Intermediate Cost', 'Biaya penunjang medik'], ['Step 3–5', 'Distribusi hingga Grouping', '18 variabel, Cost per Pasien, dan DRG']];
+    slide = pptx.addSlide(); title(slide, 'Alur Patient Level Costing', 'Distribusi langsung ke 18 variabel tanpa alokasi ke layanan final');
+    const steps = [['Step 1', 'Overhead', 'Pusat biaya penunjang umum'], ['Step 2', 'Intermediate Cost', 'Pusat biaya penunjang medis'], ['Step 3–5', 'Distribusi sampai DRG', 'Langsung ke 18 variabel, pasien, lalu DRG']];
     steps.forEach((item, i) => { const x = 0.8 + i * 4.15; slide.addShape(pptx.ShapeType.roundRect, { x, y: 2.0, w: 3.45, h: 2.25, rectRadius: 0.08, fill: { color: i === 1 ? 'E7F7F4' : 'EEF4FA' }, line: { color: i === 1 ? '91D8CF' : 'BFD4E5' } }); slide.addText(item[0], { x: x + 0.25, y: 2.35, w: 2.9, h: 0.25, fontFace: 'Aptos', fontSize: 13, bold: true, color: teal }); slide.addText(item[1], { x: x + 0.25, y: 2.8, w: 2.9, h: 0.4, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); slide.addText(item[2], { x: x + 0.25, y: 3.4, w: 2.9, h: 0.45, fontFace: 'Aptos', fontSize: 11, color: gray, breakLine: false }); });
-    slide.addText(`Jejak alokasi yang tercatat: ${(config.allocationTraces || []).length} baris.`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray, align: 'center' }); addFooter(slide, 3);
+    slide.addText(`Rekonsiliasi: laporan ${formatRupiah(totalBiayaLaporan)} • 18 variabel ${formatRupiah(totalBiaya18Variabel)} • selisih ${formatRupiah(selisihRekonsiliasi)}`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 13, color: gray, align: 'center' }); addFooter(slide, 3);
 
     slide = pptx.addSlide(); title(slide, 'DRG dengan Selisih Tertinggi', 'Prioritas review biaya dan tarif');
     const rows = summary.top10Rugi.slice(0, 8).map(d => [d.group_code, d.group_description.slice(0, 52), String(d.jumlahKasus), formatRupiah(d.rataUnitCost), formatRupiah(d.rataTarif), formatRupiah(d.selisih)]);
@@ -204,7 +217,7 @@ export default function ReportPage() {
     slide = pptx.addSlide(); title(slide, 'Rekomendasi Tindak Lanjut', 'Berdasarkan biaya, variasi DRG, dan validasi data');
     const recommendations = [
       `${summary.jumlahDRGRugi} grup DRG memiliki unit cost lebih tinggi daripada tarif ${viewMode}. Prioritaskan review grup dengan selisih terbesar.`,
-      'Periksa komponen biaya dominan pada pasien defisit melalui tabel tarif pasien dan Jejak Alokasi Biaya.',
+      'Periksa komponen biaya dominan pada pasien defisit melalui tabel tarif pasien dan distribusi 18 variabel E-Klaim.',
       'Tindak lanjuti grup dengan CoV tinggi melalui review coding, clinical pathway, serta pemakaian sumber daya.',
       validationIssues.length ? `${validationIssues.length} ketidaksesuaian data dasar masih tercatat. Selesaikan sebelum memakai hasil untuk penetapan tarif.` : 'Validasi data dasar tidak mencatat ketidaksesuaian pada saat laporan dibuat.',
     ];
@@ -302,7 +315,7 @@ export default function ReportPage() {
             <p className={clsx('font-bold text-sm', validationIssues.length ? 'text-red-800' : 'text-emerald-800')}>{validationIssues.length ? 'Validasi Data Dasar RS perlu penyesuaian' : 'Validasi Data Dasar RS sesuai'}</p>
             <p className="text-xs text-gray-600 mt-1">{validationIssues.length ? `${validationIssues.length} ketidaksesuaian akan disertakan pada sheet Validasi Data Dasar.` : 'Tidak ada ketidaksesuaian yang tercatat pada data pasien dan biaya RS.'}</p>
           </div>
-          <div className="text-right shrink-0"><p className="text-xs text-gray-500">Jejak alokasi</p><p className="font-bold text-gray-800">{(config.allocationTraces || []).length} baris</p></div>
+          <div className="text-right shrink-0"><p className="text-xs text-gray-500">Selisih rekonsiliasi</p><p className={clsx('font-bold', selisihRekonsiliasi === 0 ? 'text-emerald-700' : 'text-amber-700')}>{formatRupiah(selisihRekonsiliasi)}</p></div>
         </div>
 
         {/* Selisih Summary */}
