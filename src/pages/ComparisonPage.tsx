@@ -8,9 +8,9 @@ import { useCostingStore, useFilteredDRGResults } from '../stores/costingStore';
 import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCosting';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  Legend, ResponsiveContainer, ScatterChart, Scatter, ZAxis
+  Legend, ResponsiveContainer
 } from 'recharts';
-import { Search, Filter, Download, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Search, Filter, ChevronUp, ChevronDown, ChevronsUpDown, Info } from 'lucide-react';
 import clsx from 'clsx';
 
 const STATUS_BADGE = {
@@ -27,6 +27,42 @@ const STATUS_LABEL = {
 
 type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen' | 'cov';
 
+type ChartDatum = {
+  code: string;
+  description: string;
+  unitCost: number;
+  tarif: number;
+  unitIndex: number;
+  tarifIndex: number;
+  kasus: number;
+};
+
+const formatCompactRupiah = (value: number) => {
+  if (Math.abs(value) >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} M`;
+  if (Math.abs(value) >= 1_000_000) return `Rp ${(value / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} Jt`;
+  if (Math.abs(value) >= 1_000) return `Rp ${(value / 1_000).toLocaleString('id-ID', { maximumFractionDigits: 0 })} Rb`;
+  return formatRupiah(value);
+};
+
+function ComparisonTooltip({ active, payload, viewMode, relative }: any) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0].payload as ChartDatum;
+  const difference = item.tarif - item.unitCost;
+  return (
+    <div className="max-w-sm rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+      <p className="font-mono text-xs font-bold text-blue-700">{item.code}</p>
+      <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">{item.description}</p>
+      <p className="mt-1 text-xs text-slate-400">{formatNumber(item.kasus)} kasus</p>
+      <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs">
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Unit Cost RS</span><strong className="text-blue-600">{formatRupiah(item.unitCost)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Tarif {viewMode}</span><strong className="text-violet-600">{formatRupiah(item.tarif)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Selisih tarif − biaya</span><strong className={difference >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{difference >= 0 ? '+' : ''}{formatRupiah(difference)}</strong></div>
+      </div>
+      {relative && <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Panjang batang dibandingkan terhadap nilai terbesar pada DRG ini.</p>}
+    </div>
+  );
+}
+
 export default function ComparisonPage() {
   const drgResults = useFilteredDRGResults();
   const viewMode = useCostingStore(s => s.viewMode);
@@ -36,16 +72,9 @@ export default function ComparisonPage() {
   const [sortKey, setSortKey] = useState<SortKey>('jumlahKasus');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'table' | 'chart'>('table');
+  const [chartMode, setChartMode] = useState<'relative' | 'nominal'>('relative');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 20;
-
-  // Get unique MDC for filter
-  const mdcOptions = useMemo(() => {
-    const state = useCostingStore.getState();
-    const all = state.viewMode === 'INACBG' ? state.inacbgResults : state.idrgResults;
-    const uniq = [...new Set(all.map(d => `${d.mdc_number}|${d.mdc_description}`))].sort();
-    return uniq;
-  }, [viewMode]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -72,14 +101,25 @@ export default function ComparisonPage() {
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
 
-  // Chart data (top 15)
-  const chartData = useMemo(() => sorted.slice(0, 15).map(d => ({
-    code: d.group_code,
-    name: d.group_description.slice(0, 25),
-    'Unit Cost (Rp Rb)': Math.round(d.rataUnitCost / 1000),
-    [`Tarif ${viewMode} (Rp Rb)`]: Math.round(d.rataTarif / 1000),
-    Kasus: d.jumlahKasus,
-  })), [sorted, viewMode]);
+  // Grafik diprioritaskan berdasarkan jumlah kasus agar stabil dan mudah dipahami,
+  // terlepas dari urutan tabel yang sedang dipilih pengguna.
+  const chartData = useMemo<ChartDatum[]>(() => [...drgResults]
+    .sort((a, b) => b.jumlahKasus - a.jumlahKasus)
+    .slice(0, 10)
+    .map(d => {
+      const unitCost = Math.max(0, d.rataUnitCost);
+      const tarif = Math.max(0, d.rataTarif);
+      const rowMax = Math.max(unitCost, tarif, 1);
+      return {
+        code: d.group_code,
+        description: d.group_description,
+        unitCost,
+        tarif,
+        unitIndex: (unitCost / rowMax) * 100,
+        tarifIndex: (tarif / rowMax) * 100,
+        kasus: d.jumlahKasus,
+      };
+    }), [drgResults]);
 
   const SortIcon = ({ k }: { k: SortKey }) => {
     if (sortKey !== k) return <ChevronsUpDown className="w-3 h-3 text-gray-300" />;
@@ -161,16 +201,40 @@ export default function ComparisonPage() {
 
       {activeTab === 'chart' ? (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 15 DRG — Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
-          <ResponsiveContainer width="99%" height={400}>
-            <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 120, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={v => `${v}K`} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={120} />
-              <Tooltip formatter={(v, name) => [formatRupiah((v as number) * 1000), name as string]} />
-              <Legend />
-              <Bar dataKey="Unit Cost (Rp Rb)" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-              <Bar dataKey={`Tarif ${viewMode} (Rp Rb)`} fill="#8b5cf6" radius={[0, 4, 4, 0]} />
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-800">10 DRG dengan Kasus Terbanyak</h3>
+              <p className="mt-1 text-xs text-gray-500">Perbandingan Unit Cost RS dengan Tarif {viewMode}. Arahkan kursor ke batang untuk melihat nominal lengkap.</p>
+            </div>
+            <div className="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
+              <button onClick={() => setChartMode('relative')} className={clsx('rounded-lg px-3 py-1.5 transition', chartMode === 'relative' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>Relatif</button>
+              <button onClick={() => setChartMode('nominal')} className={clsx('rounded-lg px-3 py-1.5 transition', chartMode === 'nominal' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>Nominal</button>
+            </div>
+          </div>
+
+          {chartMode === 'relative' && (
+            <div className="mb-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+              <Info className="mt-0.5 h-4 w-4 flex-none" />
+              <span>Mode relatif membuat kedua batang tetap terbaca meski ada nilai ekstrem. Nilai terbesar pada setiap DRG ditampilkan sebagai 100%.</span>
+            </div>
+          )}
+
+          <ResponsiveContainer width="99%" height={Math.max(430, chartData.length * 54)}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 28, left: 10, bottom: 8 }} barCategoryGap="24%" barGap={3}>
+              <CartesianGrid strokeDasharray="3 5" stroke="#e2e8f0" horizontal={false} />
+              <XAxis
+                type="number"
+                domain={chartMode === 'relative' ? [0, 100] : [0, 'auto']}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={value => chartMode === 'relative' ? `${value}%` : formatCompactRupiah(Number(value)).replace('Rp ', '')}
+              />
+              <YAxis type="category" dataKey="code" tick={{ fontSize: 11, fill: '#334155', fontWeight: 600 }} axisLine={false} tickLine={false} width={105} />
+              <Tooltip cursor={{ fill: '#f8fafc' }} content={<ComparisonTooltip viewMode={viewMode} relative={chartMode === 'relative'} />} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
+              <Bar name="Unit Cost RS" dataKey={chartMode === 'relative' ? 'unitIndex' : 'unitCost'} fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
+              <Bar name={`Tarif ${viewMode}`} dataKey={chartMode === 'relative' ? 'tarifIndex' : 'tarif'} fill="#8b5cf6" radius={[0, 6, 6, 0]} maxBarSize={14} />
             </BarChart>
           </ResponsiveContainer>
         </div>
