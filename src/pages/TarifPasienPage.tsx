@@ -27,7 +27,8 @@ export default function TarifPasienPage() {
   } = useTarifPasienStore();
 
   const { config } = useHospitalCostStore();
-  const { rawRecords } = useCostingStore();
+  const { rawRecords, periodNormalization } = useCostingStore();
+  const periodFactor = periodNormalization?.factor || 1;
 
 
   // Auto-sync patients dari rawRecords E-Klaim
@@ -78,14 +79,16 @@ export default function TarifPasienPage() {
   }, [activeTab, calculateDistribution]);
 
   useEffect(() => {
-    validateAgainstHospital(config);
-  }, [patients, biayaRSMap, config, validateAgainstHospital]);
+    validateAgainstHospital(config, periodFactor);
+  }, [patients, biayaRSMap, config, periodFactor, validateAgainstHospital]);
 
   const inputTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
   const resultTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
   const inputPatients = patients.slice((inputPage - 1) * pageSize, inputPage * pageSize);
   const resultPatients = patients.slice((resultPage - 1) * pageSize, resultPage * pageSize);
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
+  const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
+  const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
       <span>Menampilkan {(page - 1) * pageSize + (patients.length ? 1 : 0)}-{Math.min(page * pageSize, patients.length)} dari {patients.length} pasien</span>
@@ -94,6 +97,13 @@ export default function TarifPasienPage() {
         <span>Halaman {page} / {pages}</span>
         <button disabled={page >= pages} onClick={() => setPage(page + 1)} className="p-1.5 rounded border border-gray-200 disabled:opacity-40 hover:bg-white"><ChevronRight className="w-4 h-4" /></button>
       </div>
+
+      {periodNormalization && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
+          <strong>Periode klaim:</strong> {periodNormalization.label} · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodFactor * 100).toFixed(1)}%).
+          {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
+        </div>
+      )}
     </div>
   );
 
@@ -130,20 +140,20 @@ export default function TarifPasienPage() {
         ))}
       </div>
 
-      <div className={`rounded-xl border p-4 ${validationIssues.length ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+      <div className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="flex items-start gap-3">
-          {validationIssues.length ? <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-none" /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-none" />}
+          {validationIssues.length ? <AlertTriangle className={`w-5 h-5 mt-0.5 flex-none ${hasValidationErrors ? 'text-red-600' : 'text-amber-600'}`} /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-none" />}
           <div className="min-w-0 flex-1">
-            <p className={`font-semibold text-sm ${validationIssues.length ? 'text-red-800' : 'text-emerald-800'}`}>{validationIssues.length ? `${validationIssues.length} Peringatan: Ada ketidaksesuaian data RS dengan tagihan` : 'Validasi data dasar RS: sesuai'}</p>
+            <p className={`font-semibold text-sm ${hasValidationErrors ? 'text-red-800' : validationIssues.length ? 'text-amber-800' : 'text-emerald-800'}`}>{validationIssues.length ? `${validationIssues.length} catatan validasi data RS dan tagihan` : 'Validasi data dasar RS: sesuai'}</p>
             {validationIssues.length ? (
-              <p className="mt-1 text-xs text-red-700">Terdapat komponen biaya RS yang tidak memiliki dasar pembagi pada 18 variabel E-Klaim. Klik tombol Periksa untuk melihat detail dan solusinya.</p>
+              <p className={`mt-1 text-xs ${hasValidationErrors ? 'text-red-700' : 'text-amber-700'}`}>{hasValidationErrors ? 'Ada data yang perlu diperbaiki sebelum hasil digunakan.' : 'Catatan ini bersifat peringatan dan perlu ditinjau, tetapi tidak memblokir perhitungan.'} Klik Periksa untuk melihat rinciannya.</p>
             ) : (
               <p className="mt-1 text-xs text-emerald-700">LHR, tempat tidur, biaya gaji, serta dasar pembagian 18 komponen telah konsisten.</p>
             )}
           </div>
           <button 
             onClick={() => {
-              validateAgainstHospital(config);
+              validateAgainstHospital(config, periodFactor);
               setShowValidationModal(true);
             }} 
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
@@ -211,7 +221,7 @@ export default function TarifPasienPage() {
                         </select>
                       </td>
                       <td className="px-3 py-1.5">
-                        <input type="number" value={p.lhr} onChange={e => updatePatient(p.id, { lhr: parseFloat(e.target.value)||0 })} className={`w-12 px-2 py-1 border rounded text-xs text-right ${hasIssue('lhr-jkn') ? 'border-red-400 bg-red-50 text-red-800' : 'border-gray-200'}`} aria-invalid={hasIssue('lhr-jkn')} />
+                        <input type="number" value={p.lhr} onChange={e => updatePatient(p.id, { lhr: parseFloat(e.target.value)||0 })} className={`w-12 px-2 py-1 border rounded text-xs text-right ${getIssueSeverity('lhr-jkn') === 'error' ? 'border-red-400 bg-red-50 text-red-800' : getIssueSeverity('lhr-jkn') === 'warning' ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-gray-200'}`} aria-invalid={hasIssue('lhr-jkn')} />
                       </td>
                       {ALL_KOMPONEN_KEYS.map(k => (
                         <td key={k} className="px-3 py-1.5 border-l border-gray-100">
@@ -293,9 +303,9 @@ export default function TarifPasienPage() {
       {showValidationModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-red-50/50">
+            <div className={`px-6 py-4 border-b border-gray-100 flex items-center justify-between ${hasValidationErrors ? 'bg-red-50/50' : 'bg-amber-50/50'}`}>
               <div className="flex items-center gap-2">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+                <AlertCircle className={`w-6 h-6 ${hasValidationErrors ? 'text-red-600' : 'text-amber-600'}`} />
                 <h3 className="text-lg font-bold text-gray-900">Hasil Pemeriksaan Validasi Data</h3>
               </div>
               <button onClick={() => setShowValidationModal(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
@@ -312,38 +322,43 @@ export default function TarifPasienPage() {
               ) : (
                 <div className="space-y-6">
                   <p className="text-sm text-gray-600 border-b border-gray-100 pb-4">
-                    Ditemukan <strong className="text-red-600">{validationIssues.length} ketidaksesuaian</strong> yang perlu diperbaiki agar perhitungan Unit Cost per Pasien proporsional dan tidak ada biaya yang hilang.
+                    Ditemukan <strong className={hasValidationErrors ? 'text-red-600' : 'text-amber-600'}>{validationIssues.length} catatan validasi</strong>. Peringatan dapat ditinjau tanpa menghentikan perhitungan; kesalahan perlu diperbaiki agar tidak ada biaya yang hilang.
                   </p>
                   <div className="space-y-4">
-                    {validationIssues.map((issue) => (
-                      <div key={issue.id} className="bg-white border border-red-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
-                        <h4 className="font-bold text-red-800 text-sm mb-1">{issue.label}</h4>
+                    {validationIssues.map((issue) => {
+                      const isWarning = issue.severity === 'warning';
+                      const isMissingWeight = issue.id.startsWith('tanpa-bobot-');
+                      return (
+                      <div key={issue.id} className={`bg-white border rounded-xl p-4 shadow-sm relative overflow-hidden ${isWarning ? 'border-amber-200' : 'border-red-200'}`}>
+                        <div className={`absolute top-0 left-0 w-1 h-full ${isWarning ? 'bg-amber-500' : 'bg-red-500'}`}></div>
+                        <h4 className={`font-bold text-sm mb-1 ${isWarning ? 'text-amber-800' : 'text-red-800'}`}>{issue.label} <span className="text-[10px] uppercase">({isWarning ? 'Peringatan' : 'Kesalahan'})</span></h4>
                         <p className="text-sm text-gray-700 font-medium mb-3">{issue.message}</p>
                         
                         <div className="grid grid-cols-2 gap-4 mb-4 bg-gray-50 p-3 rounded-lg text-sm">
                           <div>
-                            <span className="text-gray-500 text-xs block mb-0.5">Biaya RS (Hasil Unit Cost)</span>
+                            <span className="text-gray-500 text-xs block mb-0.5">Nilai Aktual</span>
                             <span className="font-semibold font-mono text-gray-900">{formatRupiah(issue.actual)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 text-xs block mb-0.5">Total Tagihan E-Klaim</span>
-                            <span className="font-semibold font-mono text-red-600">{formatRupiah(issue.expected)}</span>
+                            <span className="text-gray-500 text-xs block mb-0.5">Nilai Acuan</span>
+                            <span className={`font-semibold font-mono ${isWarning ? 'text-amber-600' : 'text-red-600'}`}>{formatRupiah(issue.expected)}</span>
                           </div>
                         </div>
 
                         <div className="bg-blue-50/50 p-3 rounded-lg border border-blue-100 text-sm">
                           <strong className="text-blue-800 flex items-center gap-1.5 text-xs uppercase tracking-wide mb-1">
-                            <Info className="w-3.5 h-3.5" /> Cara Memperbaiki
+                            <Info className="w-3.5 h-3.5" /> {isWarning ? 'Catatan Peninjauan' : 'Cara Memperbaiki'}
                           </strong>
                           <p className="text-blue-900 text-xs leading-relaxed">
-                            Karena Total Tagihan E-Klaim untuk <strong>{issue.label}</strong> bernilai Rp 0, sistem tidak bisa mendistribusikan biaya RS (Rp {formatRupiah(issue.actual)}) ke pasien secara proporsional. 
-                            <br/><br/>
-                            <strong>Solusi:</strong> Buka menu <strong>Input Biaya RS &rarr; Tab Distribusi 18 Var</strong>. Pindahkan (hapus lalu jumlahkan manual) biaya {issue.label} ke komponen variabel lain yang mirip dan memiliki nilai tagihan E-Klaim lebih dari Rp 0 (contohnya: Penunjang atau Alkes).
+                            {isMissingWeight
+                              ? <>Total tagihan E-Klaim untuk <strong>{issue.label}</strong> bernilai Rp 0 sehingga biaya tidak dapat dibagi proporsional. Periksa sumber TXT atau petakan biaya ke komponen yang memiliki tagihan.</>
+                              : issue.id === 'lhr-jkn'
+                                ? <>Perbedaan dapat terjadi karena pola layanan musiman. Pastikan periode hasil deteksi dan koreksi bulan efektif sudah sesuai; tidak perlu memaksa nilainya sama dengan prorata tahunan.</>
+                                : <>Periksa kembali nilai pada Data Dasar RS dan pusat biaya terkait, lalu sesuaikan sumber yang tidak konsisten.</>}
                           </p>
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </div>
               )}

@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
+  const periodNormalization = useCostingStore(s => s.periodNormalization);
   const navigate = useNavigate();
 
   const pieData = React.useMemo(() => summary ? [
@@ -125,6 +126,15 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
       </div>
+
+      {periodNormalization && (
+        <div className={clsx('rounded-xl border px-4 py-3 text-sm', (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800')}>
+          <strong>Periode klaim:</strong> {periodNormalization.label} · biaya disesuaikan {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%).
+          {periodNormalization.yearMismatch && ` Tahun biaya ${periodNormalization.costYear} digunakan sebagai baseline/proksi.`}
+          {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
+          {periodNormalization.invalidDateCount > 0 && ` ${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.`}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
         <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">ROV total</p><p className="text-xl font-bold text-violet-700">{(summary.riv * 100).toFixed(1)}%</p></div></div>

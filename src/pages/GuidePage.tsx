@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   CheckCircle, AlertTriangle, FileText, Database, Building2,
   ArrowRight, BookOpen, ClipboardList, Layers,
-  Activity, Users, Receipt, HardDrive,
+  Activity, Users, Receipt, HardDrive, CalendarDays, Calculator,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -51,6 +51,7 @@ const DATA_YANG_DISIAPKAN = [
       'Jumlah Tempat Tidur per kelas kamar',
       'Total Lama Hari Rawat JKN dan Non JKN (per kelas)',
       'Total Jumlah Pasien Pulang (per kelas)',
+      'Gunakan periode tahunan yang sama dengan laporan keuangan/template costing',
     ],
     source: 'Sumber: Laporan Statistik RS / SIRS',
   },
@@ -98,10 +99,11 @@ const DATA_YANG_DISIAPKAN = [
       'Kode iDRG (baru)',
       'Diagnosis Utama (ICD-10)',
       'Prosedur/Tindakan (ICD-9-CM)',
+      'Tanggal masuk (admission_date) dan tanggal pulang (discharge_date)',
       'Cara Pulang pasien',
       '18 Komponen Tarif: Prosedur, Bedah, Konsultasi, Tenaga Ahli, Keperawatan, Penunjang, Radiologi, Lab, Darah, Rehabilitasi, Kamar, ICU, Obat, Obat Kronis, Obat Kemo, Alkes, BMHP, Sewa Alat',
     ],
-    source: 'Sumber: Aplikasi E-Klaim BPJS / File Excel eklaim',
+    source: 'Sumber: Aplikasi E-Klaim BPJS / file TXT E-Klaim',
   },
   {
     icon: ClipboardList,
@@ -146,22 +148,38 @@ const LANGKAH_PENGGUNAAN = [
   },
   {
     step: '02',
-    path: '/tarif-pasien',
-    label: 'Cost per Pasien',
+    path: '/upload',
+    label: 'Upload TXT & Tentukan Periode Klaim',
     icon: '📤',
-    color: 'from-violet-500 to-violet-600',
-    bgLight: 'bg-violet-50',
-    borderColor: 'border-violet-200',
-    desc: 'Masukkan data klaim per pasien, lalu sistem membagi biaya RS secara proporsional ke 18 komponen tarif.',
+    color: 'from-indigo-500 to-indigo-600',
+    bgLight: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
+    desc: 'Unggah satu atau beberapa TXT E-Klaim. Sistem mendeteksi bulan unik tanggal pulang dan menyesuaikan biaya tahunan dengan periode klaim.',
     substeps: [
-      'Masukkan atau impor data pasien dari E-Klaim',
-      'Pastikan SEP, DRG, kelas rawat, LHR dan 18 komponen tarif tersedia',
-      'Isi total biaya RS untuk setiap komponen',
-      'Periksa validasi merah dan hasil pembagian proporsional per pasien',
+      'Unggah satu atau beberapa TXT; file dengan bulan pulang yang sama tetap dihitung satu bulan',
+      'Periode utama diambil dari discharge_date; admission_date hanya digunakan sebagai fallback',
+      'Periksa ringkasan periode, faktor biaya, peringatan fallback, dan perbedaan tahun',
+      'Jika perlu, koreksi Bulan Efektif tanpa mengunggah ulang TXT',
     ],
   },
   {
     step: '03',
+    path: '/tarif-pasien',
+    label: 'Distribusi 18 Variabel & Cost per Pasien',
+    icon: '👤',
+    color: 'from-violet-500 to-violet-600',
+    bgLight: 'bg-violet-50',
+    borderColor: 'border-violet-200',
+    desc: 'Sistem membagi biaya RS periode secara proporsional ke 18 komponen tarif, lalu menghitung cost setiap pasien.',
+    substeps: [
+      'Pastikan SEP, DRG, kelas rawat, LHR dan 18 komponen tarif tersedia',
+      'Total biaya 18 variabel harus sama persis dengan Total Biaya Periode',
+      'Periksa peringatan LHR periode dan kesalahan komponen tanpa dasar pembagi',
+      'Lihat rumus dan hasil pembagian proporsional per pasien',
+    ],
+  },
+  {
+    step: '04',
     path: '/',
     label: 'Dashboard & Analisis',
     icon: '📊',
@@ -177,7 +195,7 @@ const LANGKAH_PENGGUNAAN = [
     ],
   },
   {
-    step: '04',
+    step: '05',
     path: '/comparison',
     label: 'Perbandingan INA-CBG vs iDRG',
     icon: '⚖️',
@@ -193,18 +211,19 @@ const LANGKAH_PENGGUNAAN = [
     ],
   },
   {
-    step: '05',
+    step: '06',
     path: '/report',
     label: 'Laporan & Export',
     icon: '📄',
     color: 'from-orange-500 to-orange-600',
     bgLight: 'bg-orange-50',
     borderColor: 'border-orange-200',
-    desc: 'Export hasil analisis ke Excel untuk pelaporan ke Kemenkes atau manajemen RS.',
+    desc: 'Unduh Excel dan PPT atau cetak PDF. Semua keluaran menggunakan biaya yang telah disesuaikan dengan periode TXT.',
     substeps: [
-      'Export seluruh data ke Excel (.xlsx)',
-      'Laporan ringkasan per DRG',
-      'Data bisa difilter sebelum export',
+      'Excel memuat periode, faktor biaya, biaya tahunan, biaya periode, dan rekonsiliasi',
+      'PPT menampilkan faktor periode dan ringkasan hasil per DRG',
+      'PDF/Print, dashboard, grafik, cost per pasien, dan DRG memakai sumber biaya periode yang sama',
+      'Tinjau peringatan beda tahun, fallback tanggal, dan data tidak valid pada laporan',
     ],
   },
 ];
@@ -265,6 +284,64 @@ export default function GuidePage() {
         </div>
       </div>
 
+      {/* Normalisasi periode biaya */}
+      <div className="bg-white border border-blue-200 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-2">
+          <CalendarDays className="w-5 h-5 text-blue-700" />
+          <h2 className="text-lg font-bold text-[#041E42]">Penyesuaian Biaya Tahunan dengan Periode TXT</h2>
+        </div>
+        <p className="text-sm text-gray-600">
+          Template costing berisi biaya <strong>12 bulan</strong>, sedangkan TXT dapat berisi klaim satu atau beberapa bulan. Agar perbandingan relevan, aplikasi menyesuaikan seluruh biaya Overhead, Intermediate, dan biaya langsung layanan ke periode klaim.
+        </p>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-blue-700">1. Deteksi Periode</p>
+            <p className="mt-2 text-sm font-semibold text-blue-950">Bulan unik dari discharge_date</p>
+            <p className="mt-1 text-xs leading-relaxed text-blue-700">Pasien masuk akhir bulan dan pulang bulan berikutnya dihitung pada bulan pulang. Dua file pada bulan yang sama tetap dihitung satu bulan.</p>
+          </div>
+          <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-violet-700">2. Hitung Faktor</p>
+            <p className="mt-2 text-sm font-semibold text-violet-950">Faktor = bulan efektif ÷ 12</p>
+            <p className="mt-1 text-xs leading-relaxed text-violet-700">Contoh: September–Oktober = 2 bulan, sehingga faktor biaya menjadi 2/12 atau 16,7%.</p>
+          </div>
+          <div className="rounded-xl border border-teal-100 bg-teal-50 p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">3. Prorata Biaya</p>
+            <p className="mt-2 text-sm font-semibold text-teal-950">Biaya Periode = Biaya Tahunan × Faktor</p>
+            <p className="mt-1 text-xs leading-relaxed text-teal-700">Biaya periode menjadi sumber yang sama untuk 18 variabel, cost per pasien, DRG, grafik, Excel, PDF, dan PPT.</p>
+          </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-start gap-3">
+            <Calculator className="w-5 h-5 text-gray-600 flex-none mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-gray-800">Contoh biaya tahunan Rp360.377.911.577</p>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <span className="rounded-lg bg-white border border-gray-200 px-3 py-2"><strong>1 bulan:</strong> Rp30.031.492.631</span>
+                <span className="rounded-lg bg-white border border-gray-200 px-3 py-2"><strong>2 bulan:</strong> Rp60.062.985.263</span>
+                <span className="rounded-lg bg-white border border-gray-200 px-3 py-2"><strong>12 bulan:</strong> Rp360.377.911.577</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+            <strong>Fallback dan peringatan:</strong> jika discharge_date kosong/tidak valid, aplikasi memakai admission_date dan menampilkan jumlah fallback. Data tanpa kedua tanggal juga ditandai.
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-amber-800">
+            <strong>Koreksi manual:</strong> ubah Bulan Efektif pada ringkasan upload atau Distribusi 18 Variabel. Semua hasil langsung dihitung ulang tanpa upload ulang.
+          </div>
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sky-800">
+            <strong>Tahun berbeda diperbolehkan:</strong> biaya tahun template digunakan sebagai baseline/proksi, dengan peringatan yang tetap tampil pada layar dan laporan.
+          </div>
+          <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-sky-800">
+            <strong>Rekonsiliasi:</strong> setelah pembulatan, jumlah biaya pada 18 variabel selalu disesuaikan agar tepat sama dengan Total Biaya Periode.
+          </div>
+        </div>
+      </div>
+
       {/* Data yang Harus Disiapkan */}
       <div>
         <div className="flex items-center gap-2 mb-4">
@@ -318,6 +395,8 @@ export default function GuidePage() {
             { icon: '📋', label: 'Step 1: Overhead', sub: 'Pusat Biaya Penunjang Umum', color: 'bg-blue-50 border-blue-200 text-blue-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
             { icon: '🔬', label: 'Step 2: Intermediate Cost', sub: 'Farmasi, Lab, Radiologi, dan lainnya', color: 'bg-violet-50 border-violet-200 text-violet-800' },
+            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: '📅', label: 'Normalisasi Periode', sub: 'Biaya tahunan × bulan discharge/12', color: 'bg-sky-50 border-sky-200 text-sky-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
             { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', sub: 'Proporsi sesuai tagihan TXT E-Klaim', color: 'bg-amber-50 border-amber-200 text-amber-800' },
             { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },

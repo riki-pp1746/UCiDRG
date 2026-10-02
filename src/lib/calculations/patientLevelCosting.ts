@@ -266,11 +266,17 @@ export function calcCMI(records: PatientRecord[]): number {
 export function generateSummary(
   results: PatientCostResult[],
   drgResults: DRGGroupResult[],
-  type: 'INACBG' | 'IDRG'
+  type: 'INACBG' | 'IDRG',
+  periodNormalization?: import('../../types/costing.types').PeriodNormalization | null,
+  annualCostTotal = 0,
+  adjustedCostTotal = 0,
 ): CostingSummary {
   if (results.length === 0) {
     return {
       periodeData: '-',
+      periodNormalization: periodNormalization || undefined,
+      annualCostTotal,
+      adjustedCostTotal,
       totalKasus: 0,
       totalBiayaRS: 0,
       totalTarif: 0,
@@ -319,16 +325,19 @@ export function generateSummary(
 
   // Determine periode from data
   const dates = results
-    .map(r => r.patient.admission_date)
+    .map(r => r.patient.discharge_date || r.patient.admission_date)
     .filter(Boolean)
     .sort();
-  const periodeData =
+  const periodeData = periodNormalization?.label || (
     dates.length > 0
       ? `${dates[0]} s/d ${dates[dates.length - 1]}`
-      : '-';
+      : '-');
 
   return {
     periodeData,
+    periodNormalization: periodNormalization || undefined,
+    annualCostTotal,
+    adjustedCostTotal,
     totalKasus: results.length,
     totalBiayaRS,
     totalTarif,

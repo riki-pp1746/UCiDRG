@@ -212,6 +212,9 @@ export interface DRGGroupResult {
 // ============================================================
 export interface CostingSummary {
   periodeData: string;
+  periodNormalization?: PeriodNormalization;
+  annualCostTotal?: number;
+  adjustedCostTotal?: number;
   totalKasus: number;
   totalBiayaRS: number;
   totalTarif: number;
@@ -244,4 +247,22 @@ export interface UploadSession {
   parsedRows: number;
   status: 'idle' | 'parsing' | 'done' | 'error';
   error?: string;
+  periodNormalization?: PeriodNormalization;
+  annualCostTotal?: number;
+  adjustedCostTotal?: number;
+}
+
+export interface PeriodNormalization {
+  mode: 'auto' | 'manual';
+  detectedMonths: string[];
+  effectiveMonths: number;
+  factor: number;
+  claimStartDate: string;
+  claimEndDate: string;
+  claimYears: number[];
+  costYear: number;
+  fallbackCount: number;
+  invalidDateCount: number;
+  yearMismatch: boolean;
+  label: string;
 }

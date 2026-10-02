@@ -5,6 +5,7 @@ import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospital
 import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
+import { detectPeriodNormalization, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
 import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
@@ -21,7 +22,7 @@ interface ProcessResult {
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { setRawRecords, rawRecords } = useCostingStore();
+  const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization } = useCostingStore();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ProcessResult | null>(null);
@@ -109,6 +110,9 @@ export default function UploadPage() {
           ? `Multi-file upload (${processResult.txtFiles.length} files)` 
           : processResult.txtFiles[0];
 
+        const hospitalConfig = useHospitalCostStore.getState().config;
+        const detectedPeriod = detectPeriodNormalization(combinedTxtRecords, hospitalConfig.tahunData);
+        const annualCostTotal = hospitalConfig.totalOverheadCost + hospitalConfig.totalIntermediateCost + hospitalConfig.totalFinalCost;
         const session: UploadSession = {
           id: Date.now().toString(),
           filename: sessionName,
@@ -116,9 +120,13 @@ export default function UploadPage() {
           totalRows: processResult.totalTxtRows,
           parsedRows: processResult.totalParsedTxtRows,
           status: 'done',
+          periodNormalization: detectedPeriod,
+          annualCostTotal,
+          adjustedCostTotal: Math.round(annualCostTotal * detectedPeriod.factor),
         };
-        
+
         setRawRecords(combinedTxtRecords, session);
+        setPeriodNormalization(detectedPeriod);
 
         // Upload harus langsung menghasilkan distribusi, bukan hanya menyimpan
         // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
@@ -126,7 +134,7 @@ export default function UploadPage() {
         const tarifStore = useTarifPasienStore.getState();
         tarifStore.syncFromCosting(combinedTxtRecords);
         const patients = useTarifPasienStore.getState().patients;
-        const biayaRSMap = buildBiayaRSMap(useHospitalCostStore.getState().config, patients);
+        const biayaRSMap = buildBiayaRSMap(hospitalConfig, patients, detectedPeriod.factor);
         useTarifPasienStore.setState({ biayaRSMap });
         useTarifPasienStore.getState().calculateDistribution();
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
@@ -141,7 +149,24 @@ export default function UploadPage() {
       setErrorMsg(String(e));
       setUploadState('error');
     }
-  }, [setRawRecords]);
+  }, [setPeriodNormalization, setRawRecords]);
+
+  const handlePeriodMonthsChange = (months: number) => {
+    if (!periodNormalization || rawRecords.length === 0) return;
+    const updated = overrideEffectiveMonths(periodNormalization, months);
+    setPeriodNormalization(updated);
+
+    const tarifStore = useTarifPasienStore.getState();
+    if (tarifStore.patients.length === 0) tarifStore.syncFromCosting(rawRecords);
+    const biayaRSMap = buildBiayaRSMap(
+      useHospitalCostStore.getState().config,
+      useTarifPasienStore.getState().patients,
+      updated.factor,
+    );
+    useTarifPasienStore.setState({ biayaRSMap });
+    useTarifPasienStore.getState().calculateDistribution();
+    useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
+  };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -230,6 +255,38 @@ export default function UploadPage() {
                 )}
               </div>
             </div>
+
+            {result.txtFiles.length > 0 && periodNormalization && (
+              <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-blue-900">Periode Klaim Berdasarkan Tanggal Pulang</p>
+                    <p className="mt-1 text-lg font-bold text-blue-800">{periodNormalization.label}</p>
+                    <p className="mt-1 text-xs text-blue-700">
+                      {periodNormalization.detectedMonths.length} bulan terdeteksi · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
+                    </p>
+                  </div>
+                  <label className="text-xs font-semibold text-blue-900">
+                    Koreksi bulan efektif
+                    <select
+                      value={periodNormalization.effectiveMonths}
+                      onChange={event => handlePeriodMonthsChange(Number(event.target.value))}
+                      className="mt-1 block w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      {Array.from({ length: 12 }, (_, index) => index + 1).map(month => <option key={month} value={month}>{month} bulan</option>)}
+                    </select>
+                  </label>
+                </div>
+
+                {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
+                  <div className="mt-4 space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                    {periodNormalization.yearMismatch && <p>⚠ Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
+                    {periodNormalization.fallbackCount > 0 && <p>⚠ {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
+                    {periodNormalization.invalidDateCount > 0 && <p>⚠ {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
+                  </div>
+                )}
+              </div>
+            )}
 
             {result.errors.length > 0 && (
               <div className="mb-6 p-4 bg-amber-50 text-amber-700 text-sm rounded-xl border border-amber-200">

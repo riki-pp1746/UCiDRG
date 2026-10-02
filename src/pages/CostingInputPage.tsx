@@ -9,6 +9,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import { overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {
@@ -290,7 +291,8 @@ export default function CostingInputPage() {
 
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
-  const { setOverheadConfig } = useCostingStore();
+  const { setOverheadConfig, periodNormalization, setPeriodNormalization } = useCostingStore();
+  const periodFactor = periodNormalization?.factor || 1;
 
   // Recalculate otomatis saat masuk ke tab distribusi18
   useEffect(() => {
@@ -305,16 +307,17 @@ export default function CostingInputPage() {
       // Pulihkan juga sesi lama yang pasiennya sudah ada tetapi mapping biayanya
       // masih kosong akibat alur upload versi sebelumnya.
       if (rawRecords.length > 0 && !hasMappedCosts) {
-        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients);
+        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor);
         useTarifPasienStore.setState({ biayaRSMap: mapped });
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
       }
 
       calculateDistribution();
     }
-  }, [activeTab, biayaRSMap, calculateDistribution, config]);
+  }, [activeTab, biayaRSMap, calculateDistribution, config, periodFactor]);
 
-  const totalBiayaLaporan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
+  const totalBiayaTahunan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
+  const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
   const selisihNonJKN = totalBiayaLaporan - totalBiaya18Variabel;
 
@@ -353,7 +356,7 @@ export default function CostingInputPage() {
       return acc;
     }, {} as Record<keyof KomponenTarif18, number>);
     const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
-    const mapped = buildBiayaRSMap(config, state.patients);
+    const mapped = buildBiayaRSMap(config, state.patients, periodFactor);
 
     useTarifPasienStore.setState({ biayaRSMap: mapped });
     useTarifPasienStore.getState().calculateDistribution();
@@ -363,6 +366,17 @@ export default function CostingInputPage() {
         ? 'Auto-map berhasil. Biaya langsung Pusat Biaya Utama dipetakan ke 18 variabel, lalu total Overhead + Intermediate dibagi mengikuti proporsi tagihan TXT E-Klaim.'
         : 'Data tagihan TXT E-Klaim belum tersedia. Biaya langsung Pusat Biaya Utama sudah dipetakan, tetapi Overhead + Intermediate belum dapat dibagi ke 18 variabel.'
     );
+  };
+
+  const handlePeriodMonthsChange = (months: number) => {
+    if (!periodNormalization) return;
+    const updated = overrideEffectiveMonths(periodNormalization, months);
+    setPeriodNormalization(updated);
+    const state = useTarifPasienStore.getState();
+    const mapped = buildBiayaRSMap(config, state.patients, updated.factor);
+    useTarifPasienStore.setState({ biayaRSMap: mapped });
+    useTarifPasienStore.getState().calculateDistribution();
+    useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
   };
 
   // Sinkronisasi mapping distribusi langsung ke engine Patient Level Costing
@@ -1351,11 +1365,34 @@ export default function CostingInputPage() {
             </button>
           </div>
 
+          {periodNormalization && (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-bold text-blue-900">Periode klaim: {periodNormalization.label}</p>
+                  <p className="mt-1 text-xs text-blue-700">Berdasarkan bulan unik discharge_date · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)</p>
+                </div>
+                <label className="text-xs font-semibold text-blue-900">
+                  Bulan efektif
+                  <select value={periodNormalization.effectiveMonths} onChange={event => handlePeriodMonthsChange(Number(event.target.value))} className="ml-2 rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-slate-800">
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map(month => <option key={month} value={month}>{month} bulan</option>)}
+                  </select>
+                </label>
+              </div>
+              {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && <p className="mt-3 text-xs text-amber-700">⚠ {periodNormalization.yearMismatch ? `Tahun klaim ${periodNormalization.claimYears.join(', ')} berbeda dari tahun biaya ${periodNormalization.costYear}. ` : ''}{periodNormalization.fallbackCount > 0 ? `${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback. ` : ''}{periodNormalization.invalidDateCount > 0 ? `${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.` : ''}</p>}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <p className="text-xs text-gray-500">Total Biaya Laporan Keuangan</p>
-              <p className="font-bold text-gray-900 mt-1">{formatRupiah(totalBiayaLaporan)}</p>
-              <p className="text-[11px] text-gray-400 mt-1">Overhead + Intermediate + Pusat Biaya Utama</p>
+              <p className="text-xs text-gray-500">Total Biaya Tahunan</p>
+              <p className="font-bold text-gray-900 mt-1">{formatRupiah(totalBiayaTahunan)}</p>
+              <p className="text-[11px] text-gray-400 mt-1">Baseline laporan keuangan 12 bulan</p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-xs text-blue-600">Total Biaya Periode</p>
+              <p className="font-bold text-blue-900 mt-1">{formatRupiah(totalBiayaLaporan)}</p>
+              <p className="text-[11px] text-blue-500 mt-1">Biaya tahunan × {periodNormalization?.effectiveMonths || 12}/12</p>
             </div>
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
               <p className="text-xs text-indigo-600">Total Biaya 18 Variabel</p>
@@ -1369,10 +1406,11 @@ export default function CostingInputPage() {
               <p className={clsx('font-bold mt-1', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-900' : 'text-amber-900')}>{formatRupiah(selisihNonJKN)}</p>
               <p className="text-[11px] opacity-70 mt-1">Total laporan − total 18 variabel</p>
             </div>
-            <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-              <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
-              <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS komponen ÷ Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien × rasio.</p>
-            </div>
+          </div>
+
+          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+            <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
+            <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS periode per komponen ÷ Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien × rasio.</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

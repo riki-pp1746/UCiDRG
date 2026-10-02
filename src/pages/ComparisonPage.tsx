@@ -68,6 +68,7 @@ export default function ComparisonPage() {
   const viewMode = useCostingStore(s => s.viewMode);
   const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
   const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
+  const periodNormalization = useCostingStore(s => s.periodNormalization);
 
   const [sortKey, setSortKey] = useState<SortKey>('jumlahKasus');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -142,7 +143,7 @@ export default function ComparisonPage() {
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs {viewMode}</h1>
-          <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group</p>
+          <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group{periodNormalization ? ` · ${periodNormalization.label} · faktor biaya ${periodNormalization.effectiveMonths}/12` : ''}</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
           <button

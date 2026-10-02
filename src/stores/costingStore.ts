@@ -13,6 +13,7 @@ import {
   DRGGroupResult,
   CostingSummary,
   UploadSession,
+  PeriodNormalization,
 } from '../types/costing.types';
 import {
   runRVUAllocation,
@@ -39,6 +40,7 @@ interface CostingState {
   viewMode: 'INACBG' | 'IDRG';
   overheadConfig: OverheadConfig;
   rvuGlobalCosts?: RVUGlobalCosts;
+  periodNormalization: PeriodNormalization | null;
   
   // UI State
   isProcessing: boolean;
@@ -54,6 +56,7 @@ interface CostingState {
     processData: () => void;
   setOverheadConfig: (config: Partial<OverheadConfig>) => void;
   setRVUGlobalCosts: (costs: RVUGlobalCosts) => void;
+  setPeriodNormalization: (period: PeriodNormalization) => void;
   setFilter: (key: string, value: any) => void;
   clearData: () => void;
   setActiveSession: (id: string) => void;
@@ -73,6 +76,7 @@ export const useCostingStore = create<CostingState>()(
       summaryIDRG: null,
       viewMode: 'INACBG',
       overheadConfig: DEFAULT_OVERHEAD_CONFIG,
+      periodNormalization: null,
       isProcessing: false,
       processProgress: 0,
       filterDRG: '',
@@ -99,7 +103,7 @@ export const useCostingStore = create<CostingState>()(
       },
 
       processData: () => {
-        const { rawRecords, overheadConfig, rvuGlobalCosts } = get();
+        const { rawRecords, overheadConfig, rvuGlobalCosts, periodNormalization, sessions, activeSessionId } = get();
         if (!rawRecords.length) return;
 
         set({ isProcessing: true, processProgress: 10 });
@@ -118,8 +122,12 @@ export const useCostingStore = create<CostingState>()(
           
           set({ processProgress: 80 });
           
-          const summaryINACBG = generateSummary(results, inacbg, 'INACBG');
-          const summaryIDRG = generateSummary(results, idrg, 'IDRG');
+          const activeSession = sessions.find(session => session.id === activeSessionId);
+          const rvuCostTotal = rvuGlobalCosts ? Object.values(rvuGlobalCosts).reduce((sum, value) => sum + value, 0) : 0;
+          const annualCostTotal = activeSession?.annualCostTotal ?? (rvuCostTotal / (periodNormalization?.factor || 1));
+          const adjustedCostTotal = activeSession?.adjustedCostTotal ?? rvuCostTotal;
+          const summaryINACBG = generateSummary(results, inacbg, 'INACBG', periodNormalization, annualCostTotal, adjustedCostTotal);
+          const summaryIDRG = generateSummary(results, idrg, 'IDRG', periodNormalization, annualCostTotal, adjustedCostTotal);
           
           set({
             patientResults: results,
@@ -142,6 +150,16 @@ export const useCostingStore = create<CostingState>()(
       },
 
       setRVUGlobalCosts: (costs) => { set({ rvuGlobalCosts: costs }); setTimeout(() => get().processData(), 100); },
+      setPeriodNormalization: (period) => set(state => ({
+        periodNormalization: period,
+        sessions: state.sessions.map(session => session.id === state.activeSessionId ? {
+          ...session,
+          periodNormalization: period,
+          adjustedCostTotal: session.annualCostTotal !== undefined
+            ? Math.round(session.annualCostTotal * period.factor)
+            : session.adjustedCostTotal,
+        } : session),
+      })),
       setFilter: (key, value) => {
         set({ [key]: value } as Partial<CostingState>);
       },
@@ -156,6 +174,7 @@ export const useCostingStore = create<CostingState>()(
           summaryIDRG: null,
           sessions: [],
           activeSessionId: null,
+          periodNormalization: null,
         });
       },
 
@@ -168,6 +187,7 @@ export const useCostingStore = create<CostingState>()(
         // Hanya persist config dan sessions, bukan data besar
         overheadConfig: state.overheadConfig,
         sessions: state.sessions,
+        periodNormalization: state.periodNormalization,
       }),
     }
   )

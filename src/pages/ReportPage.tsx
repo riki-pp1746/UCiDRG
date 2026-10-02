@@ -53,13 +53,16 @@ export default function ReportPage() {
   const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
   const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
   const patientResults = useCostingStore(s => s.patientResults);
+  const periodNormalization = useCostingStore(s => s.periodNormalization);
   const config = useHospitalCostStore(s => s.config);
   const validationIssues = useTarifPasienStore(s => s.validationIssues);
   const biayaRSMap = useTarifPasienStore(s => s.biayaRSMap);
   const { user } = useAuthStore();
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const totalBiayaLaporan = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+  const totalBiayaTahunan = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+  const periodFactor = periodNormalization?.factor || 1;
+  const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
   const selisihRekonsiliasi = totalBiayaLaporan - totalBiaya18Variabel;
 
@@ -80,6 +83,14 @@ export default function ReportPage() {
       ['LAPORAN UNIT COST - UnitCOSt PRO'],
       ['Rumah Sakit', user?.namaRS],
       ['Periode Data', summary.periodeData],
+      ['Sumber Periode', 'Bulan unik discharge_date'],
+      ['Bulan Efektif', periodNormalization?.effectiveMonths || 12],
+      ['Faktor Periode', periodFactor],
+      ['Total Biaya Tahunan', totalBiayaTahunan],
+      ['Total Biaya Periode', totalBiayaLaporan],
+      ['Peringatan Tahun', periodNormalization?.yearMismatch ? `Tahun klaim ${periodNormalization.claimYears.join(', ')} berbeda dari tahun biaya ${periodNormalization.costYear}` : 'Sesuai'],
+      ['Fallback admission_date', periodNormalization?.fallbackCount || 0],
+      ['Tanggal tidak valid', periodNormalization?.invalidDateCount || 0],
       ['Tanggal Cetak', new Date().toLocaleDateString('id-ID')],
       [],
       ['RINGKASAN EKSEKUTIF'],
@@ -145,13 +156,13 @@ export default function ReportPage() {
     // Sheet 5: Rekonsiliasi biaya. Tidak ada alokasi ke layanan final.
     const reconciliationData = [
       ['REKONSILIASI BIAYA RS'],
-      ['Komponen', 'Nilai (Rp)', 'Keterangan'],
-      ['A. Pusat Biaya Penunjang Umum (Overhead)', config.totalOverheadCost || 0, 'Biaya langsung'],
-      ['B. Pusat Biaya Penunjang Medis (Intermediate)', config.totalIntermediateCost || 0, 'Biaya langsung'],
-      ['C. Pusat Biaya Utama (Layanan Pasien)', config.totalFinalCost || 0, 'Biaya langsung'],
-      ['Total Biaya Laporan Operasional/Keuangan', totalBiayaLaporan, 'A + B + C'],
-      ['Total Biaya yang Dipetakan ke 18 Variabel E-Klaim', totalBiaya18Variabel, 'Overhead dan Intermediate didistribusikan langsung berdasarkan proporsi TXT E-Klaim'],
-      ['Selisih Rekonsiliasi', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Usulan biaya Non-JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
+      ['Komponen', 'Nilai Tahunan (Rp)', 'Nilai Periode (Rp)', 'Keterangan'],
+      ['A. Pusat Biaya Penunjang Umum (Overhead)', config.totalOverheadCost || 0, Math.round((config.totalOverheadCost || 0) * periodFactor), 'Biaya langsung'],
+      ['B. Pusat Biaya Penunjang Medis (Intermediate)', config.totalIntermediateCost || 0, Math.round((config.totalIntermediateCost || 0) * periodFactor), 'Biaya langsung'],
+      ['C. Pusat Biaya Utama (Layanan Pasien)', config.totalFinalCost || 0, Math.round((config.totalFinalCost || 0) * periodFactor), 'Biaya langsung'],
+      ['Total Biaya Laporan Operasional/Keuangan', totalBiayaTahunan, totalBiayaLaporan, `Faktor ${periodNormalization?.effectiveMonths || 12}/12`],
+      ['Total Biaya yang Dipetakan ke 18 Variabel E-Klaim', '', totalBiaya18Variabel, 'Distribusi berdasarkan proporsi TXT E-Klaim'],
+      ['Selisih Rekonsiliasi', '', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Usulan biaya Non-JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
     ];
     const ws5 = XLSX.utils.aoa_to_sheet(reconciliationData);
     XLSX.utils.book_append_sheet(wb, ws5, 'Rekonsiliasi Biaya');
@@ -190,7 +201,15 @@ export default function ReportPage() {
     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.15, fill: { color: teal }, line: { color: teal } });
     slide.addText('Hasil Unit Cost Rumah Sakit', { x: 0.8, y: 2.15, w: 11.5, h: 0.7, fontFace: 'Aptos Display', fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' });
     slide.addText('Patient Level Costing dan Analisis Tarif', { x: 0.8, y: 2.95, w: 11.5, h: 0.35, fontFace: 'Aptos', fontSize: 18, color: 'BFEDEA', align: 'center' });
-    slide.addText(`${user?.namaRS || 'Rumah Sakit'}\nPeriode data: ${summary.periodeData}`, { x: 0.8, y: 4.15, w: 11.5, h: 0.65, fontFace: 'Aptos', fontSize: 15, color: 'FFFFFF', align: 'center', breakLine: false });
+    slide.addText(`${user?.namaRS || 'Rumah Sakit'}\nPeriode data: ${summary.periodeData} · Faktor biaya ${periodNormalization?.effectiveMonths || 12}/12`, { x: 0.8, y: 4.15, w: 11.5, h: 0.65, fontFace: 'Aptos', fontSize: 15, color: 'FFFFFF', align: 'center', breakLine: false });
+    if (periodNormalization && (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0)) {
+      const notes = [
+        periodNormalization.yearMismatch ? `tahun klaim berbeda dari tahun biaya ${periodNormalization.costYear}` : '',
+        periodNormalization.fallbackCount > 0 ? `${periodNormalization.fallbackCount} fallback admission_date` : '',
+        periodNormalization.invalidDateCount > 0 ? `${periodNormalization.invalidDateCount} tanggal tidak valid` : '',
+      ].filter(Boolean).join(' · ');
+      slide.addText(`Catatan periode: ${notes}`, { x: 1.0, y: 5.05, w: 11.3, h: 0.3, fontFace: 'Aptos', fontSize: 10, color: 'FFE5A3', align: 'center' });
+    }
 
     slide = pptx.addSlide(); title(slide, 'Ringkasan Hasil', `Tarif pembanding: ${viewMode}`);
     const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total Unit Cost', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summary.cmi.toFixed(3)], ['ROV', `${(summary.riv * 100).toFixed(1)}%`]];
@@ -200,7 +219,7 @@ export default function ReportPage() {
     slide = pptx.addSlide(); title(slide, 'Alur Patient Level Costing', 'Distribusi langsung ke 18 variabel tanpa alokasi ke layanan final');
     const steps = [['Step 1', 'Overhead', 'Pusat biaya penunjang umum'], ['Step 2', 'Intermediate Cost', 'Pusat biaya penunjang medis'], ['Step 3–5', 'Distribusi sampai DRG', 'Langsung ke 18 variabel, pasien, lalu DRG']];
     steps.forEach((item, i) => { const x = 0.8 + i * 4.15; slide.addShape(pptx.ShapeType.roundRect, { x, y: 2.0, w: 3.45, h: 2.25, rectRadius: 0.08, fill: { color: i === 1 ? 'E7F7F4' : 'EEF4FA' }, line: { color: i === 1 ? '91D8CF' : 'BFD4E5' } }); slide.addText(item[0], { x: x + 0.25, y: 2.35, w: 2.9, h: 0.25, fontFace: 'Aptos', fontSize: 13, bold: true, color: teal }); slide.addText(item[1], { x: x + 0.25, y: 2.8, w: 2.9, h: 0.4, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); slide.addText(item[2], { x: x + 0.25, y: 3.4, w: 2.9, h: 0.45, fontFace: 'Aptos', fontSize: 11, color: gray, breakLine: false }); });
-    slide.addText(`Rekonsiliasi: laporan ${formatRupiah(totalBiayaLaporan)} • 18 variabel ${formatRupiah(totalBiaya18Variabel)} • selisih ${formatRupiah(selisihRekonsiliasi)}`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 13, color: gray, align: 'center' }); addFooter(slide, 3);
+    slide.addText(`Biaya tahunan ${formatRupiah(totalBiayaTahunan)} × ${periodNormalization?.effectiveMonths || 12}/12 = ${formatRupiah(totalBiayaLaporan)} • 18 variabel ${formatRupiah(totalBiaya18Variabel)} • selisih ${formatRupiah(selisihRekonsiliasi)}`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 13, color: gray, align: 'center' }); addFooter(slide, 3);
 
     slide = pptx.addSlide(); title(slide, 'DRG dengan Selisih Tertinggi', 'Prioritas review biaya dan tarif');
     const rows = summary.top10Rugi.slice(0, 8).map(d => [d.group_code, d.group_description.slice(0, 52), String(d.jumlahKasus), formatRupiah(d.rataUnitCost), formatRupiah(d.rataTarif), formatRupiah(d.selisih)]);
@@ -219,7 +238,11 @@ export default function ReportPage() {
       `${summary.jumlahDRGRugi} grup DRG memiliki unit cost lebih tinggi daripada tarif ${viewMode}. Prioritaskan review grup dengan selisih terbesar.`,
       'Periksa komponen biaya dominan pada pasien defisit melalui tabel tarif pasien dan distribusi 18 variabel E-Klaim.',
       'Tindak lanjuti grup dengan CoV tinggi melalui review coding, clinical pathway, serta pemakaian sumber daya.',
-      validationIssues.length ? `${validationIssues.length} ketidaksesuaian data dasar masih tercatat. Selesaikan sebelum memakai hasil untuk penetapan tarif.` : 'Validasi data dasar tidak mencatat ketidaksesuaian pada saat laporan dibuat.',
+      validationIssues.some(issue => issue.severity === 'error')
+        ? `${validationIssues.filter(issue => issue.severity === 'error').length} kesalahan data masih tercatat. Selesaikan sebelum memakai hasil untuk penetapan tarif.`
+        : validationIssues.length
+          ? `${validationIssues.length} peringatan data tercatat dan perlu ditinjau, tetapi tidak memblokir perhitungan.`
+          : 'Validasi data dasar tidak mencatat ketidaksesuaian pada saat laporan dibuat.',
     ];
     recommendations.forEach((text, i) => { const y = 1.55 + i * 1.2; slide.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.05, w: 0.32, h: 0.32, fill: { color: teal }, line: { color: teal } }); slide.addText(String(i + 1), { x: 0.85, y: y + 0.08, w: 0.32, h: 0.15, fontFace: 'Aptos', fontSize: 9, bold: true, color: 'FFFFFF', align: 'center' }); slide.addText(text, { x: 1.4, y, w: 10.7, h: 0.65, fontFace: 'Aptos', fontSize: 16, color: navy, breakLine: false }); }); addFooter(slide, 6);
     await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(user?.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
@@ -275,7 +298,7 @@ export default function ReportPage() {
               <p className="text-blue-200 text-sm">Patient Level Costing & Perbandingan Tarif {viewMode}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
             <div>
               <p className="text-blue-300 text-xs">Rumah Sakit</p>
               <p className="font-semibold">{user?.namaRS}</p>
@@ -292,8 +315,21 @@ export default function ReportPage() {
               <p className="text-blue-300 text-xs">Dicetak Oleh</p>
               <p className="font-semibold">{user?.username}</p>
             </div>
+            <div>
+              <p className="text-blue-300 text-xs">Faktor Biaya</p>
+              <p className="font-semibold">{periodNormalization?.effectiveMonths || 12}/12 ({(periodFactor * 100).toFixed(1)}%)</p>
+            </div>
           </div>
         </div>
+
+        {periodNormalization && (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-bold">Catatan periode analisis</p>
+            {periodNormalization.yearMismatch && <p className="mt-1">Tahun klaim {periodNormalization.claimYears.join(', ')} berbeda dari Tahun Data biaya {periodNormalization.costYear}; biaya digunakan sebagai baseline/proksi.</p>}
+            {periodNormalization.fallbackCount > 0 && <p className="mt-1">{periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien menggunakan admission_date karena discharge_date tidak valid.</p>}
+            {periodNormalization.invalidDateCount > 0 && <p className="mt-1">{periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date maupun admission_date yang valid.</p>}
+          </div>
+        )}
 
         {/* KPI Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

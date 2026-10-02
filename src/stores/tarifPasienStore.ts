@@ -20,6 +20,7 @@ import type { ValidationIssue } from '../types/tarifPasien.types';
 export function buildBiayaRSMap(
   config: HospitalCostConfig,
   patients: PatientRecord[],
+  periodFactor = 1,
 ): Record<keyof KomponenTarif18, number> {
   const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
     acc[key] = patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
@@ -51,7 +52,18 @@ export function buildBiayaRSMap(
       mapped[key] += indirectPool * (totalsEKlaim[key] / grandTotalEKlaim);
     });
   }
-  return mapped;
+
+  const safeFactor = Number.isFinite(periodFactor) && periodFactor > 0 ? periodFactor : 1;
+  const adjusted = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+    acc[key] = Math.round(mapped[key] * safeFactor);
+    return acc;
+  }, {} as Record<keyof KomponenTarif18, number>);
+  const annualTotal = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
+  const adjustedTarget = Math.round(annualTotal * safeFactor);
+  const adjustedSum = Object.values(adjusted).reduce((sum, value) => sum + value, 0);
+  const adjustmentKey = ALL_KOMPONEN_KEYS.reduce((best, key) => mapped[key] > mapped[best] ? key : best, ALL_KOMPONEN_KEYS[0]);
+  adjusted[adjustmentKey] += adjustedTarget - adjustedSum;
+  return adjusted;
 }
 
 export function biayaRSMapToRVU(
@@ -96,7 +108,7 @@ interface TarifPasienState {
   
   // Kalkulasi Utama (Step 3)
   calculateDistribution: () => void;
-  validateAgainstHospital: (config: HospitalCostConfig) => void;
+  validateAgainstHospital: (config: HospitalCostConfig, periodFactor?: number) => void;
 }
 
 export const useTarifPasienStore = create<TarifPasienState>()(
@@ -213,21 +225,30 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         set({ distribusi, patients: updatedPatients });
       },
 
-      validateAgainstHospital: (config) => {
+      validateAgainstHospital: (config, periodFactor = 1) => {
         const { patients, biayaRSMap } = get();
         const basic = config.dataDasar;
         const issues: ValidationIssue[] = [];
-        const addMismatch = (id: string, label: string, expected: number, actual: number, message: string) => {
+        const addMismatch = (
+          id: string,
+          label: string,
+          expected: number,
+          actual: number,
+          message: string,
+          severity: ValidationIssue['severity'] = 'error',
+        ) => {
           if (expected > 0 && Math.abs(expected - actual) > 0.5) {
-            issues.push({ id, severity: 'error', label, expected, actual, message });
+            issues.push({ id, severity, label, expected, actual, message });
           }
         };
 
         // Jumlah LHR pasien JKN harus konsisten dengan data dasar RS (hal. 39-40).
         const lhrPasien = patients.filter(p => p.kelasRawat !== 'rawat_jalan' && p.kelasRawat !== 'igd')
           .reduce((sum, p) => sum + (p.lhr || 0), 0);
-        addMismatch('lhr-jkn', 'Lama Hari Rawat JKN', basic.lamaHariRawatJKN, lhrPasien,
-          'Total LHR pasien harus sama dengan LHR JKN pada Data Dasar RS.');
+        const expectedLhr = Math.round(basic.lamaHariRawatJKN * periodFactor);
+        addMismatch('lhr-jkn', 'Estimasi Lama Hari Rawat JKN periode', expectedLhr, lhrPasien,
+          'Total LHR pasien dibandingkan dengan LHR tahunan yang diprorata mengikuti periode TXT. Perbedaan musiman tetap perlu ditinjau.',
+          'warning');
 
         const totalTT = config.finalCenters
           .filter(c => c.kategori === 'rawat_inap' || c.kategori === 'icu')
@@ -241,7 +262,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           'Akumulasi biaya pegawai seluruh cost center harus sama dengan Biaya Gaji Data Dasar RS.');
 
         const totalAlokasi = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-        const biayaTersedia = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+        const biayaTersedia = Math.round(((config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0)) * periodFactor);
         if (totalAlokasi > 0 && biayaTersedia > 0 && totalAlokasi > biayaTersedia) {
           issues.push({
             id: 'biaya-alokasi', severity: 'error', label: 'Total biaya dialokasikan',
