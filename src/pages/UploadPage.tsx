@@ -2,6 +2,7 @@ import { useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
+import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { UploadSession } from '../types/costing.types';
@@ -21,8 +22,6 @@ interface ProcessResult {
 export default function UploadPage() {
   const navigate = useNavigate();
   const { setRawRecords, rawRecords } = useCostingStore();
-  const { config: hospitalConfig } = useHospitalCostStore();
-
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ProcessResult | null>(null);
@@ -120,6 +119,17 @@ export default function UploadPage() {
         };
         
         setRawRecords(combinedTxtRecords, session);
+
+        // Upload harus langsung menghasilkan distribusi, bukan hanya menyimpan
+        // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
+        // yang sama ke engine Dashboard/Perbandingan/Laporan.
+        const tarifStore = useTarifPasienStore.getState();
+        tarifStore.syncFromCosting(combinedTxtRecords);
+        const patients = useTarifPasienStore.getState().patients;
+        const biayaRSMap = buildBiayaRSMap(useHospitalCostStore.getState().config, patients);
+        useTarifPasienStore.setState({ biayaRSMap });
+        useTarifPasienStore.getState().calculateDistribution();
+        useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
         processResult.errors.push('Tidak ada baris data INA-CBG yang valid ditemukan dalam file TXT.');
       }

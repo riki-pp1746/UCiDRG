@@ -9,7 +9,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
-import { useTarifPasienStore } from '../stores/tarifPasienStore';
+import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {
   Building2, Database, Plus, Trash2, RotateCcw,
@@ -297,14 +297,22 @@ export default function CostingInputPage() {
     if (activeTab === 'distribusi18') {
       // 1. Sinkronisasi data TXT E-Klaim terlebih dahulu
       const rawRecords = useCostingStore.getState().rawRecords;
-      const currentPatients = useTarifPasienStore.getState().patients;
-      if (rawRecords.length > 0 && currentPatients.length === 0) {
-        useTarifPasienStore.getState().syncFromCosting(rawRecords);
+      const tarifState = useTarifPasienStore.getState();
+      const hasMappedCosts = Object.values(tarifState.biayaRSMap).some(value => (value || 0) > 0);
+      if (rawRecords.length > 0 && tarifState.patients.length === 0) {
+        tarifState.syncFromCosting(rawRecords);
+      }
+      // Pulihkan juga sesi lama yang pasiennya sudah ada tetapi mapping biayanya
+      // masih kosong akibat alur upload versi sebelumnya.
+      if (rawRecords.length > 0 && !hasMappedCosts) {
+        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients);
+        useTarifPasienStore.setState({ biayaRSMap: mapped });
+        useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
       }
 
       calculateDistribution();
     }
-  }, [activeTab, biayaRSMap, calculateDistribution]);
+  }, [activeTab, biayaRSMap, calculateDistribution, config]);
 
   const totalBiayaLaporan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
@@ -345,38 +353,11 @@ export default function CostingInputPage() {
       return acc;
     }, {} as Record<keyof KomponenTarif18, number>);
     const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
-
-    const mapped = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
-      acc[key] = 0;
-      return acc;
-    }, {} as Record<keyof KomponenTarif18, number>);
-
-    // Biaya langsung Pusat Biaya Utama menjadi basis biaya 18 variabel.
-    config.finalCenters.forEach(center => {
-      const cost = center.totalCostDirect || 0;
-      const name = center.nama.toLowerCase();
-      if (center.kategori === 'icu' || ['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif'].some(keyword => name.includes(keyword))) {
-        mapped.intensive_amt += cost;
-      } else if (center.kategori === 'bedah' || ['bedah', 'ibs', 'operasi'].some(keyword => name.includes(keyword))) {
-        mapped.surgical_amt += cost;
-      } else if (center.kategori === 'rawat_inap' || center.kategori === 'perinatologi') {
-        mapped.room_amt += cost;
-      } else {
-        mapped.procedure_amt += cost;
-      }
-    });
-
-    // Overhead + Intermediate langsung dibagi ke 18 variabel mengikuti
-    // proporsi nilai tagihan masing-masing komponen pada TXT E-Klaim.
-    const indirectPool = config.totalOverheadCost + config.totalIntermediateCost;
-    if (grandTotalEKlaim > 0) {
-      ALL_KOMPONEN_KEYS.forEach(key => {
-        mapped[key] += indirectPool * (totalsEKlaim[key] / grandTotalEKlaim);
-      });
-    }
+    const mapped = buildBiayaRSMap(config, state.patients);
 
     useTarifPasienStore.setState({ biayaRSMap: mapped });
     useTarifPasienStore.getState().calculateDistribution();
+    useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
     alert(
       grandTotalEKlaim > 0
         ? 'Auto-map berhasil. Biaya langsung Pusat Biaya Utama dipetakan ke 18 variabel, lalu total Overhead + Intermediate dibagi mengikuti proporsi tagihan TXT E-Klaim.'

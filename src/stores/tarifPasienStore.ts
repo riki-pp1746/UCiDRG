@@ -9,7 +9,75 @@ import {
   makeEmptyPatient
 } from '../types/tarifPasien.types';
 import type { HospitalCostConfig } from '../types/hospitalCost.types';
+import type { RVUGlobalCosts } from '../types/costing.types';
 import type { ValidationIssue } from '../types/tarifPasien.types';
+
+/**
+ * Membentuk nilai biaya RS untuk 18 variabel setelah data Excel dan TXT tersedia.
+ * Biaya langsung layanan dipetakan menurut jenis layanan, sedangkan biaya tidak
+ * langsung dibagi mengikuti proporsi tagihan komponen E-Klaim.
+ */
+export function buildBiayaRSMap(
+  config: HospitalCostConfig,
+  patients: PatientRecord[],
+): Record<keyof KomponenTarif18, number> {
+  const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+    acc[key] = patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
+    return acc;
+  }, {} as Record<keyof KomponenTarif18, number>);
+  const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
+  const mapped = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+    acc[key] = 0;
+    return acc;
+  }, {} as Record<keyof KomponenTarif18, number>);
+
+  config.finalCenters.forEach(center => {
+    const cost = center.totalCostDirect || 0;
+    const name = center.nama.toLowerCase();
+    if (center.kategori === 'icu' || ['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif'].some(keyword => name.includes(keyword))) {
+      mapped.intensive_amt += cost;
+    } else if (center.kategori === 'bedah' || ['bedah', 'ibs', 'operasi'].some(keyword => name.includes(keyword))) {
+      mapped.surgical_amt += cost;
+    } else if (center.kategori === 'rawat_inap' || center.kategori === 'perinatologi') {
+      mapped.room_amt += cost;
+    } else {
+      mapped.procedure_amt += cost;
+    }
+  });
+
+  const indirectPool = config.totalOverheadCost + config.totalIntermediateCost;
+  if (grandTotalEKlaim > 0) {
+    ALL_KOMPONEN_KEYS.forEach(key => {
+      mapped[key] += indirectPool * (totalsEKlaim[key] / grandTotalEKlaim);
+    });
+  }
+  return mapped;
+}
+
+export function biayaRSMapToRVU(
+  biayaRSMap: Partial<Record<keyof KomponenTarif18, number>>,
+): RVUGlobalCosts {
+  return {
+    procedure_amt: biayaRSMap.procedure_amt || 0,
+    surgical_amt: biayaRSMap.surgical_amt || 0,
+    consul_amt: biayaRSMap.consul_amt || 0,
+    expert_amt: biayaRSMap.expert_amt || 0,
+    nursing_amt: biayaRSMap.nursing_amt || 0,
+    ancillary_amt: biayaRSMap.ancillary_amt || 0,
+    radiology_amt: biayaRSMap.radiology_amt || 0,
+    laboratory_amt: biayaRSMap.laboratory_amt || 0,
+    blood_amt: biayaRSMap.blood_amt || 0,
+    rehab_amt: biayaRSMap.rehab_amt || 0,
+    room_amt: biayaRSMap.room_amt || 0,
+    intensive_amt: biayaRSMap.intensive_amt || 0,
+    drug_amt: biayaRSMap.drug_amt || 0,
+    device_amt: biayaRSMap.device_amt || 0,
+    consumable_amt: biayaRSMap.consumable_amt || 0,
+    device_rent_amt: biayaRSMap.device_rent_amt || 0,
+    drug_chronic_amt: biayaRSMap.chronic_drug_amt || 0,
+    drug_chemo_amt: biayaRSMap.chemo_drug_amt || 0,
+  };
+}
 
 interface TarifPasienState {
   patients: PatientRecord[];
