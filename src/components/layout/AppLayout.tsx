@@ -5,9 +5,9 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { useCostingStore } from '../../stores/costingStore';
+import { usePreferences } from '../../v4/preferences';
+import { useV4Store } from '../../v4/store';
 import {
-  Activity,
   LayoutDashboard,
   Upload,
   BarChart3,
@@ -16,8 +16,6 @@ import {
   LogOut,
   Menu,
   Calculator,
-  X,
-  ChevronRight,
   BookOpen,
   Pill
 } from 'lucide-react';
@@ -40,6 +38,8 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+  const workspace = useV4Store(s=>s.workspace);
+  const profile = workspace?.profiles.find(p=>p.id===workspace.activeProfile);
 
   const handleLogout = () => {
     logout();
@@ -58,7 +58,7 @@ export default function AppLayout() {
       {/* Sidebar - Clean B2B SaaS Style */}
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 lg:relative bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-40',
+          'print:hidden fixed inset-y-0 left-0 lg:relative bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out z-40',
           sidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-20'
         )}
       >
@@ -131,7 +131,7 @@ export default function AppLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen lg:h-screen overflow-hidden relative">
         {/* Header - Solid Clean */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
+        <header className="print:hidden h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -143,9 +143,9 @@ export default function AppLayout() {
             {/* View Mode Toggle */}
             <div className="hidden sm:flex bg-gray-100 p-1 rounded-lg">
               <button
-                onClick={() => useCostingStore.getState().toggleViewMode('INACBG')}
+                onClick={() => usePreferences.getState().toggleViewMode('INACBG')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  useCostingStore((s: any) => s.viewMode) === 'INACBG'
+                  usePreferences((s: any) => s.viewMode) === 'INACBG'
                     ? 'bg-white text-blue-700 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
@@ -153,9 +153,9 @@ export default function AppLayout() {
                 INA-CBG
               </button>
               <button
-                onClick={() => useCostingStore.getState().toggleViewMode('IDRG')}
+                onClick={() => usePreferences.getState().toggleViewMode('IDRG')}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${
-                  useCostingStore((s: any) => s.viewMode) === 'IDRG'
+                  usePreferences((s: any) => s.viewMode) === 'IDRG'
                     ? 'bg-white text-indigo-700 shadow-sm'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
@@ -168,7 +168,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-[#041E42]">{user?.username}</p>
-              <p className="text-xs text-teal-600 font-medium">Administrator</p>
+              <p className="text-xs text-teal-600 font-medium">{profile?.role || 'Profil lokal'}</p>
             </div>
             <div className="w-9 h-9 bg-teal-50 rounded-full flex items-center justify-center border border-teal-100 text-teal-700 font-bold">
               {user?.username?.charAt(0).toUpperCase()}

@@ -32,3 +32,16 @@
   .scrollbar-thin { scrollbar-width: thin; }
   .text-balance { text-wrap: balance; }
 }
+@media print {
+  body, #root, main { height: auto !important; overflow: visible !important; }
+  main { padding: 0 !important; }
+  main > div, main > div > div { height: auto !important; overflow: visible !important; }
+  .lg\:h-screen { height: auto !important; overflow: visible !important; }
+  section { box-shadow: none !important; border-radius: 0 !important; margin-bottom: 12pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  table { font-size: 9pt !important; }
+  td, th { padding: 5pt !important; overflow-wrap: anywhere; }
+  .overflow-x-auto { overflow: visible !important; }
+  button, select { display: none !important; }
+}

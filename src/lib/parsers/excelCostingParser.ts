@@ -15,6 +15,7 @@
 // ============================================================
 
 import * as XLSX from 'xlsx';
+import { parseNumber } from '../../v4/numbers';
 import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
 // Bersihkan string dan lowercase
@@ -33,9 +34,7 @@ function isNumericRow(val: any): boolean {
 // Parse angka dengan toleransi format Indonesia (1.000.000 atau 1,000,000)
 function safeFloat(val: any): number {
   if (val === null || val === undefined || val === '') return 0;
-  if (typeof val === 'number') return Math.round(val); // sudah number dari Excel
-  const s = String(val).replace(/\./g, '').replace(',', '.').replace(/[^0-9.]/g, '');
-  return parseFloat(s) || 0;
+  return Number(parseNumber(val));
 }
 
 // Mapping string dasar alokasi ke enum
@@ -61,8 +60,8 @@ function mapDasarAlokasi(raw: string): any {
 // Mapping nama unit ke kategori Final Center
 function mapKategori(nama: string): FinalCenter['kategori'] {
   const s = nama.toLowerCase();
-  if (/kelas|kamar|rawat inap|vip|vvip|suite|bangsal/.test(s)) return 'rawat_inap';
   if (/icu|hcu|iccu|picu|intensif/.test(s))                    return 'icu';
+  if (/kelas|kamar|rawat inap|vip|vvip|suite|bangsal/.test(s)) return 'rawat_inap';
   if (/igd|ugd|gawat darurat|emergency/.test(s))               return 'igd';
   if (/bedah|ibs|operasi/.test(s) && !s.includes('poli'))      return 'bedah';
   if (/nicu|perinatologi|neonatus|bayi baru/.test(s))           return 'perinatologi';
