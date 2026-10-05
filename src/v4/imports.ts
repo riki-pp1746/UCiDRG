@@ -4,6 +4,7 @@ import { parseNumber, dec } from './numbers';
 import { newCenter,KEYS,emptyBill } from './types';
 import type { Input,Claim,Reference,Issue } from './types';
 import { validDate } from './engine';
+import {validateWorkbookSignature} from './security';
 
 function date(value:unknown){const s=String(value||'').trim();const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s;}
 function num(value:unknown){return value===''||value===null||value===undefined||value==='None'||value==='-'?'0':parseNumber(value);}
@@ -31,6 +32,7 @@ export function claimsDelimiter(text:string) {
 }
 export interface ImportExcel { input:Input; years:number[]; warnings:string[]; }
 export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
+  validateWorkbookSignature(bytes);
   const wb=XLSX.read(bytes,{type:'array'});const input=structuredClone(current);const warnings:string[]=[];const years=new Set<number>();
   const rows=(name:string)=>wb.Sheets[name]?XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name],{header:1,defval:''}):[];
   const sheet=wb.SheetNames.find(n=>/costing dummy/i.test(n))||wb.SheetNames.find(n=>/costing|template/i.test(n));

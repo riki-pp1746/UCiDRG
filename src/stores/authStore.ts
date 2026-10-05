@@ -4,12 +4,14 @@
 // ============================================================
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist,createJSONStorage } from 'zustand/middleware';
 
 interface AuthState {
   isAuthenticated: boolean;
   user: { username: string; namaRS: string } | null;
   error: string;
+  lastActivity: number;
+  touch:()=>void;
   login: (username: string, password: string) => boolean;
   logout: () => void;
 }
@@ -35,6 +37,8 @@ export const useAuthStore = create<AuthState>()(
       isAuthenticated: false,
       user: null,
       error: '',
+      lastActivity:0,
+      touch:()=>set({lastActivity:Date.now()}),
 
       login: (username, password) => {
         const found = VALID_USERS.find(
@@ -45,23 +49,26 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             user: { username: found.username, namaRS: found.namaRS },
             error: '',
+            lastActivity:Date.now(),
           });
           return true;
         } else {
-          set({ error: 'Username atau password salah', isAuthenticated: false });
+          set({ error: 'Username atau password salah', isAuthenticated: false,user:null,lastActivity:0 });
           return false;
         }
       },
 
       logout: () => {
-        set({ isAuthenticated: false, user: null, error: '' });
+        set({ isAuthenticated: false, user: null, error: '',lastActivity:0 });
       },
     }),
     {
-      name: 'unitcost-auth',
+      name: 'unitcost-session',
+      storage:createJSONStorage(()=>sessionStorage),
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,
+        lastActivity:state.lastActivity,
       }),
     }
   )

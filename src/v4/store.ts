@@ -4,6 +4,7 @@ import { readWorkspace,writeWorkspace,listSnapshots,saveSnapshot,migrateLegacy,a
 import { calculationJob,importJob } from './jobs';
 import type { Issue } from './types';
 import {workingProfile} from './workflow';
+import {encryptBackup,decryptBackup,validateFiles} from './security';
 let init:Promise<void>|null=null;let writing=Promise.resolve();let cancelJob:(()=>void)|null=null;
 const copy=<T,>(value:T):T=>structuredClone(value);
 export function canEdit(role:Role){return role==='Administrator'||role==='Analis';}
@@ -16,7 +17,7 @@ interface Store {
   selectProfile:(id:string)=>Promise<void>; addProfile:(name:string,role:Role)=>Promise<void>;
   calculate:(scenario?:Input)=>Promise<void>; cancel:()=>void; upload:(files:File[])=>Promise<void>;
   selectSnapshot:(id:string)=>void; transition:(state:'Direview'|'Final'|'Draft',reason:string)=>Promise<void>;
-  backup:()=>Promise<string>; restore:(text:string)=>Promise<void>;
+  backup:(password:string)=>Promise<string>; restore:(text:string,password?:string)=>Promise<void>;
 }
 async function persist(workspace:Workspace) {
   useV4Store.setState({saving:true});
@@ -49,6 +50,7 @@ export const useV4Store=create<Store>((set,get)=>({
   },
   cancel:()=>cancelJob?.(),
   upload:async(files)=>{
+    validateFiles(files,['txt','csv']);
     const w=get().workspace;if(!w||get().busy)return;const p=workingProfile(w);if(!canEdit(p.role))throw new Error('Profil tidak dapat mengunggah data.');
     set({busy:true,progress:0,error:''});
     try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>({...i,claims:result.claims,importIssues:result.issues,corrections:[]}),`Unggah ${files.length} file (${result.claims.length} baris)`);}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
@@ -65,7 +67,7 @@ export const useV4Store=create<Store>((set,get)=>({
     const snap={...copy(old),id:crypto.randomUUID(),previous:old.id,at:new Date().toISOString(),state,reviewedBy:state==='Final'?p.id:old.reviewedBy,finalizedBy:state==='Final'?p.id:null,audit:[...old.audit,audit(p.id,state,reason)]};
     await saveSnapshot(snap);set({snapshots:[snap,...get().snapshots],selected:snap.id});
   },
-  backup:async()=>{const w=get().workspace;if(!w)throw new Error('Data belum tersedia.');return JSON.stringify(await backupPayload(w,get().snapshots));},
-  restore:async(text)=>{const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses.');if(workingProfile(w).role!=='Administrator')throw new Error('Pemulihan hanya oleh Administrator.');await writing;const restored=await restorePayload(text);set({workspace:restored.workspace,snapshots:restored.snapshots,selected:restored.snapshots[0]?.id||null,error:''});},
+  backup:async(password)=>{const w=get().workspace;if(!w)throw new Error('Data belum tersedia.');await writing;return encryptBackup(JSON.stringify(await backupPayload(w,get().snapshots)),password);},
+  restore:async(text,password='')=>{const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses.');if(workingProfile(w).role!=='Administrator')throw new Error('Pemulihan hanya oleh Administrator.');await writing;const restored=await restorePayload(await decryptBackup(text,password));set({workspace:restored.workspace,snapshots:restored.snapshots,selected:restored.snapshots[0]?.id||null,error:''});},
 }));
 export const activeSnapshot=(state:Pick<Store,'snapshots'|'selected'>)=>state.snapshots.find(s=>s.id===state.selected)||null;
