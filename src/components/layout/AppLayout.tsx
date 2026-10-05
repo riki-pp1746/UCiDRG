@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { usePreferences } from '../../v4/preferences';
-import { useV4Store } from '../../v4/store';
+import { workflowSteps } from '../../v4/workflow';
 import {
   LayoutDashboard,
   Upload,
@@ -25,21 +25,14 @@ import { BrandLogo } from '../../pages/LoginPage';
 
 const navItems = [
   { path: '/', icon: BookOpen, label: 'Panduan', exact: true },
+  ...workflowSteps.map((step,i)=>({path:step.path,icon:[Upload,Calculator,Settings,Pill,BarChart3,FileText][i],label:step.label,exact:false})),
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/upload', icon: Upload, label: 'Upload Data' },
-  { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
-  { path: '/tarif-pasien', icon: Pill, label: 'Step 4: Cost per Pasien' },
-  { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
-  { path: '/reports', icon: FileText, label: 'Laporan' },
-  { path: '/settings', icon: Settings, label: 'Pengaturan' },
 ];
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
-  const workspace = useV4Store(s=>s.workspace);
-  const profile = workspace?.profiles.find(p=>p.id===workspace.activeProfile);
 
   const handleLogout = () => {
     logout();
@@ -168,7 +161,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold text-[#041E42]">{user?.username}</p>
-              <p className="text-xs text-teal-600 font-medium">{profile?.role || 'Profil lokal'}</p>
+              <p className="text-xs text-teal-600 font-medium">Pengembangan logika</p>
             </div>
             <div className="w-9 h-9 bg-teal-50 rounded-full flex items-center justify-center border border-teal-100 text-teal-700 font-bold">
               {user?.username?.charAt(0).toUpperCase()}
