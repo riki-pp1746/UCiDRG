@@ -5,6 +5,7 @@ import { calculationJob,importJob } from './jobs';
 import type { Issue } from './types';
 import {workingProfile} from './workflow';
 import {encryptBackup,decryptBackup,validateFiles} from './security';
+import {mergeCostInput,appendClaims} from './inputData';
 let init:Promise<void>|null=null;let writing=Promise.resolve();let cancelJob:(()=>void)|null=null;
 const copy=<T,>(value:T):T=>structuredClone(value);
 export function canEdit(role:Role){return role==='Administrator'||role==='Analis';}
@@ -15,7 +16,8 @@ interface Store {
   importIssues:Issue[];
   initialize:()=>Promise<void>; update:(transform:(input:Input)=>Input,reason:string)=>Promise<void>;
   selectProfile:(id:string)=>Promise<void>; addProfile:(name:string,role:Role)=>Promise<void>;
-  calculate:(scenario?:Input)=>Promise<void>; cancel:()=>void; upload:(files:File[])=>Promise<void>;
+  calculate:(scenario?:Input)=>Promise<void>; cancel:()=>void; upload:(files:File[],mode?:'append'|'replace')=>Promise<void>;
+  importCosts:(input:Input,reason:string)=>Promise<void>; clearInput:(scope:'claims'|'costs')=>Promise<void>;
   selectSnapshot:(id:string)=>void; transition:(state:'Direview'|'Final'|'Draft',reason:string)=>Promise<void>;
   backup:(password:string)=>Promise<string>; restore:(text:string,password?:string)=>Promise<void>;
 }
@@ -49,11 +51,16 @@ export const useV4Store=create<Store>((set,get)=>({
     }catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
   },
   cancel:()=>cancelJob?.(),
-  upload:async(files)=>{
+  importCosts:async(input,reason)=>get().update(current=>mergeCostInput(current,input),reason),
+  clearInput:async(scope)=>{
+    await get().update(i=>scope==='claims'?{...i,claims:[],importIssues:[],corrections:[]}:{...i,centers:[],corrections:[],mappingVersion:i.mappingVersion+1},scope==='claims'?'Hapus seluruh klaim aktif':'Hapus seluruh biaya RS aktif');
+    set({selected:null,importIssues:scope==='claims'?[]:get().importIssues});
+  },
+  upload:async(files,mode='append')=>{
     validateFiles(files,['txt','csv']);
     const w=get().workspace;if(!w||get().busy)return;const p=workingProfile(w);if(!canEdit(p.role))throw new Error('Profil tidak dapat mengunggah data.');
     set({busy:true,progress:0,error:''});
-    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>({...i,claims:result.claims,importIssues:result.issues,corrections:[]}),`Unggah ${files.length} file (${result.claims.length} baris)`);}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
+    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>{const merged=mode==='append'?appendClaims(i.claims,result.claims,[...(i.importIssues||[]),...result.issues]):result;return {...i,claims:merged.claims,importIssues:merged.issues,corrections:[]};},`Unggah ${files.length} file (${result.claims.length} baris; ${mode})`);set({importIssues:get().workspace!.input.importIssues||[]});}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
   },
   selectSnapshot:(id)=>{if(!get().snapshots.some(s=>s.id===id))return;set({selected:id});},
   transition:async(state,reason)=>{

@@ -16,6 +16,7 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {MemoryRouter} from 'react-router-dom';
 import {V4Page} from '../src/v4/Pages';
 import {workingProfile,workflowSteps} from '../src/v4/workflow';
+import {mergeCostInput,appendClaims} from '../src/v4/inputData';
 vi.mock('../src/v4/store',async importOriginal=>{
   const actual=await importOriginal<typeof import('../src/v4/store')>();
   // Render the upload view against the current fixture; server hydration otherwise uses the empty initial store.
@@ -71,6 +72,19 @@ describe('U01–U26 mesin Revisi 4',()=>{
   it('U26 hanya kurang dari lima ditandai',()=>{const x=fixture();x.claims=Array.from({length:5},(_,i)=>claim(String(i)));expect(m2(x).groups[0].lowSample).toBe(false);x.claims.pop();expect(m2(x).groups[0].lowSample).toBe(true);});
 });
 describe('impor dan kontrol lokal',()=>{
+  it('Excel tertunda tidak menimpa klaim, referensi dan masalah impor terbaru',()=>{
+    const earlier=fixture();const current=fixture();current.claims.push(claim('NEW','inap','7'));current.importIssues=[{code:'V12',severity:'warning',message:'uji'}];current.references=[];
+    const imported=importWorkbook(XLSX.write(templateWorkbook(earlier),{type:'array',bookType:'xlsx'}),earlier).input;
+    const merged=mergeCostInput(current,imported);expect(merged.claims).toEqual(current.claims);expect(merged.importIssues).toEqual(current.importIssues);expect(merged.references).toEqual(current.references);
+  });
+  it('unggahan tambahan mempertahankan klaim lama dan menandai konflik SEP',()=>{
+    const old=claim('OLD','inap','1');old.sep='SAME';const duplicate={...old,id:'duplicate',file:'new.txt',row:2};const extra=claim('NEW','jalan','3');extra.sep='NEW';
+    const merged=appendClaims([old],[duplicate,extra],[]);expect(merged.claims).toEqual([old,extra]);expect(merged.issues).toHaveLength(1);expect(merged.issues[0].message).toContain('duplikat');
+  });
+  it('hapus klaim dan biaya terpisah bertahan setelah baca ulang penyimpanan',async()=>{
+    const w=workspace();useV4Store.setState({workspace:w,busy:false,importIssues:[],selected:'old'});await useV4Store.getState().clearInput('claims');let stored=await readWorkspace();expect(stored!.input.claims).toHaveLength(0);expect(stored!.input.centers).toEqual(w.input.centers);expect(useV4Store.getState().selected).toBe(null);
+    useV4Store.setState({workspace:w});await useV4Store.getState().clearInput('costs');stored=await readWorkspace();expect(stored!.input.centers).toHaveLength(0);expect(stored!.input.claims).toEqual(w.input.claims);expect(stored!.version).toBe(w.version+1);
+  });
   it('preservasi negatif, desimal dan format lokal',()=>{expect(parseNumber('-1.25')).toBe('-1.25');expect(parseNumber('(1.234,50)')).toBe('-1234.5');expect(parseNumber(12.345)).toBe('12.345');});
   it('round-trip semua sheet baru termasuk inflasi dan aset',()=>{const x=fixture();x.settings.inflation.pegawai='3.2';const bytes=XLSX.write(templateWorkbook(x),{type:'array',bookType:'xlsx'});const y=importWorkbook(bytes,initialInput()).input;expect(y.settings).toEqual(x.settings);expect(y.centers.find(c=>c.id==='A')?.mapping).toEqual(x.centers.find(c=>c.id==='A')?.mapping);expect(m2(y).total).toBe(m2(x).total);});
   it('template lama ICU dan konflik tahun diperiksa',()=>{const x=fixture();x.centers.find(c=>c.id==='A')!.name='Kamar ICU';const wb=templateWorkbook(x);delete wb.Sheets.Periode;delete wb.Sheets['Pemicu JKN'];delete wb.Sheets['Matriks 18'];wb.Sheets['Data Dasar RS']['B3']={t:'n',v:2024};const y=importWorkbook(XLSX.write(wb,{type:'array',bookType:'xlsx'}),initialInput());expect(y.years.sort()).toEqual([2024,2025]);expect(y.input.centers.find(c=>c.id==='A')?.mapping.intensive_amt).toBe('100');expect(y.warnings.length).toBeGreaterThan(0);});
