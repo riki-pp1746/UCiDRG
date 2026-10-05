@@ -11,6 +11,15 @@ import { canEdit,canReview,canFinalize,useV4Store } from '../src/v4/store';
 import { reportSheets } from '../src/v4/reports';
 import { runJob } from '../src/v4/jobs';
 import {mkdirSync,writeFileSync} from 'node:fs';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {MemoryRouter} from 'react-router-dom';
+import {V4Page} from '../src/v4/Pages';
+vi.mock('../src/v4/store',async importOriginal=>{
+  const actual=await importOriginal<typeof import('../src/v4/store')>();
+  // Render the upload view against the current fixture; server hydration otherwise uses the empty initial store.
+  return {...actual,useV4Store:Object.assign((selector?: (state:ReturnType<typeof actual.useV4Store.getState>)=>unknown)=>selector?selector(actual.useV4Store.getState()):actual.useV4Store.getState(),actual.useV4Store)};
+});
 
 function claim(id:string,care:Claim['care']='inap',amount='100'):Claim {
   const bill=emptyBill();bill.procedure_amt=amount;
@@ -77,6 +86,9 @@ describe('impor dan kontrol lokal',()=>{
   it('baris gagal impor masuk pembagi skor dan jumlah ditolak',()=>{const x=fixture();x.importIssues=[{code:'V12',severity:'warning',file:'uji.txt',row:8,message:'Kolom tidak lengkap'}];const r=calculate(x);expect(r.rows).toBe(3);expect(r.rejected).toBe(1);expect(r.issues.some(i=>i.row===8)).toBe(true);});
   it('inflasi referensi bertanggal memakai tanggal penuh klaim',()=>{const x=fixture();Object.assign(x.settings,{priceActive:true,priceMonths:'12',inflation:{pegawai:'0',jasaMedis:'0',jasaLain:'0',operasional:'0',penyusutan:''}});x.references.push({id:'infl',kind:'inflation',code:'pegawai',care:'semua',value:'10',from:'2025-01-15',until:'2025-01-31',version:'infl-uji',source:'ilustrasi',verified:false});near(m2(x).total,'1320');expect(calculate(x).referenceIds).toContain('infl');});
   it('tahunan dengan cakupan selain 12 memblokir hasil',()=>{const x=fixture();x.settings.costMonths='6';expect(m2(x).blocked).toBe(true);});
+  it('Upload menerima Excel dan TXT pada picker yang sama',()=>{useV4Store.setState({workspace:workspace(),snapshots:[],selected:null,busy:false,importIssues:[]});const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(V4Page,{view:'upload'})));expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');expect(html).toContain('Upload Excel Biaya RS dan TXT E-Klaim');});
+  it('TXT comma/semicolon/pipe dan PTD berspasi dibaca tanpa menghapus desimal',()=>{const cols=Array(94).fill('');cols[4]=' 1 ';cols[5]='01/01/2025';cols[6]='31/01/2025';cols[19]='INA';cols[50]='SEP';cols[60]='10.25';cols[82]='A';for(const delimiter of [',',';','|','\t']){const result=parseClaimsText(cols.join(delimiter),'test.txt');expect(result.issues).toHaveLength(0);expect(result.claims[0].bill.procedure_amt).toBe('10.25');expect(result.claims[0].care).toBe('inap');}});
+  it('upload tanpa baris valid mempertahankan populasi lama dan menampilkan masalah',async()=>{vi.stubGlobal('Worker',class{onmessage:((e:{data:unknown})=>void)|null=null;terminate(){}postMessage(){queueMicrotask(()=>this.onmessage?.({data:{result:{claims:[],issues:[{code:'V12',severity:'warning',message:'Kolom kurang',file:'bad.txt',row:1}]}}}));}});const w=workspace();useV4Store.setState({workspace:w,busy:false,error:'',importIssues:[]});try{await useV4Store.getState().upload([new File(['bad'],'bad.txt')]);expect(useV4Store.getState().workspace!.input.claims).toEqual(w.input.claims);expect(useV4Store.getState().error).toContain('Tidak ada baris klaim');expect(useV4Store.getState().importIssues).toHaveLength(1);}finally{vi.unstubAllGlobals();}});
 });
 it('100.000 baris: rekonsiliasi presisi penuh dan progress',()=>{const x=fixture();x.settings.methods='M2';x.claims=Array.from({length:100000},(_,i)=>claim(String(i),i%2?'jalan':'inap','1.25'));const progress:number[]=[];const r=calculate(x,n=>progress.push(n));expect(r.accepted).toBe(100000);for(const p of r.methods[0].pools)near(sum([p.allocated,p.reserve,p.unallocated]).toString(),p.total);expect(progress.at(-1)).toBe(100);},120000);
 it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{

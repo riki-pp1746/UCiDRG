@@ -8,6 +8,7 @@ import { validDate } from './engine';
 function date(value:unknown){const s=String(value||'').trim();const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s;}
 function num(value:unknown){return value===''||value===null||value===undefined||value==='None'||value==='-'?'0':parseNumber(value);}
 export function claimFromRow(cols:string[],file:string,row:number):Claim {
+  cols=cols.map(value=>String(value??'').trim());
   if(cols.length<80) throw new Error('Kolom kurang dari 80.');
   const care=cols[4]==='1'?'inap':cols[4]==='2'?'jalan':null;
   if(!care)throw new Error('PTD harus 1 (inap) atau 2 (jalan).');
@@ -19,9 +20,14 @@ export function claimFromRow(cols:string[],file:string,row:number):Claim {
   return {id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:cols[83]||cols[26]||'',mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
 }
 export function parseClaimsText(text:string,file:string) {
-  const claims:Claim[]=[];const issues:Issue[]=[];const rows=Papa.parse<string[]>(text,{delimiter:text.includes('\t')?'\t':',',skipEmptyLines:true}).data;
+  const claims:Claim[]=[];const issues:Issue[]=[];const rows=Papa.parse<string[]>(text,{delimiter:claimsDelimiter(text),skipEmptyLines:true}).data;
   rows.forEach((cols,i)=>{if(i===0&&cols[0]?.replace(/^\uFEFF/,'').toUpperCase()==='KODE_RS')return;try{claims.push(claimFromRow(cols,file,i+1));}catch(e){issues.push({code:'V12',severity:'warning',message:String(e),file,row:i+1});}});
   return {claims,issues};
+}
+export function claimsDelimiter(text:string) {
+  const first=text.replace(/^\uFEFF/,'').split(/\r?\n/).find(line=>line.trim())||'';
+  if(first.includes('\t'))return '\t';
+  return Papa.parse(first,{delimitersToGuess:[',',';','|'],preview:1}).meta.delimiter||',';
 }
 export interface ImportExcel { input:Input; years:number[]; warnings:string[]; }
 export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {

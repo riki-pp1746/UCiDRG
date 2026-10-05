@@ -50,7 +50,7 @@ export const useV4Store=create<Store>((set,get)=>({
   upload:async(files)=>{
     const w=get().workspace;if(!w||get().busy)return;const p=w.profiles.find(p=>p.id===w.activeProfile)!;if(!canEdit(p.role))throw new Error('Profil tidak dapat mengunggah data.');
     set({busy:true,progress:0,error:''});
-    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});await get().update(i=>({...i,claims:result.claims,importIssues:result.issues,corrections:[]}),`Unggah ${files.length} file (${result.claims.length} baris)`);}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
+    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>({...i,claims:result.claims,importIssues:result.issues,corrections:[]}),`Unggah ${files.length} file (${result.claims.length} baris)`);}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
   },
   selectSnapshot:(id)=>{if(!get().snapshots.some(s=>s.id===id))return;set({selected:id});},
   transition:async(state,reason)=>{
