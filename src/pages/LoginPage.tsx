@@ -195,7 +195,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white/80"
-                      placeholder="••••••••"
+                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     />
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export default function LoginPage() {
               <span className="text-teal-400">Patient Level Costing</span>
             </h1>
             <p className="text-blue-100/80 text-sm leading-relaxed max-w-sm">
-              Platform analitik enterprise untuk mensimulasikan unit cost rumah sakit dan membandingkannya secara presisi dengan tarif INA-CBG.
+              Platform analitik enterprise untuk mensimulasikan unit cost rumah sakit dan membandingkannya secara presisi dengan tarif Klaim JKN (INA-CBG/iDRG).
             </p>
           </div>
 
