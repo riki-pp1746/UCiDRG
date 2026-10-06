@@ -12,14 +12,14 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Data: Daftar Data yang Harus Disiapkan
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DATA_YANG_DISIAPKAN = [
   {
     icon: Building2,
     title: 'Laporan Keuangan RS yang Sudah Diaudit',
-    badge: 'WAJIB · Diaudit',
+    badge: 'WAJIB Â· Diaudit',
     badgeColor: 'bg-red-100 text-red-700',
     iconBg: 'bg-red-50',
     iconColor: 'text-red-600',
@@ -44,8 +44,8 @@ const DATA_YANG_DISIAPKAN = [
     iconBg: 'bg-orange-50',
     iconColor: 'text-orange-600',
     items: [
-      'BOR (Bed Occupancy Rate) — persentase TT terpakai',
-      'ALOS (Average Length of Stay) — rata-rata lama rawat',
+      'BOR (Bed Occupancy Rate) â€” persentase TT terpakai',
+      'ALOS (Average Length of Stay) â€” rata-rata lama rawat',
       'TOI (Turn Over Interval)',
       'BTO (Bed Turn Over)',
       'Jumlah Tempat Tidur per kelas kamar',
@@ -80,7 +80,7 @@ const DATA_YANG_DISIAPKAN = [
       'Biaya Operasional Lainnya per unit',
       'Nilai Aset Alat Medik & Non Medik per unit (penyusutan 5 tahun)',
       'Nilai Investasi Gedung per unit (penyusutan 40 tahun)',
-      'Luas Lantai per unit (m²)',
+      'Luas Lantai per unit (mÂ²)',
       'Jumlah Kunjungan/Pemeriksaan/Resep per unit penunjang',
       'Jumlah Hari Rawat, Kunjungan, Pasien Pulang per unit layanan',
     ],
@@ -89,7 +89,7 @@ const DATA_YANG_DISIAPKAN = [
   {
     icon: Receipt,
     title: 'Data Klaim Individu dari Aplikasi E-Klaim',
-    badge: 'WAJIB · Per Pasien',
+    badge: 'WAJIB Â· Per Pasien',
     badgeColor: 'bg-blue-100 text-blue-700',
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-600',
@@ -113,44 +113,44 @@ const DATA_YANG_DISIAPKAN = [
     iconBg: 'bg-gray-50',
     iconColor: 'text-gray-500',
     items: [
-      'Panduan Praktik Klinik (PPK) — sudah tersedia',
-      'Clinical Pathway — sudah disusun',
-      'Formularium Obat RS — sudah tersedia',
-      'Sistem Informasi RS (SIRS) — terintegrasi',
+      'Panduan Praktik Klinik (PPK) â€” sudah tersedia',
+      'Clinical Pathway â€” sudah disusun',
+      'Formularium Obat RS â€” sudah tersedia',
+      'Sistem Informasi RS (SIRS) â€” terintegrasi',
       'Persentase klaim pending/dispute',
     ],
     source: 'Sumber: Komite Medik & Bagian SIRS',
   },
 ];
 
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Data: Langkah-langkah Penggunaan Aplikasi
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LANGKAH_PENGGUNAAN = [
   {
     step: '01',
     path: '/input-biaya',
     label: 'Input Data Biaya RS',
-    icon: '📋',
+    icon: 'ðŸ“‹',
     color: 'from-blue-500 to-blue-600',
     bgLight: 'bg-blue-50',
     borderColor: 'border-blue-200',
     desc: 'Unduh template, isi sheet Data Dasar RS dan Costing Template, lalu impor. Periksa penanda merah sebelum melanjutkan distribusi.',
     substeps: [
-      '📄 Sheet "Data Dasar RS" — identitas, BOR, ALOS, LHR, TT, SDM, pendapatan dan biaya RS',
-      '📋 Sheet "Costing Template" — biaya dan volume setiap pusat biaya',
-      '📋 Step 1: Overhead — hitung biaya langsung pusat biaya penunjang umum',
-      '🔬 Step 2: Intermediate Cost — hitung biaya langsung pusat biaya penunjang medis',
-      '🛏️ Pusat Biaya Utama — petakan biaya langsung layanan ke komponen E-Klaim',
-      '📈 Ringkasan Biaya RS — rekonsiliasi Overhead + Intermediate + Pusat Biaya Utama dengan laporan keuangan',
-      '💊 Step 3: Distribusi 18 Variabel — Overhead dan Intermediate langsung dibagi menurut proporsi tagihan TXT E-Klaim',
+      'ðŸ“„ Sheet "Data Dasar RS" â€” identitas, BOR, ALOS, LHR, TT, SDM, pendapatan dan biaya RS',
+      'ðŸ“‹ Sheet "Costing Template" â€” biaya dan volume setiap pusat biaya',
+      'ðŸ“‹ Step 1: Overhead â€” hitung biaya langsung pusat biaya penunjang umum',
+      'ðŸ”¬ Step 2: Intermediate Cost â€” hitung biaya langsung pusat biaya penunjang medis',
+      'ðŸ›ï¸ Pusat Biaya Utama â€” petakan biaya langsung layanan ke komponen E-Klaim',
+      'ðŸ“ˆ Ringkasan Biaya RS â€” rekonsiliasi Overhead + Intermediate + Pusat Biaya Utama dengan laporan keuangan',
+      'ðŸ’Š Step 3: Distribusi 18 Variabel â€” Overhead dan Intermediate langsung dibagi menurut proporsi tagihan TXT E-Klaim',
     ],
   },
   {
     step: '02',
     path: '/upload',
     label: 'Upload TXT & Tentukan Periode Klaim',
-    icon: '📤',
+    icon: 'ðŸ“¤',
     color: 'from-indigo-500 to-indigo-600',
     bgLight: 'bg-indigo-50',
     borderColor: 'border-indigo-200',
@@ -166,7 +166,7 @@ const LANGKAH_PENGGUNAAN = [
     step: '03',
     path: '/tarif-pasien',
     label: 'Distribusi 18 Variabel & Cost per Pasien',
-    icon: '👤',
+    icon: 'ðŸ‘¤',
     color: 'from-violet-500 to-violet-600',
     bgLight: 'bg-violet-50',
     borderColor: 'border-violet-200',
@@ -182,7 +182,7 @@ const LANGKAH_PENGGUNAAN = [
     step: '04',
     path: '/',
     label: 'Dashboard & Analisis',
-    icon: '📊',
+    icon: 'ðŸ“Š',
     color: 'from-teal-500 to-teal-600',
     bgLight: 'bg-teal-50',
     borderColor: 'border-teal-200',
@@ -198,7 +198,7 @@ const LANGKAH_PENGGUNAAN = [
     step: '05',
     path: '/comparison',
     label: 'Perbandingan INA-CBG vs iDRG',
-    icon: '⚖️',
+    icon: 'âš–ï¸',
     color: 'from-green-500 to-green-600',
     bgLight: 'bg-green-50',
     borderColor: 'border-green-200',
@@ -214,7 +214,7 @@ const LANGKAH_PENGGUNAAN = [
     step: '06',
     path: '/report',
     label: 'Laporan & Export',
-    icon: '📄',
+    icon: 'ðŸ“„',
     color: 'from-orange-500 to-orange-600',
     bgLight: 'bg-orange-50',
     borderColor: 'border-orange-200',
@@ -228,9 +228,9 @@ const LANGKAH_PENGGUNAAN = [
   },
 ];
 
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Komponen Utama
-// ────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function GuidePage() {
   const navigate = useNavigate();
 
@@ -247,7 +247,7 @@ export default function GuidePage() {
           </div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">UnitCOSt PRO</h1>
           <p className="text-white/70 text-base max-w-2xl">
-            Aplikasi <strong className="text-white">Patient Level Costing</strong> untuk menghitung Unit Cost RS dan membandingkan dengan tarif <strong className="text-white">INA-CBG</strong> & <strong className="text-white">iDRG</strong> sesuai metodologi Workshop Kemenkes.
+            Aplikasi <strong className="text-white">Patient Level Costing</strong> untuk menghitung Unit Cost RS dan membandingkan dengan tarif <strong className="text-white">INA-CBG</strong> & <strong className="text-white">iDRG</strong>
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
@@ -271,12 +271,12 @@ export default function GuidePage() {
         <div className="flex gap-3">
           <AlertTriangle className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-bold text-amber-800 text-base">⚠️ Pastikan Data yang Digunakan Sudah Diaudit</h3>
+            <h3 className="font-bold text-amber-800 text-base">âš ï¸ Pastikan Data yang Digunakan Sudah Diaudit</h3>
             <p className="text-sm text-amber-700 mt-1">
-              Sesuai materi Workshop Kemenkes, seluruh data keuangan yang diinput ke aplikasi ini <strong>wajib bersumber dari Laporan Keuangan yang telah diaudit</strong> (oleh auditor internal atau BPK/KAP). Data yang belum diaudit dapat menghasilkan Unit Cost yang tidak akurat dan tidak dapat digunakan sebagai dasar penetapan tarif.
+              Sesuai standar operasional, seluruh data keuangan yang diinput ke aplikasi ini <strong>wajib bersumber dari Laporan Keuangan yang telah diaudit</strong> (oleh auditor internal atau BPK/KAP). Data yang belum diaudit dapat menghasilkan Unit Cost yang tidak akurat dan tidak dapat digunakan sebagai dasar penetapan tarif.
             </p>
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              {['Laporan Keuangan Audited ✓', 'BLUD / BLU ✓', 'Laporan Auditor BPK/KAP ✓'].map(t => (
+              {['Laporan Keuangan Audited âœ“', 'BLUD / BLU âœ“', 'Laporan Auditor BPK/KAP âœ“'].map(t => (
                 <span key={t} className="px-2 py-1 bg-amber-100 text-amber-700 rounded-lg font-medium">{t}</span>
               ))}
             </div>
@@ -302,12 +302,12 @@ export default function GuidePage() {
           </div>
           <div className="rounded-xl border border-violet-100 bg-violet-50 p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-violet-700">2. Hitung Faktor</p>
-            <p className="mt-2 text-sm font-semibold text-violet-950">Faktor = bulan efektif ÷ 12</p>
-            <p className="mt-1 text-xs leading-relaxed text-violet-700">Contoh: September–Oktober = 2 bulan, sehingga faktor biaya menjadi 2/12 atau 16,7%.</p>
+            <p className="mt-2 text-sm font-semibold text-violet-950">Faktor = bulan efektif Ã· 12</p>
+            <p className="mt-1 text-xs leading-relaxed text-violet-700">Contoh: Septemberâ€“Oktober = 2 bulan, sehingga faktor biaya menjadi 2/12 atau 16,7%.</p>
           </div>
           <div className="rounded-xl border border-teal-100 bg-teal-50 p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">3. Prorata Biaya</p>
-            <p className="mt-2 text-sm font-semibold text-teal-950">Biaya Periode = Biaya Tahunan × Faktor</p>
+            <p className="mt-2 text-sm font-semibold text-teal-950">Biaya Periode = Biaya Tahunan Ã— Faktor</p>
             <p className="mt-1 text-xs leading-relaxed text-teal-700">Biaya periode menjadi sumber yang sama untuk 18 variabel, cost per pasien, DRG, grafik, Excel, PDF, dan PPT.</p>
           </div>
         </div>
@@ -392,21 +392,21 @@ export default function GuidePage() {
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-sm overflow-x-auto pb-1">
           {[
-            { icon: '📋', label: 'Step 1: Overhead', sub: 'Pusat Biaya Penunjang Umum', color: 'bg-blue-50 border-blue-200 text-blue-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '🔬', label: 'Step 2: Intermediate Cost', sub: 'Farmasi, Lab, Radiologi, dan lainnya', color: 'bg-violet-50 border-violet-200 text-violet-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '📅', label: 'Normalisasi Periode', sub: 'Biaya tahunan × bulan discharge/12', color: 'bg-sky-50 border-sky-200 text-sky-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', sub: 'Proporsi sesuai tagihan TXT E-Klaim', color: 'bg-amber-50 border-amber-200 text-amber-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '👤', label: 'Step 4: Cost per Pasien', sub: 'Total 18 variabel per pasien', color: 'bg-teal-50 border-teal-200 text-teal-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '🧩', label: 'Step 5: Grouping', sub: 'Diagnosis + prosedur ke DRG/CBG', color: 'bg-cyan-50 border-cyan-200 text-cyan-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '📊', label: 'Cost per DRG', sub: 'Mean/median, Base Rate & Cost Weight', color: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
-            { icon: '→', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
-            { icon: '⚖️', label: 'Perbandingan', sub: 'Profit / Defisit / BEP', color: 'bg-orange-50 border-orange-200 text-orange-800' },
+            { icon: 'ðŸ“‹', label: 'Step 1: Overhead', sub: 'Pusat Biaya Penunjang Umum', color: 'bg-blue-50 border-blue-200 text-blue-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ”¬', label: 'Step 2: Intermediate Cost', sub: 'Farmasi, Lab, Radiologi, dan lainnya', color: 'bg-violet-50 border-violet-200 text-violet-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ“…', label: 'Normalisasi Periode', sub: 'Biaya tahunan Ã— bulan discharge/12', color: 'bg-sky-50 border-sky-200 text-sky-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ’Š', label: 'Step 3: Distribusi 18 Variabel', sub: 'Proporsi sesuai tagihan TXT E-Klaim', color: 'bg-amber-50 border-amber-200 text-amber-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ‘¤', label: 'Step 4: Cost per Pasien', sub: 'Total 18 variabel per pasien', color: 'bg-teal-50 border-teal-200 text-teal-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ§©', label: 'Step 5: Grouping', sub: 'Diagnosis + prosedur ke DRG/CBG', color: 'bg-cyan-50 border-cyan-200 text-cyan-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'ðŸ“Š', label: 'Cost per DRG', sub: 'Mean/median, Base Rate & Cost Weight', color: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
+            { icon: 'â†’', label: '', sub: '', color: 'bg-transparent border-transparent text-gray-400', small: true },
+            { icon: 'âš–ï¸', label: 'Perbandingan', sub: 'Profit / Defisit / BEP', color: 'bg-orange-50 border-orange-200 text-orange-800' },
           ].map((s, i) => (
             s.small ? (
               <div key={i} className="flex sm:flex-col items-center text-gray-400 text-lg px-1 flex-shrink-0">
@@ -474,8 +474,8 @@ export default function GuidePage() {
 
       <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 text-center">
         <p className="text-xs text-gray-400">
-          UnitCOSt PRO — Aplikasi Patient Level Costing untuk Rumah Sakit Indonesia
-          <br />Menggunakan metodologi Patient Level Costing sesuai standar penghitungan tarif DRG Kemenkes RI
+          UnitCOSt PRO â€” Aplikasi Patient Level Costing untuk Rumah Sakit Indonesia
+          <br />Menggunakan metodologi Patient Level Costing sesuai standar penghitungan tarif iDRG Nasional
         </p>
       </div>
     </div>

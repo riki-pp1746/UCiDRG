@@ -1,6 +1,6 @@
 // ============================================================
 // PAGE: LoginPage.tsx
-// Redesigned with Apple x Deloitte x Kemenkes theme & Security Slider
+// Redesigned with Apple x Deloitte theme & Security Slider
 // ============================================================
 
 import { useState, useRef, useEffect } from 'react';
@@ -195,7 +195,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       className="block w-full pl-11 pr-4 py-3.5 border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all bg-white/80"
-                      placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                      placeholder="Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢"
                     />
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 // ============================================================
 // TYPES: tarifPasien.types.ts
-// 18 Variabel Komponen Tarif dari E-Klaim — sesuai Materi Hal. 36
+// 18 Variabel Komponen Tarif dari E-Klaim â€” sesuai Materi Hal. 36
 // ============================================================
 
 export type KelasRawat = 'kelas1' | 'kelas2' | 'kelas3' | 'rawat_jalan' | 'icu' | 'igd';
@@ -14,7 +14,7 @@ export const KELAS_RAWAT_LABELS: Record<KelasRawat, string> = {
   igd:         'IGD',
 };
 
-// 18 komponen tarif sesuai E-Klaim Kemenkes
+// 18 komponen tarif sesuai standar E-Klaim
 export interface KomponenTarif18 {
   procedure_amt:    number; // 1. Prosedur Non Bedah
   surgical_amt:     number; // 2. Prosedur Bedah
