@@ -238,7 +238,7 @@ export default function GuidePage() {
     <div className="space-y-6 max-w-5xl mx-auto">
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-[#041E42] to-[#0a3572] rounded-2xl p-7 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#0B1F3A] to-[#1B365D] rounded-2xl p-7 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-5 pointer-events-none select-none" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, #00B1A9 0%, transparent 60%)' }} />
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-3">
@@ -288,7 +288,7 @@ export default function GuidePage() {
       <div className="bg-white border border-blue-200 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-2">
           <CalendarDays className="w-5 h-5 text-blue-700" />
-          <h2 className="text-lg font-bold text-[#041E42]">Penyesuaian Biaya Tahunan dengan Periode TXT</h2>
+          <h2 className="text-lg font-bold text-[#0B1F3A]">Penyesuaian Biaya Tahunan dengan Periode TXT</h2>
         </div>
         <p className="text-sm text-gray-600">
           Template costing berisi biaya <strong>12 bulan</strong>, sedangkan TXT dapat berisi klaim satu atau beberapa bulan. Agar perbandingan relevan, aplikasi menyesuaikan seluruh biaya Overhead, Intermediate, dan biaya langsung layanan ke periode klaim.
@@ -345,8 +345,8 @@ export default function GuidePage() {
       {/* Data yang Harus Disiapkan */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <Database className="w-5 h-5 text-[#041E42]" />
-          <h2 className="text-xl font-bold text-[#041E42]">Data yang Harus Disiapkan</h2>
+          <Database className="w-5 h-5 text-[#0B1F3A]" />
+          <h2 className="text-xl font-bold text-[#0B1F3A]">Data yang Harus Disiapkan</h2>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -387,8 +387,8 @@ export default function GuidePage() {
       {/* Alur Patient Level Costing */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
-          <Layers className="w-5 h-5 text-[#041E42]" />
-          <h2 className="text-lg font-bold text-[#041E42]">Alur Perhitungan Patient Level Costing</h2>
+          <Layers className="w-5 h-5 text-[#0B1F3A]" />
+          <h2 className="text-lg font-bold text-[#0B1F3A]">Alur Perhitungan Patient Level Costing</h2>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 text-sm overflow-x-auto pb-1">
           {[
@@ -427,8 +427,8 @@ export default function GuidePage() {
       {/* Langkah-langkah Penggunaan Aplikasi */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-5 h-5 text-[#041E42]" />
-          <h2 className="text-xl font-bold text-[#041E42]">Langkah-langkah Penggunaan Aplikasi</h2>
+          <FileText className="w-5 h-5 text-[#0B1F3A]" />
+          <h2 className="text-xl font-bold text-[#0B1F3A]">Langkah-langkah Penggunaan Aplikasi</h2>
         </div>
 
         <div className="space-y-3">

@@ -21,6 +21,8 @@ import {
   generateSummary,
   OverheadConfig,
   DEFAULT_OVERHEAD_CONFIG,
+  TarifIDRGConfig,
+  DEFAULT_TARIF_IDRG_CONFIG,
 } from '../lib/calculations/patientLevelCosting';
 
 interface CostingState {
@@ -39,6 +41,7 @@ interface CostingState {
   summaryIDRG: CostingSummary | null;
   viewMode: 'INACBG' | 'IDRG';
   overheadConfig: OverheadConfig;
+  tarifIDRGConfig: TarifIDRGConfig;
   rvuGlobalCosts?: RVUGlobalCosts;
   periodNormalization: PeriodNormalization | null;
   
@@ -55,6 +58,7 @@ interface CostingState {
   setRawRecords: (records: PatientRecord[], session: UploadSession) => void;
     processData: () => void;
   setOverheadConfig: (config: Partial<OverheadConfig>) => void;
+  setTarifIDRGConfig: (config: Partial<TarifIDRGConfig>) => void;
   setRVUGlobalCosts: (costs: RVUGlobalCosts) => void;
   setPeriodNormalization: (period: PeriodNormalization) => void;
   setFilter: (key: string, value: any) => void;
@@ -76,6 +80,7 @@ export const useCostingStore = create<CostingState>()(
       summaryIDRG: null,
       viewMode: 'INACBG',
       overheadConfig: DEFAULT_OVERHEAD_CONFIG,
+      tarifIDRGConfig: DEFAULT_TARIF_IDRG_CONFIG,
       periodNormalization: null,
       isProcessing: false,
       processProgress: 0,
@@ -103,7 +108,7 @@ export const useCostingStore = create<CostingState>()(
       },
 
       processData: () => {
-        const { rawRecords, overheadConfig, rvuGlobalCosts, periodNormalization, sessions, activeSessionId } = get();
+        const { rawRecords, overheadConfig, tarifIDRGConfig, rvuGlobalCosts, periodNormalization, sessions, activeSessionId } = get();
         if (!rawRecords.length) return;
 
         set({ isProcessing: true, processProgress: 10 });
@@ -113,7 +118,8 @@ export const useCostingStore = create<CostingState>()(
           const { results, rejectedCount } = runRVUAllocation(
             rawRecords,
             rvuGlobalCosts || null,
-            overheadConfig
+            overheadConfig,
+            tarifIDRGConfig
           );
           
           set({ processProgress: 50 });
@@ -146,6 +152,13 @@ export const useCostingStore = create<CostingState>()(
           overheadConfig: { ...state.overheadConfig, ...config },
         }));
         // Reprocess with new config
+        setTimeout(() => get().processData(), 100);
+      },
+
+      setTarifIDRGConfig: (config) => {
+        set(state => ({
+          tarifIDRGConfig: { ...state.tarifIDRGConfig, ...config },
+        }));
         setTimeout(() => get().processData(), 100);
       },
 
@@ -186,6 +199,7 @@ export const useCostingStore = create<CostingState>()(
       partialize: (state) => ({
         // Hanya persist config dan sessions, bukan data besar
         overheadConfig: state.overheadConfig,
+        tarifIDRGConfig: state.tarifIDRGConfig,
         sessions: state.sessions,
         periodNormalization: state.periodNormalization,
       }),

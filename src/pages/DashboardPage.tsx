@@ -123,7 +123,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Dashboard Overview</h1>
+        <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
       </div>
 
@@ -146,7 +146,7 @@ export default function DashboardPage() {
             <ZAxis type="number" dataKey="cost" range={[55, 260]} />
             <Tooltip formatter={(value, name) => [name === 'CoV' ? `${Number(value).toFixed(1)}%` : value, name]} labelFormatter={(_, payload) => payload?.[0]?.payload?.code || 'DRG'} />
             <ReferenceLine y={100} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'CoV = 1', fill: '#ef4444', fontSize: 11 }} />
-            <Scatter data={covScatter} fill="#0d9488" />
+            <Scatter data={covScatter} fill="#B08D57" />
           </ScatterChart>
         </ResponsiveContainer>
       </div>

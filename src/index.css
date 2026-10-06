@@ -1,17 +1,80 @@
 @import "tailwindcss";
 
+/* ============================================================
+   PREMIUM THEME - Executive Navy + Brass on warm ivory
+   Terinspirasi estetika Apple / McKinsey / Bain / Deloitte.
+   Palet diganti di level token, sehingga seluruh halaman ikut berubah.
+   ============================================================ */
 @theme {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --color-apple-bg: #F5F5F7;
-  --color-apple-text: #1D1D1F;
-  --color-kemenkes: #00A6A6;
-  --color-kemenkes-dark: #007D7D;
-  --color-deloitte: #041E42;
+  --font-serif: 'Playfair Display', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+
+  --color-apple-bg: #F7F6F3;
+  --color-apple-text: #14213D;
+  --color-kemenkes: #1B365D;
+  --color-kemenkes-dark: #0B1F3A;
+  --color-deloitte: #0B1F3A;
+  --color-brass: #B08D57;
+
+  /* Primary: deep executive navy (menggantikan teal & blue) */
+  --color-teal-50: #F1F4F9;  --color-teal-100: #E3E9F2; --color-teal-200: #C6D2E3;
+  --color-teal-300: #98AAC6; --color-teal-400: #667F9F; --color-teal-500: #3A5780;
+  --color-teal-600: #1B365D; --color-teal-700: #12294A; --color-teal-800: #0B1F3A;
+  --color-teal-900: #071529; --color-teal-950: #040D1A;
+  --color-blue-50: #F1F4F9;  --color-blue-100: #E3E9F2; --color-blue-200: #C6D2E3;
+  --color-blue-300: #98AAC6; --color-blue-400: #667F9F; --color-blue-500: #3A5780;
+  --color-blue-600: #1B365D; --color-blue-700: #12294A; --color-blue-800: #0B1F3A;
+  --color-blue-900: #071529; --color-blue-950: #040D1A;
+  --color-cyan-50: #F1F4F9;  --color-cyan-100: #E3E9F2; --color-cyan-500: #3A5780; --color-cyan-600: #1B365D; --color-cyan-700: #12294A;
+  --color-sky-50: #F1F4F9;   --color-sky-100: #E3E9F2;  --color-sky-500: #3A5780;  --color-sky-600: #1B365D;  --color-sky-700: #12294A;
+
+  /* Accent: champagne brass (menggantikan indigo / violet / purple) */
+  --color-indigo-50: #FAF6EE; --color-indigo-100: #F3EAD7; --color-indigo-200: #E6D4AD; --color-indigo-300: #D4B87E;
+  --color-indigo-400: #C2A05D; --color-indigo-500: #B08D57; --color-indigo-600: #977544; --color-indigo-700: #765935;
+  --color-indigo-800: #5A4429; --color-indigo-900: #3F2F1C;
+  --color-violet-50: #FAF6EE; --color-violet-100: #F3EAD7; --color-violet-200: #E6D4AD; --color-violet-300: #D4B87E;
+  --color-violet-400: #C2A05D; --color-violet-500: #B08D57; --color-violet-600: #977544; --color-violet-700: #765935;
+  --color-violet-800: #5A4429; --color-violet-900: #3F2F1C;
+  --color-purple-50: #FAF6EE; --color-purple-100: #F3EAD7; --color-purple-200: #E6D4AD; --color-purple-300: #D4B87E;
+  --color-purple-400: #C2A05D; --color-purple-500: #B08D57; --color-purple-600: #977544; --color-purple-700: #765935;
+  --color-purple-800: #5A4429; --color-purple-900: #3F2F1C;
+
+  /* Netral hangat (ivory / graphite) menggantikan gray & slate dingin */
+  --color-gray-50: #FAF9F7;  --color-gray-100: #F3F2EE; --color-gray-200: #E7E5DF; --color-gray-300: #D3D0C8;
+  --color-gray-400: #A4A19A; --color-gray-500: #77746D; --color-gray-600: #55524C; --color-gray-700: #3B3935;
+  --color-gray-800: #232220; --color-gray-900: #121A2B;
+  --color-slate-50: #FAF9F7; --color-slate-100: #F3F2EE; --color-slate-200: #E7E5DF; --color-slate-300: #D3D0C8;
+  --color-slate-400: #A4A19A; --color-slate-500: #77746D; --color-slate-600: #55524C; --color-slate-700: #3B3935;
+  --color-slate-800: #232220; --color-slate-900: #121A2B;
+
+  /* Radius lebih tegas & elegan, bayangan halus berlapis */
+  --radius-lg: 0.375rem; --radius-xl: 0.5rem; --radius-2xl: 0.625rem; --radius-3xl: 0.875rem;
+  --shadow-xs: 0 1px 1px rgb(11 31 58 / 0.04);
+  --shadow-sm: 0 1px 2px rgb(11 31 58 / 0.05), 0 1px 1px rgb(11 31 58 / 0.03);
+  --shadow-md: 0 4px 12px -2px rgb(11 31 58 / 0.07), 0 2px 4px -2px rgb(11 31 58 / 0.04);
+  --shadow-lg: 0 14px 30px -8px rgb(11 31 58 / 0.14), 0 4px 8px -4px rgb(11 31 58 / 0.05);
+  --shadow-xl: 0 24px 48px -12px rgb(11 31 58 / 0.20);
+  --shadow-2xl: 0 34px 70px -18px rgb(11 31 58 / 0.28);
+}
+
+@layer base {
+  html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: 'cv11', 'ss01'; }
+  h1 { font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.015em; color: #0B1F3A; }
+  h2 { letter-spacing: -0.01em; }
+  /* Tabel: header kapital kecil ala laporan konsultan */
+  thead th { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.65rem !important; font-weight: 600 !important; color: #55524C; background-color: #F3F2EE; }
+  tbody tr { transition: background-color .15s ease; }
+  input:not([type=checkbox]):not([type=radio]), select, textarea { border-color: #D3D0C8; transition: border-color .15s, box-shadow .15s; }
+  input:not([type=checkbox]):not([type=radio]):focus, select:focus, textarea:focus { outline: none; border-color: #B08D57; box-shadow: 0 0 0 3px rgb(176 141 87 / 0.18); }
+  ::selection { background: #E6D4AD; color: #0B1F3A; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: #D3D0C8; border-radius: 999px; border: 2px solid #F7F6F3; }
+  ::-webkit-scrollbar-thumb:hover { background: #B08D57; }
 }
 
 @layer base {
   body {
-    @apply bg-[var(--color-apple-bg)] text-[var(--color-apple-text)] antialiased selection:bg-teal-200 selection:text-teal-900;
+    @apply bg-[var(--color-apple-bg)] text-[var(--color-apple-text)] antialiased ;
   }
 }
 
@@ -22,8 +85,8 @@
 
   body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #f9fafb;
-    color: #111827;
+    background-color: #F7F6F3;
+    color: #14213D;
     margin: 0;
   }
 }
@@ -35,7 +98,7 @@
 
 /* Workspace design system: accessible focus, responsive shell and restrained clinical palette. */
 :root { --uc-ink:#17334a; --uc-teal:#087f80; --uc-line:#dde6ec; --uc-muted:#64748b; }
-:focus-visible { outline:3px solid #0d9488; outline-offset:3px; }
+:focus-visible { outline:2px solid #B08D57; outline-offset:3px; }
 button, a, input, select, summary { -webkit-tap-highlight-color:transparent; }
 button:not(:disabled), summary { cursor:pointer; }
 button:disabled { cursor:not-allowed; opacity:.45; }

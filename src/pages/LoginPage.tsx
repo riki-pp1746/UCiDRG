@@ -16,15 +16,15 @@ export function BrandLogo({ className = "w-12 h-12" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       {/* Background shape */}
-      <rect width="48" height="48" rx="14" fill="#041E42" />
+      <rect width="48" height="48" rx="14" fill="#0B1F3A" />
       
       {/* U and C intertwined with medical/chart vibe */}
-      <path d="M14 16V28C14 32.4183 17.5817 36 22 36C26.4183 36 30 32.4183 30 28V24" stroke="#00A6A6" strokeWidth="4" strokeLinecap="round" />
+      <path d="M14 16V28C14 32.4183 17.5817 36 22 36C26.4183 36 30 32.4183 30 28V24" stroke="#C2A05D" strokeWidth="4" strokeLinecap="round" />
       <path d="M34 18C34 13.5817 30.4183 10 26 10C21.5817 10 18 13.5817 18 18V20" stroke="#38BDF8" strokeWidth="4" strokeLinecap="round" />
       
       {/* Chart Bars replacing the right side */}
       <rect x="22" y="24" width="4" height="12" rx="2" fill="#FFFFFF" />
-      <rect x="28" y="18" width="4" height="18" rx="2" fill="#00A6A6" />
+      <rect x="28" y="18" width="4" height="18" rx="2" fill="#C2A05D" />
       <rect x="34" y="12" width="4" height="24" rx="2" fill="#38BDF8" />
     </svg>
   );
@@ -212,7 +212,7 @@ export default function LoginPage() {
                 className={clsx(
                   "w-full flex justify-center py-4 px-4 rounded-xl text-sm font-bold text-white transition-all duration-300 transform active:scale-95",
                   isVerified 
-                    ? "bg-[#041E42] hover:bg-[#062a5c]" 
+                    ? "bg-[#0B1F3A] hover:bg-[#12294A]" 
                     : "bg-gray-300 cursor-not-allowed"
                 )}
               >
@@ -223,7 +223,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Side - Branding (Deep Blue / Teal) */}
-        <div className="md:w-6/12 bg-[#041E42] p-10 flex flex-col justify-between relative overflow-hidden text-white order-1 md:order-2">
+        <div className="md:w-6/12 bg-[#0B1F3A] p-10 flex flex-col justify-between relative overflow-hidden text-white order-1 md:order-2">
           <div className="absolute inset-0 opacity-10">
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
               <defs>

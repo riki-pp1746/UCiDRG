@@ -627,7 +627,7 @@ export default function CostingInputPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-[#041E42] tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight flex items-center gap-2">
             <Layers className="w-6 h-6 text-teal-600" />
             Input Data Costing RS
           </h1>
@@ -716,7 +716,7 @@ export default function CostingInputPage() {
             className={clsx(
               'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0',
               activeTab === tab.id
-                ? 'bg-[#041E42] text-white shadow-md'
+                ? 'bg-[#0B1F3A] text-white shadow-md'
                 : 'text-gray-600 hover:bg-gray-100'
             )}
           >
@@ -803,7 +803,7 @@ export default function CostingInputPage() {
       {activeTab === 'info' && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="font-bold text-[#041E42] text-lg mb-4 flex items-center gap-2">
+            <h2 className="font-bold text-[#0B1F3A] text-lg mb-4 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-teal-600" /> Identitas Rumah Sakit
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -893,7 +893,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           {/* Indikator Operasional */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="font-bold text-[#041E42] text-lg mb-4 flex items-center gap-2">
+            <h2 className="font-bold text-[#0B1F3A] text-lg mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-teal-600" /> Indikator Operasional RS
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -920,7 +920,7 @@ export default function CostingInputPage() {
 
           {/* Pendapatan & Biaya RS */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="font-bold text-[#041E42] text-lg mb-4 flex items-center gap-2">
+            <h2 className="font-bold text-[#0B1F3A] text-lg mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-teal-600" /> Laporan Keuangan RS
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1460,7 +1460,7 @@ export default function CostingInputPage() {
           </div>
 
           {/* Tombol Sinkronisasi ke Patient Level Costing */}
-          <div className="bg-gradient-to-br from-[#041E42] to-teal-800 rounded-2xl p-6 text-white">
+          <div className="bg-gradient-to-br from-[#0B1F3A] to-teal-800 rounded-2xl p-6 text-white">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-bold text-lg">Sinkronkan ke Patient Level Costing</h3>

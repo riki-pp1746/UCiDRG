@@ -276,7 +276,7 @@ export default function ReportPage() {
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] text-sm font-semibold transition-all shadow-md active:scale-95"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#0B1F3A] text-white rounded-xl hover:bg-[#12294A] text-sm font-semibold transition-all shadow-md active:scale-95"
           >
             <Printer className="w-4 h-4" />
             Export Summary Report (PDF)

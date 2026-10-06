@@ -200,13 +200,13 @@ export default function UploadPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#041E42] tracking-tight">Upload Center</h1>
+          <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Upload Center</h1>
           <p className="text-gray-500 mt-1">Unggah beberapa file TXT INA-CBG dan Excel Template sekaligus.</p>
         </div>
         {rawRecords.length > 0 && (
           <button
             onClick={() => navigate('/comparison')}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#041E42] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#0B1F3A] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
           >
             Lihat Hasil Sebelumnya <ArrowRight className="w-4 h-4" />
           </button>
@@ -233,7 +233,7 @@ export default function UploadPage() {
                 {result.txtFiles.length > 0 ? (
                   <>
                     <p className="text-sm text-gray-600">Berhasil menggabungkan <strong>{result.txtFiles.length} file</strong></p>
-                    <p className="text-2xl font-bold text-[#041E42] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
+                    <p className="text-2xl font-bold text-[#0B1F3A] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 italic">Tidak ada file TXT yang diunggah.</p>
@@ -309,7 +309,7 @@ export default function UploadPage() {
               {result.txtFiles.length > 0 && (
                 <button
                   onClick={() => navigate('/comparison')}
-                  className="px-6 py-3 bg-[#041E42] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
+                  className="px-6 py-3 bg-[#0B1F3A] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
                 >
                   Lihat Hasil Kalkulasi <ArrowRight className="w-4 h-4" />
                 </button>
@@ -388,7 +388,7 @@ export default function UploadPage() {
           />
           <label
             htmlFor="file-upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#041E42] text-white rounded-xl hover:bg-[#062a5c] font-semibold cursor-pointer transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#0B1F3A] text-white rounded-xl hover:bg-[#12294A] font-semibold cursor-pointer transition-all active:scale-95"
           >
             Pilih File
           </label>
@@ -400,14 +400,14 @@ export default function UploadPage() {
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5"/></div>
             <div>
-              <p className="font-semibold text-[#041E42]">Data INA-CBG (.TXT)</p>
+              <p className="font-semibold text-[#0B1F3A]">Data INA-CBG (.TXT)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Upload banyak bulan sekaligus, sistem akan menggabungkannya otomatis.</p>
             </div>
           </div>
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><FileSpreadsheet className="w-5 h-5"/></div>
             <div>
-              <p className="font-semibold text-[#041E42]">Template Costing (.XLSX)</p>
+              <p className="font-semibold text-[#0B1F3A]">Template Costing (.XLSX)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke input biaya RS.</p>
             </div>
           </div>
