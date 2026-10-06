@@ -152,7 +152,7 @@ export default function AppLayout() {
 
             {/* View mode: segmented control */}
             <div className="hidden sm:flex items-center bg-[#F3F2EE] p-1 rounded-lg ring-1 ring-[#E7E5DF]">
-              {([['INACBG', 'INA-CBG'], ['IDRG', 'iDRG']] as const).map(([mode, label]) => (
+              {([['INACBG', 'Klaim JKN (INA-CBG/iDRG)'], ['IDRG', 'iDRG']] as const).map(([mode, label]) => (
                 <button
                   key={mode}
                   onClick={() => toggleViewMode(mode)}

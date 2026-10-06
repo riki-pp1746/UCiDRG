@@ -42,7 +42,7 @@ export default function UploadPage() {
     const excelFiles = fileArray.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
 
     if (txtFiles.length === 0 && excelFiles.length === 0) {
-      setErrorMsg('Format file tidak didukung. Mohon unggah file .TXT (INA-CBG) atau .XLSX (Template Costing).');
+      setErrorMsg('Format file tidak didukung. Mohon unggah file .TXT (Klaim JKN (INA-CBG/iDRG)) atau .XLSX (Template Costing).');
       setUploadState('error');
       return;
     }
@@ -139,7 +139,7 @@ export default function UploadPage() {
         useTarifPasienStore.getState().calculateDistribution();
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
-        processResult.errors.push('Tidak ada baris data INA-CBG yang valid ditemukan dalam file TXT.');
+        processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
       }
 
       setResult(processResult);
@@ -202,7 +202,7 @@ export default function UploadPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Upload Center</h1>
-          <p className="text-gray-500 mt-1">Unggah beberapa file TXT INA-CBG dan Excel Template sekaligus.</p>
+          <p className="text-gray-500 mt-1">Unggah beberapa file TXT Klaim JKN (INA-CBG/iDRG) dan Excel Template sekaligus.</p>
         </div>
         {rawRecords.length > 0 && (
           <button
@@ -229,7 +229,7 @@ export default function UploadPage() {
               <div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                   <FileText className="w-5 h-5 text-blue-500" />
-                  Data INA-CBG (.TXT)
+                  Data Klaim JKN (INA-CBG/iDRG) (.TXT)
                 </div>
                 {result.txtFiles.length > 0 ? (
                   <>
@@ -264,7 +264,7 @@ export default function UploadPage() {
                     <p className="text-sm font-bold text-blue-900">Periode Klaim Berdasarkan Tanggal Pulang</p>
                     <p className="mt-1 text-lg font-bold text-blue-800">{periodNormalization.label}</p>
                     <p className="mt-1 text-xs text-blue-700">
-                      {periodNormalization.detectedMonths.length} bulan terdeteksi Ã‚Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
+                      {periodNormalization.detectedMonths.length} bulan terdeteksi Ãƒâ€šÃ‚Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
                     </p>
                   </div>
                   <label className="text-xs font-semibold text-blue-900">
@@ -281,9 +281,9 @@ export default function UploadPage() {
 
                 {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
                   <div className="mt-4 space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    {periodNormalization.yearMismatch && <p>Ã¢Å¡Â  Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
-                    {periodNormalization.fallbackCount > 0 && <p>Ã¢Å¡Â  {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
-                    {periodNormalization.invalidDateCount > 0 && <p>Ã¢Å¡Â  {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
+                    {periodNormalization.yearMismatch && <p>ÃƒÂ¢Ã…Â¡Ã‚Â  Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
+                    {periodNormalization.fallbackCount > 0 && <p>ÃƒÂ¢Ã…Â¡Ã‚Â  {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
+                    {periodNormalization.invalidDateCount > 0 && <p>ÃƒÂ¢Ã…Â¡Ã‚Â  {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
                   </div>
                 )}
               </div>
@@ -370,7 +370,7 @@ export default function UploadPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900">Tarik & Lepas File Di Sini</h2>
           <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
-            Mendukung file Data Pasien INA-CBG (.TXT) dan Template Keuangan (.XLSX)
+            Mendukung file Data Pasien Klaim JKN (INA-CBG/iDRG) (.TXT) dan Template Keuangan (.XLSX)
           </p>
           <div className="mb-8">
             <a href="/Template_Costing_Standard.xlsx" download className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
@@ -401,7 +401,7 @@ export default function UploadPage() {
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5"/></div>
             <div>
-              <p className="font-semibold text-[#0B1F3A]">Data INA-CBG (.TXT)</p>
+              <p className="font-semibold text-[#0B1F3A]">Data Klaim JKN (INA-CBG/iDRG) (.TXT)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Upload banyak bulan sekaligus, sistem akan menggabungkannya otomatis.</p>
             </div>
           </div>

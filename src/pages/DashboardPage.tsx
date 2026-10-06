@@ -86,7 +86,7 @@ export default function DashboardPage() {
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-3">Belum Ada Data</h2>
         <p className="text-gray-500 max-w-md mb-6">
-          Upload file TXT INA-CBG untuk memulai analisis unit cost dan perbandingan tarif.
+          Upload file TXT Klaim JKN (INA-CBG/iDRG) untuk memulai analisis unit cost dan perbandingan tarif.
         </p>
         <button
           onClick={() => navigate('/upload')}
@@ -129,7 +129,7 @@ export default function DashboardPage() {
 
       {periodNormalization && (
         <div className={clsx('rounded-xl border px-4 py-3 text-sm', (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800')}>
-          <strong>Periode klaim:</strong> {periodNormalization.label} · biaya disesuaikan {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%).
+          <strong>Periode klaim:</strong> {periodNormalization.label} Â· biaya disesuaikan {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%).
           {periodNormalization.yearMismatch && ` Tahun biaya ${periodNormalization.costYear} digunakan sebagai baseline/proksi.`}
           {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
           {periodNormalization.invalidDateCount > 0 && ` ${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.`}
@@ -238,7 +238,7 @@ export default function DashboardPage() {
         <AlertTriangle className={clsx('w-8 h-8 flex-shrink-0', summary.totalSelisih < 0 ? 'text-red-500' : 'text-green-500')} />
         <div>
           <p className={clsx('font-semibold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
-            {summary.totalSelisih < 0 ? `⚠ Total Unit Cost LEBIH TINGGI dari Tarif ${viewMode}` : `✓ Total Unit Cost LEBIH RENDAH dari Tarif ${viewMode}`}
+            {summary.totalSelisih < 0 ? `âš  Total Unit Cost LEBIH TINGGI dari Tarif ${viewMode}` : `âœ“ Total Unit Cost LEBIH RENDAH dari Tarif ${viewMode}`}
           </p>
           <p className={clsx('text-sm', summary.totalSelisih < 0 ? 'text-red-600' : 'text-green-600')}>
             Selisih: {formatRupiah(Math.abs(summary.totalSelisih))} 
@@ -275,7 +275,7 @@ export default function DashboardPage() {
 
         {/* Top DRG Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG â€” Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
           <ResponsiveContainer width="99%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -310,7 +310,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-red-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
-                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
+                  <p className="text-xs text-gray-500">{drg.group_code} Â· {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-red-600 whitespace-nowrap">
                   {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
@@ -318,7 +318,7 @@ export default function DashboardPage() {
               </div>
             ))}
             {summary.top10Rugi.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-4">Tidak ada DRG yang rugi 🎉</p>
+              <p className="text-gray-400 text-sm text-center py-4">Tidak ada DRG yang rugi ðŸŽ‰</p>
             )}
           </div>
         </div>
@@ -335,7 +335,7 @@ export default function DashboardPage() {
                 <span className="text-xs font-bold text-green-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
-                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
+                  <p className="text-xs text-gray-500">{drg.group_code} Â· {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-green-600 whitespace-nowrap">
                   {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
