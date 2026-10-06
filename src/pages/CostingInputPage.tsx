@@ -673,7 +673,7 @@ export default function CostingInputPage() {
           </p>
           <p className={clsx('text-xs mt-0.5', config.totalFinalCost > 0 ? 'text-teal-600' : 'text-gray-400')}>
             {config.totalFinalCost > 0
-              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(totalBiayaLaporan)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Intermediate: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span> · Pusat Biaya Utama: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span></>
+              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(totalBiayaTahunan)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Intermediate: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span> · Pusat Biaya Utama: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span></>
               : 'Isi data biaya di tiap tab, kalkulasi akan berjalan otomatis setiap kali ada perubahan'
             }
           </p>
@@ -1315,7 +1315,7 @@ export default function CostingInputPage() {
               { step: 'A', label: 'Pusat Biaya Penunjang Umum (Overhead)', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Biaya langsung kelompok Overhead' },
               { step: 'B', label: 'Pusat Biaya Penunjang Medis (Intermediate)', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Biaya langsung kelompok Intermediate' },
               { step: 'C', label: 'Pusat Biaya Utama (Layanan Pasien)', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Biaya langsung layanan pasien' },
-              { step: 'TOTAL', label: 'Total Biaya RS', value: totalBiayaLaporan, color: 'bg-teal-50 border-teal-200 text-teal-800', desc: 'A + B + C, sesuai laporan keuangan' },
+              { step: 'TOTAL', label: 'Total Biaya RS', value: totalBiayaTahunan, color: 'bg-teal-50 border-teal-200 text-teal-800', desc: 'A + B + C, sesuai laporan keuangan' },
             ].map(c => (
               <div key={c.label} className={clsx('rounded-xl p-4 border', c.color)}>
                 <p className="text-xs font-bold opacity-60">{c.step}</p>
