@@ -134,7 +134,7 @@ export default function UploadPage() {
         const tarifStore = useTarifPasienStore.getState();
         tarifStore.syncFromCosting(combinedTxtRecords);
         const patients = useTarifPasienStore.getState().patients;
-        const biayaRSMap = buildBiayaRSMap(hospitalConfig, patients, detectedPeriod.factor);
+        const biayaRSMap = buildBiayaRSMap(hospitalConfig, patients, detectedPeriod.factor, useCostingStore.getState().jknProportion);
         useTarifPasienStore.setState({ biayaRSMap });
         useTarifPasienStore.getState().calculateDistribution();
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
@@ -162,6 +162,7 @@ export default function UploadPage() {
       useHospitalCostStore.getState().config,
       useTarifPasienStore.getState().patients,
       updated.factor,
+      useCostingStore.getState().jknProportion,
     );
     useTarifPasienStore.setState({ biayaRSMap });
     useTarifPasienStore.getState().calculateDistribution();
@@ -263,7 +264,7 @@ export default function UploadPage() {
                     <p className="text-sm font-bold text-blue-900">Periode Klaim Berdasarkan Tanggal Pulang</p>
                     <p className="mt-1 text-lg font-bold text-blue-800">{periodNormalization.label}</p>
                     <p className="mt-1 text-xs text-blue-700">
-                      {periodNormalization.detectedMonths.length} bulan terdeteksi Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
+                      {periodNormalization.detectedMonths.length} bulan terdeteksi Ã‚Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
                     </p>
                   </div>
                   <label className="text-xs font-semibold text-blue-900">
@@ -280,9 +281,9 @@ export default function UploadPage() {
 
                 {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
                   <div className="mt-4 space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    {periodNormalization.yearMismatch && <p>âš  Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
-                    {periodNormalization.fallbackCount > 0 && <p>âš  {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
-                    {periodNormalization.invalidDateCount > 0 && <p>âš  {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
+                    {periodNormalization.yearMismatch && <p>Ã¢Å¡Â  Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
+                    {periodNormalization.fallbackCount > 0 && <p>Ã¢Å¡Â  {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
+                    {periodNormalization.invalidDateCount > 0 && <p>Ã¢Å¡Â  {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
                   </div>
                 )}
               </div>

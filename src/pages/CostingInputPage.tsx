@@ -1,6 +1,6 @@
 // ============================================================
 // PAGE: CostingInputPage.tsx
-// Form input biaya RS — distribusi langsung ke 18 variabel E-Klaim
+// Form input biaya RS ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â distribusi langsung ke 18 variabel E-Klaim
 // Alur Patient Level Costing bertahap
 // Tab: Info RS | Data Dasar | A. Overhead | B. Penunjang | C. Layanan | Hasil
 // ============================================================
@@ -22,7 +22,7 @@ import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, Fin
 import type { RVUGlobalCosts } from '../types/costing.types';
 import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.types';
 
-// ── Reusable Rupiah input — simpan draft string, commit ke store saat blur ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Reusable Rupiah input ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â simpan draft string, commit ke store saat blur ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function RpInput({ value, onChange, placeholder = '0' }: {
   value: number;
   onChange: (v: number) => void;
@@ -65,7 +65,7 @@ function RpInput({ value, onChange, placeholder = '0' }: {
   );
 }
 
-// ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Number input (angka non-rupiah: staf, hari rawat, dll) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function NumInput({ value, onChange, placeholder = '0', invalid = false, className }: {
   value: number;
   onChange: (v: number) => void;
@@ -101,10 +101,10 @@ function NumInput({ value, onChange, placeholder = '0', invalid = false, classNa
 }
 
 
-// ── Label dasar alokasi yang ramah baca ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Label dasar alokasi yang ramah baca ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 const OVERHEAD_DASAR_LABELS: Record<OverheadDasarAlokasi, string> = {
   jumlah_staf:   'Jumlah Staf',
-  luas_lantai:   'Luas Lantai (m²)',
+  luas_lantai:   'Luas Lantai (mÃƒâ€šÃ‚Â²)',
   penggunaan:    'Penggunaan',
   tagihan_pajak: 'Tagihan Pajak',
   biaya_riil:    'Biaya Riil',
@@ -124,7 +124,7 @@ const INTERMEDIATE_DASAR_LABELS: Record<IntermediateDasarAlokasi, string> = {
   jaringan:             'Jaringan',
   jumlah_staf:          'Jumlah Staf',
   jumlah_kunjungan:     'Jumlah Kunjungan',
-  luas_lantai:          'Luas Lantai (m²)',
+  luas_lantai:          'Luas Lantai (mÃƒâ€šÃ‚Â²)',
 };
 
 const FINAL_KATEGORI_LABELS: Record<FinalKategori, string> = {
@@ -140,16 +140,16 @@ const FINAL_KATEGORI_LABELS: Record<FinalKategori, string> = {
 type Tab = 'info' | 'dataDasar' | 'overhead' | 'intermediate' | 'final' | 'hasil' | 'distribusi18';
 
 const TABS: { id: Tab; label: string; icon: string; desc: string }[] = [
-  { id: 'info',         label: 'Info RS',       icon: '🏥', desc: 'Identitas & kesiapan RS' },
-  { id: 'dataDasar',    label: 'Data Dasar RS',  icon: '📊', desc: 'BOR, ALOS, LHR, Pendapatan' },
-  { id: 'overhead',     label: 'Step 1: Overhead', icon: '📋', desc: 'Pusat biaya penunjang umum' },
-  { id: 'intermediate', label: 'Step 2: Intermediate Cost', icon: '🔬', desc: 'Pusat biaya penunjang medik' },
-  { id: 'final',        label: 'Pusat Biaya Utama', icon: '🛏️', desc: 'Biaya langsung layanan pasien' },
-  { id: 'hasil',        label: 'Ringkasan Biaya RS', icon: '📈', desc: 'Rekonsiliasi laporan keuangan' },
-  { id: 'distribusi18', label: 'Step 3: Distribusi 18 Var', icon: '💊', desc: 'Proporsi sesuai tagihan TXT E-Klaim' },
+  { id: 'info',         label: 'Info RS',       icon: 'ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¥', desc: 'Identitas & kesiapan RS' },
+  { id: 'dataDasar',    label: 'Data Dasar RS',  icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã…Â ', desc: 'BOR, ALOS, LHR, Pendapatan' },
+  { id: 'overhead',     label: 'Step 1: Overhead', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¹', desc: 'Pusat biaya penunjang umum' },
+  { id: 'intermediate', label: 'Step 2: Intermediate Cost', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â¬', desc: 'Pusat biaya penunjang medik' },
+  { id: 'final',        label: 'Pusat Biaya Utama', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â', desc: 'Biaya langsung layanan pasien' },
+  { id: 'hasil',        label: 'Ringkasan Biaya RS', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‹â€ ', desc: 'Rekonsiliasi laporan keuangan' },
+  { id: 'distribusi18', label: 'Step 3: Distribusi 18 Var', icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã…Â ', desc: 'Proporsi sesuai tagihan TXT E-Klaim' },
 ];
 
-// ── Helper hitung biaya langsung untuk tampilan ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Helper hitung biaya langsung untuk tampilan ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 function calcTotalBiaya(c: { biayaPegawai?: number; biayaJasaMedis?: number; biayaJasaMedisLain?: number; biayaOperasional?: number; hargaPeralatan5Tahun?: number; biayaInvestasiGedung?: number }): number {
   return (
     (c.biayaPegawai || 0) +
@@ -161,7 +161,7 @@ function calcTotalBiaya(c: { biayaPegawai?: number; biayaJasaMedis?: number; bia
   );
 }
 
-// ── BiayaForm: tabel 18 variabel sesuai format Excel Workshop Kemenkes ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ BiayaForm: tabel 18 variabel sesuai format Excel Workshop Kemenkes ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 // Variabel: Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | TT | Luas Lantai
 //           Biaya Pegawai | Jasa Medis | Jasa Medis Lain | Operasional
 //           Nilai Alat | Investasi Gedung | Dep. Alat (auto) | Dep. Gedung (auto) | Total Biaya (auto)
@@ -187,21 +187,21 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
     { field: 'jumlahKunjungan',   label: type === 'intermediate' ? 'Jml Kunjungan*' : 'Jml Kunjungan', show: type !== 'overhead' },
     { field: 'alos',              label: 'ALOS',         show: type === 'final' },
     { field: 'jumlahTempat',      label: 'Jml TT',       show: type === 'final' },
-    { field: 'luasLantai',        label: 'Luas (m²)',    show: true },
+    { field: 'luasLantai',        label: 'Luas (mÃƒâ€šÃ‚Â²)',    show: true },
   ].filter(f => f.show);
 
   const biayaFields = [
-    { field: 'biayaPegawai',        label: '① Biaya Gaji & Remunerasi Pegawai' },
-    { field: 'biayaJasaMedis',      label: '② Biaya Jasa Medis Dokter' },
-    { field: 'biayaJasaMedisLain',  label: '③ Biaya Jasa Tenaga Medis Lain' },
-    { field: 'biayaOperasional',    label: '④ Biaya Operasional (Persediaan, Pemeliharaan, dll)' },
-    { field: 'hargaPeralatan5Tahun',label: '⑤ Nilai Perolehan Peralatan (5 thn terakhir)' },
-    { field: 'biayaInvestasiGedung',label: '⑥ Nilai Investasi Gedung (40 thn terakhir)' },
+    { field: 'biayaPegawai',        label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â  Biaya Gaji & Remunerasi Pegawai' },
+    { field: 'biayaJasaMedis',      label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â¡ Biaya Jasa Medis Dokter' },
+    { field: 'biayaJasaMedisLain',  label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â¢ Biaya Jasa Tenaga Medis Lain' },
+    { field: 'biayaOperasional',    label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â£ Biaya Operasional (Persediaan, Pemeliharaan, dll)' },
+    { field: 'hargaPeralatan5Tahun',label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â¤ Nilai Perolehan Peralatan (5 thn terakhir)' },
+    { field: 'biayaInvestasiGedung',label: 'ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â¥ Nilai Investasi Gedung (40 thn terakhir)' },
   ];
 
   return (
     <div className="border border-gray-100 rounded-xl overflow-hidden">
-      {/* Header row — klik untuk expand biaya */}
+      {/* Header row ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â klik untuk expand biaya */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -211,10 +211,10 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
           {label}
           {total > 0 && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Total: {formatRupiah(total)}</span>}
         </span>
-        <span className="text-xs text-gray-400">{open ? '▲ Tutup' : '▼ Input Biaya'}</span>
+        <span className="text-xs text-gray-400">{open ? 'ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â² Tutup' : 'ÃƒÂ¢Ã¢â‚¬â€œÃ‚Â¼ Input Biaya'}</span>
       </button>
 
-      {/* Data Statistik — selalu tampil ringkas */}
+      {/* Data Statistik ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â selalu tampil ringkas */}
       <div className="px-4 py-2 bg-white border-t border-gray-50">
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {statFields.map(f => (
@@ -248,11 +248,11 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
           {/* Auto-calculated fields */}
           <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
             <div className="bg-gray-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-400">⑦ Dep. Peralatan (÷5)</p>
+              <p className="text-xs text-gray-400">ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â¦ Dep. Peralatan (ÃƒÆ’Ã‚Â·5)</p>
               <p className="text-sm font-semibold text-gray-700">{formatRupiah(depAlat)}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-400">⑧ Dep. Gedung (÷40)</p>
+              <p className="text-xs text-gray-400">ÃƒÂ¢Ã¢â‚¬ËœÃ‚Â§ Dep. Gedung (ÃƒÆ’Ã‚Â·40)</p>
               <p className="text-sm font-semibold text-gray-700">{formatRupiah(depGedung)}</p>
             </div>
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-2 text-center">
@@ -291,7 +291,7 @@ export default function CostingInputPage() {
 
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
-  const { setOverheadConfig, periodNormalization, setPeriodNormalization } = useCostingStore();
+  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion } = useCostingStore();
   const periodFactor = periodNormalization?.factor || 1;
 
   // Recalculate otomatis saat masuk ke tab distribusi18
@@ -307,7 +307,7 @@ export default function CostingInputPage() {
       // Pulihkan juga sesi lama yang pasiennya sudah ada tetapi mapping biayanya
       // masih kosong akibat alur upload versi sebelumnya.
       if (rawRecords.length > 0 && !hasMappedCosts) {
-        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor);
+        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor, jknProportion);
         useTarifPasienStore.setState({ biayaRSMap: mapped });
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
       }
@@ -356,7 +356,7 @@ export default function CostingInputPage() {
       return acc;
     }, {} as Record<keyof KomponenTarif18, number>);
     const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
-    const mapped = buildBiayaRSMap(config, state.patients, periodFactor);
+    const mapped = buildBiayaRSMap(config, state.patients, periodFactor, jknProportion);
 
     useTarifPasienStore.setState({ biayaRSMap: mapped });
     useTarifPasienStore.getState().calculateDistribution();
@@ -373,7 +373,7 @@ export default function CostingInputPage() {
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
     const state = useTarifPasienStore.getState();
-    const mapped = buildBiayaRSMap(config, state.patients, updated.factor);
+    const mapped = buildBiayaRSMap(config, state.patients, updated.factor, useCostingStore.getState().jknProportion);
     useTarifPasienStore.setState({ biayaRSMap: mapped });
     useTarifPasienStore.getState().calculateDistribution();
     useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
@@ -404,7 +404,7 @@ export default function CostingInputPage() {
     useCostingStore.getState().setRVUGlobalCosts(rvu);
     setOverheadConfig({ overheadFactor: 0, administrasiFactor: 0, depresiasiFactor: 0, jaminanMutuFactor: 0, useActualBilling: false });
 
-    alert('✅ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
+    alert('ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -444,10 +444,10 @@ export default function CostingInputPage() {
         parsedData.dataLayanan ? 'Data Operasional' : '',
       ].filter(Boolean).join(', ');
 
-      alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
+      alert(`ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
     } catch (err: any) {
       console.error(err);
-      alert(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
+      alert(`ÃƒÂ¢Ã‚ÂÃ…â€™ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
     } finally {
       if (e.target) {
         e.target.value = ''; // Reset input agar bisa upload file yang sama lagi
@@ -455,12 +455,12 @@ export default function CostingInputPage() {
     }
   };
 
-  // ── Download Template Excel sesuai format parser ──
+  // ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Download Template Excel sesuai format parser ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
   const handleDownloadTemplate = async () => {
     const XLSX = await import('xlsx');
 
     // Header kolom: No | Nama Unit | Dasar Alokasi | Jml Staf | Hari Rawat | Pasien Pulang | Kunjungan | ALOS | Jml TT | Biaya Gaji | Jasa Medis | Jasa Medis Lain | Biaya Operasional | Nilai Alat (5th) | Investasi Gedung | - | - | Luas Lantai
-    const COLS = ['No', 'Nama Unit / Pusat Biaya', 'Dasar Alokasi', 'Jumlah Staf', 'Hari Rawat', 'Pasien Pulang', 'Jml Kunjungan', 'ALOS', 'Jml Tempat Tidur', 'Biaya Gaji', 'Biaya Jasa Medis', 'Biaya Jasa Medis Lain', 'Biaya Operasional', 'Nilai Alat', 'Investasi Gedung', 'Dep. Peralatan (Otomatis)', 'Dep. Gedung (Otomatis)', 'Luas Lantai (m²)', 'Total Biaya Langsung (Otomatis)'];
+    const COLS = ['No', 'Nama Unit / Pusat Biaya', 'Dasar Alokasi', 'Jumlah Staf', 'Hari Rawat', 'Pasien Pulang', 'Jml Kunjungan', 'ALOS', 'Jml Tempat Tidur', 'Biaya Gaji', 'Biaya Jasa Medis', 'Biaya Jasa Medis Lain', 'Biaya Operasional', 'Nilai Alat', 'Investasi Gedung', 'Dep. Peralatan (Otomatis)', 'Dep. Gedung (Otomatis)', 'Luas Lantai (mÃƒâ€šÃ‚Â²)', 'Total Biaya Langsung (Otomatis)'];
 
     const overheadRows = config.overheadCenters.map((c, i) => [
       i + 1, c.nama, c.dasarAlokasi, c.jumlahStaf, 0, 0, 0, 0, 0,
@@ -509,7 +509,7 @@ export default function CostingInputPage() {
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(sheetData);
-    // Kolom otomatis: depresiasi alat (nilai alat ÷ 5), depresiasi gedung (investasi ÷ 40), dan total biaya langsung.
+    // Kolom otomatis: depresiasi alat (nilai alat ÃƒÆ’Ã‚Â· 5), depresiasi gedung (investasi ÃƒÆ’Ã‚Â· 40), dan total biaya langsung.
     sheetData.forEach((row, index) => {
       if (typeof row[0] === 'number') {
         const excelRow = index + 1;
@@ -600,7 +600,7 @@ export default function CostingInputPage() {
       ['ALOS / Jumlah Tempat Tidur / Luas Lantai', 'Indikator operasional unit layanan; luas lantai diisi dalam meter persegi.'],
       ['Biaya Gaji / Jasa Medis / Jasa Medis Lain / Operasional', 'Biaya langsung pusat biaya dalam Rupiah.'],
       ['Nilai Alat / Investasi Gedung', 'Nilai aset yang menjadi dasar penyusutan; jangan mengisi nilai penyusutan pada kolom ini.'],
-      ['Kolom Otomatis', 'Depresiasi peralatan = Nilai Alat ÷ 5; depresiasi gedung = Investasi Gedung ÷ 40; Total Biaya Langsung menjumlahkan komponen biaya dan depresiasi.'],
+      ['Kolom Otomatis', 'Depresiasi peralatan = Nilai Alat ÃƒÆ’Ã‚Â· 5; depresiasi gedung = Investasi Gedung ÃƒÆ’Ã‚Â· 40; Total Biaya Langsung menjumlahkan komponen biaya dan depresiasi.'],
     ];
     const wsDataOperasional = XLSX.utils.aoa_to_sheet(dataOperasionalRows);
     dataOperasionalRows.slice(1).forEach((_, index) => {
@@ -656,7 +656,7 @@ export default function CostingInputPage() {
         </div>
       </div>
 
-      {/* Status kalkulasi — selalu tampil */}
+      {/* Status kalkulasi ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â selalu tampil */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4 border transition-colors',
         config.totalFinalCost > 0
@@ -669,11 +669,11 @@ export default function CostingInputPage() {
         }
         <div className="flex-1">
           <p className={clsx('text-sm font-semibold', config.totalFinalCost > 0 ? 'text-teal-800' : 'text-gray-600')}>
-            {config.totalFinalCost > 0 ? '✅ Kalkulasi Otomatis Aktif' : '⬤ Belum ada data biaya'}
+            {config.totalFinalCost > 0 ? 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Kalkulasi Otomatis Aktif' : 'ÃƒÂ¢Ã‚Â¬Ã‚Â¤ Belum ada data biaya'}
           </p>
           <p className={clsx('text-xs mt-0.5', config.totalFinalCost > 0 ? 'text-teal-600' : 'text-gray-400')}>
             {config.totalFinalCost > 0
-              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(totalBiayaTahunan)}</span> · Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> · Intermediate: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span> · Pusat Biaya Utama: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span></>
+              ? <>Total Biaya RS: <span className="font-bold">{formatRupiah(totalBiayaTahunan)}</span> Ãƒâ€šÃ‚Â· Overhead: <span className="font-bold">{formatRupiah(config.totalOverheadCost)}</span> Ãƒâ€šÃ‚Â· Intermediate: <span className="font-bold">{formatRupiah(config.totalIntermediateCost)}</span> Ãƒâ€šÃ‚Â· Pusat Biaya Utama: <span className="font-bold">{formatRupiah(config.totalFinalCost)}</span></>
               : 'Isi data biaya di tiap tab, kalkulasi akan berjalan otomatis setiap kali ada perubahan'
             }
           </p>
@@ -685,20 +685,20 @@ export default function CostingInputPage() {
         )}
       </div>
 
-      {/* Alur Step — visual guide */}
+      {/* Alur Step ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â visual guide */}
       <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Alur Patient Level Costing</p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {[
-            { icon: '📋', label: 'Step 1: Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
-            { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🔬', label: 'Step 2: Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
-            { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '🛏️', label: 'Pusat Biaya Utama', color: 'bg-green-50 text-green-700 border-green-200' },
-            { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '📈', label: 'Ringkasan Biaya RS', color: 'bg-teal-50 text-teal-700 border-teal-200' },
-            { icon: '→', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
-            { icon: '💊', label: 'Step 3: Distribusi 18 Variabel', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+            { icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¹', label: 'Step 1: Overhead', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+            { icon: 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
+            { icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â¬', label: 'Step 2: Intermediate Cost', color: 'bg-violet-50 text-violet-700 border-violet-200' },
+            { icon: 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
+            { icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â', label: 'Pusat Biaya Utama', color: 'bg-green-50 text-green-700 border-green-200' },
+            { icon: 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
+            { icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‹â€ ', label: 'Ringkasan Biaya RS', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+            { icon: 'ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢', label: '', color: 'text-gray-400 bg-transparent border-transparent' },
+            { icon: 'ÃƒÂ°Ã…Â¸Ã¢â‚¬â„¢Ã…Â ', label: 'Step 3: Distribusi 18 Variabel', color: 'bg-amber-50 text-amber-700 border-amber-200' },
           ].map((s, i) => (
             <span key={i} className={clsx('px-3 py-1.5 rounded-lg border font-medium text-xs', s.color)}>
               {s.icon} {s.label}
@@ -797,9 +797,9 @@ export default function CostingInputPage() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 1: INFO RS
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'info' && (
         <div className="space-y-4">
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
@@ -886,9 +886,9 @@ export default function CostingInputPage() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 2: DATA DASAR RS (Hal 39-40)
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'dataDasar' && (
         <div className="space-y-4">
           {/* Indikator Operasional */}
@@ -964,7 +964,7 @@ export default function CostingInputPage() {
 
           <div className="flex justify-between">
             <button onClick={() => setActiveTab('info')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all">
-              ← Kembali
+              ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Kembali
             </button>
             <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700 transition-all">
               Lanjut: A. Overhead <ArrowRight className="w-4 h-4" />
@@ -973,14 +973,14 @@ export default function CostingInputPage() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 3: OVERHEAD (Hal 41, 44, 48)
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'overhead' && (
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-sm text-blue-800 font-medium">
-              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang pada Step 3 langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
+              ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã¢â‚¬Â¹ <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Biaya unit non-layanan yang pada Step 3 langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
             </p>
           </div>
 
@@ -1036,7 +1036,7 @@ export default function CostingInputPage() {
                     <NumInput value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
+                    <label className="block text-xs text-gray-500 mb-1">Luas Lantai (mÃƒâ€šÃ‚Â²)</label>
                     <NumInput value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div className="flex items-end">
@@ -1061,20 +1061,20 @@ export default function CostingInputPage() {
           ))}
 
           <div className="flex justify-between">
-            <button onClick={() => setActiveTab('dataDasar')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
+            <button onClick={() => setActiveTab('dataDasar')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Kembali</button>
             <button onClick={() => setActiveTab('intermediate')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: B. Penunjang <ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 4: INTERMEDIATE / PENUNJANG MEDIK (Hal 42, 44)
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'intermediate' && (
         <div className="space-y-4">
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Intermediate Cost</strong> — Biaya pusat penunjang medik yang pada Step 3 langsung dibagikan bersama Overhead ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
+              ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂÃ‚Â¬ <strong>Intermediate Cost</strong> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Biaya pusat penunjang medik yang pada Step 3 langsung dibagikan bersama Overhead ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
             </p>
           </div>
 
@@ -1146,20 +1146,20 @@ export default function CostingInputPage() {
           ))}
 
           <div className="flex justify-between">
-            <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
+            <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Kembali</button>
             <button onClick={() => setActiveTab('final')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: C. Pusat Biaya Utama <ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 5: FINAL / LAYANAN PASIEN (Hal 43, 45, 49)
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'final' && (
         <div className="space-y-4">
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
             <p className="text-sm text-green-800 font-medium">
-              🛏️ <strong>Pusat Biaya Utama (Layanan Pasien)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan dihitung dari biaya langsung sebagai informasi transparansi; biaya tidak menerima alokasi Overhead maupun Intermediate.
+              ÃƒÂ°Ã…Â¸Ã¢â‚¬ÂºÃ‚ÂÃƒÂ¯Ã‚Â¸Ã‚Â <strong>Pusat Biaya Utama (Layanan Pasien)</strong> ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan dihitung dari biaya langsung sebagai informasi transparansi; biaya tidak menerima alokasi Overhead maupun Intermediate.
             </p>
           </div>
 
@@ -1247,7 +1247,7 @@ export default function CostingInputPage() {
                             <NumInput value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
+                            <label className="block text-xs text-gray-500 mb-1">Luas Lantai (mÃƒâ€šÃ‚Â²)</label>
                             <NumInput value={center.luasLantai} onChange={v => updateFinal(center.id, { luasLantai: v })} />
                           </div>
                         </div>
@@ -1298,15 +1298,15 @@ export default function CostingInputPage() {
           })}
 
           <div className="flex justify-between">
-            <button onClick={() => setActiveTab('intermediate')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
+            <button onClick={() => setActiveTab('intermediate')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">ÃƒÂ¢Ã¢â‚¬Â Ã‚Â Kembali</button>
             <button onClick={() => setActiveTab('hasil')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lihat Hasil <ArrowRight className="w-4 h-4" /></button>
           </div>
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 6: HASIL PERHITUNGAN
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'hasil' && (
         <div className="space-y-5">
           {/* Ringkasan sesuai Excel laporan biaya RS */}
@@ -1343,9 +1343,9 @@ export default function CostingInputPage() {
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════
+      {/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
           TAB 7: DISTRIBUSI 18 VAR
-      ════════════════════════════════════════════════════════ */}
+      ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */}
       {activeTab === 'distribusi18' && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -1353,7 +1353,7 @@ export default function CostingInputPage() {
               <p className="flex items-start gap-2">
                 <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
                 <span>
-                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya langsung Pusat Biaya Utama dipetakan ke komponen layanan. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim, tanpa melalui alokasi ke unit layanan final.
+                  <strong>Step 3 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Distribusi 18 Variabel Billing E-Klaim:</strong> biaya langsung Pusat Biaya Utama dipetakan ke komponen layanan. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim, tanpa melalui alokasi ke unit layanan final.
                 </span>
               </p>
             </div>
@@ -1370,7 +1370,7 @@ export default function CostingInputPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-bold text-blue-900">Periode klaim: {periodNormalization.label}</p>
-                  <p className="mt-1 text-xs text-blue-700">Berdasarkan bulan unik discharge_date · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)</p>
+                  <p className="mt-1 text-xs text-blue-700">Berdasarkan bulan unik discharge_date Ãƒâ€šÃ‚Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)</p>
                 </div>
                 <label className="text-xs font-semibold text-blue-900">
                   Bulan efektif
@@ -1379,7 +1379,7 @@ export default function CostingInputPage() {
                   </select>
                 </label>
               </div>
-              {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && <p className="mt-3 text-xs text-amber-700">⚠ {periodNormalization.yearMismatch ? `Tahun klaim ${periodNormalization.claimYears.join(', ')} berbeda dari tahun biaya ${periodNormalization.costYear}. ` : ''}{periodNormalization.fallbackCount > 0 ? `${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback. ` : ''}{periodNormalization.invalidDateCount > 0 ? `${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.` : ''}</p>}
+              {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && <p className="mt-3 text-xs text-amber-700">ÃƒÂ¢Ã…Â¡Ã‚Â  {periodNormalization.yearMismatch ? `Tahun klaim ${periodNormalization.claimYears.join(', ')} berbeda dari tahun biaya ${periodNormalization.costYear}. ` : ''}{periodNormalization.fallbackCount > 0 ? `${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback. ` : ''}{periodNormalization.invalidDateCount > 0 ? `${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.` : ''}</p>}
             </div>
           )}
 
@@ -1392,25 +1392,25 @@ export default function CostingInputPage() {
             <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
               <p className="text-xs text-blue-600">Total Biaya Periode</p>
               <p className="font-bold text-blue-900 mt-1">{formatRupiah(totalBiayaLaporan)}</p>
-              <p className="text-[11px] text-blue-500 mt-1">Biaya tahunan × {periodNormalization?.effectiveMonths || 12}/12</p>
+              <p className="text-[11px] text-blue-500 mt-1">Biaya tahunan ÃƒÆ’Ã¢â‚¬â€ {periodNormalization?.effectiveMonths || 12}/12</p>
             </div>
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
               <p className="text-xs text-indigo-600">Total Biaya 18 Variabel</p>
               <p className="font-bold text-indigo-900 mt-1">{formatRupiah(totalBiaya18Variabel)}</p>
-              <p className="text-[11px] text-indigo-500 mt-1">Biaya yang dialokasikan ke pasien JKN</p>
+              <p className="text-[11px] text-indigo-500 mt-1">Biaya RS dialokasikan ke JKN ({jknProportion}%)</p>
             </div>
             <div className={clsx('rounded-xl border p-4', Math.abs(selisihNonJKN) < 1 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
               <p className={clsx('text-xs', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-600' : 'text-amber-700')}>
                 {Math.abs(selisihNonJKN) < 1 ? 'Rekonsiliasi Sesuai' : selisihNonJKN > 0 ? 'Selisih / Usulan Biaya Non-JKN' : 'Kelebihan Alokasi 18 Variabel'}
               </p>
               <p className={clsx('font-bold mt-1', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-900' : 'text-amber-900')}>{formatRupiah(selisihNonJKN)}</p>
-              <p className="text-[11px] opacity-70 mt-1">Total laporan − total 18 variabel</p>
+              <p className="text-[11px] opacity-70 mt-1">Total laporan ÃƒÂ¢Ã‹â€ Ã¢â‚¬â„¢ total 18 variabel</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
             <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
-            <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS periode per komponen ÷ Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien × rasio.</p>
+            <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS periode per komponen ÃƒÆ’Ã‚Â· Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien ÃƒÆ’Ã¢â‚¬â€ rasio.</p>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
@@ -1421,7 +1421,7 @@ export default function CostingInputPage() {
                   <th className="px-4 py-3">18 Variabel Tarif E-Klaim</th>
                   <th className="px-4 py-3 text-right">Total Biaya RS per Komponen</th>
                   <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
-                  <th className="px-4 py-3 text-center" title="Total Biaya RS komponen dibagi Total Tagihan E-Klaim komponen">Rasio Distribusi ⓘ</th>
+                  <th className="px-4 py-3 text-center" title="Total Biaya RS komponen dibagi Total Tagihan E-Klaim komponen">Rasio Distribusi ÃƒÂ¢Ã¢â‚¬Å“Ã‹Å“</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -1495,7 +1495,7 @@ export default function CostingInputPage() {
             <div className="space-y-4 p-5">
               <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center">
                 <p className="text-xs text-blue-600">Rumus</p>
-                <p className="mt-1 font-semibold text-blue-900">Total Biaya Langsung ÷ {formulaDetail.denominatorLabel}</p>
+                <p className="mt-1 font-semibold text-blue-900">Total Biaya Langsung ÃƒÆ’Ã‚Â· {formulaDetail.denominatorLabel}</p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="rounded-xl bg-gray-50 p-3 text-center">
@@ -1520,5 +1520,5 @@ export default function CostingInputPage() {
   );
 }
 
-// ── Export types untuk dipakai di helper eksternal ──
+// ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Export types untuk dipakai di helper eksternal ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬
 import type {} from '../types/hospitalCost.types';

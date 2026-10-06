@@ -4,7 +4,7 @@ import { Settings, Info, Trash2, Calculator } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
-  const { clearData, tarifIDRGConfig, setTarifIDRGConfig } = useCostingStore();
+  const { clearData, tarifIDRGConfig, setTarifIDRGConfig, jknProportion, setJknProportion } = useCostingStore();
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -88,6 +88,35 @@ export default function SettingsPage() {
                 className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
               />
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+        <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Settings className="w-4 h-4 text-emerald-600" /> Pengaturan Proporsi Pasien JKN
+        </h2>
+        <p className="text-sm text-gray-600 mt-2">
+          Tentukan persentase dari Total Biaya Rumah Sakit yang akan dialokasikan ke layanan JKN. Biaya untuk pasien Non-JKN tidak akan dibebankan ke dalam analisis unit cost E-Klaim.
+        </p>
+        <div className="mt-4 flex items-center gap-4">
+          <input 
+            type="range" 
+            min="0" 
+            max="100" 
+            value={jknProportion}
+            onChange={(e) => setJknProportion(parseInt(e.target.value) || 0)}
+            className="flex-1 accent-emerald-600"
+          />
+          <div className="w-16 flex items-center gap-1 border border-gray-300 rounded-lg px-2 py-1.5 bg-gray-50">
+            <input 
+              type="number" 
+              min="0" max="100" 
+              value={jknProportion}
+              onChange={(e) => setJknProportion(parseInt(e.target.value) || 0)}
+              className="w-full text-sm font-semibold text-center bg-transparent border-none p-0 focus:ring-0"
+            />
+            <span className="text-sm font-semibold text-gray-500">%</span>
           </div>
         </div>
       </div>

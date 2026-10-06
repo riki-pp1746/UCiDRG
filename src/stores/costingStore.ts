@@ -44,6 +44,7 @@ interface CostingState {
   tarifIDRGConfig: TarifIDRGConfig;
   rvuGlobalCosts?: RVUGlobalCosts;
   periodNormalization: PeriodNormalization | null;
+  jknProportion: number; // 0-100 percentage
   
   // UI State
   isProcessing: boolean;
@@ -59,6 +60,7 @@ interface CostingState {
     processData: () => void;
   setOverheadConfig: (config: Partial<OverheadConfig>) => void;
   setTarifIDRGConfig: (config: Partial<TarifIDRGConfig>) => void;
+  setJknProportion: (prop: number) => void;
   setRVUGlobalCosts: (costs: RVUGlobalCosts) => void;
   setPeriodNormalization: (period: PeriodNormalization) => void;
   setFilter: (key: string, value: any) => void;
@@ -83,6 +85,7 @@ export const useCostingStore = create<CostingState>()(
       overheadConfig: DEFAULT_OVERHEAD_CONFIG,
       tarifIDRGConfig: DEFAULT_TARIF_IDRG_CONFIG,
       periodNormalization: null,
+      jknProportion: 100,
       isProcessing: false,
       processProgress: 0,
       filterDRG: '',
@@ -156,6 +159,8 @@ export const useCostingStore = create<CostingState>()(
         setTimeout(() => get().processData(), 100);
       },
 
+      setJknProportion: (prop) => { set({ jknProportion: prop }); setTimeout(() => get().processData(), 100); },
+
       setTarifIDRGConfig: (config) => {
         set(state => ({
           tarifIDRGConfig: { ...state.tarifIDRGConfig, ...config },
@@ -207,6 +212,7 @@ export const useCostingStore = create<CostingState>()(
         tarifIDRGConfig: state.tarifIDRGConfig,
         sessions: state.sessions,
         periodNormalization: state.periodNormalization,
+        jknProportion: state.jknProportion,
       }),
     }
   )

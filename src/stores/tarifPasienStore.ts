@@ -21,6 +21,7 @@ export function buildBiayaRSMap(
   config: HospitalCostConfig,
   patients: PatientRecord[],
   periodFactor = 1,
+  jknProportion = 100,
 ): Record<keyof KomponenTarif18, number> {
   const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
     acc[key] = patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
@@ -33,7 +34,7 @@ export function buildBiayaRSMap(
   }, {} as Record<keyof KomponenTarif18, number>);
 
   config.finalCenters.forEach(center => {
-    const cost = center.totalCostDirect || 0;
+    const cost = (center.totalCostDirect || 0) * (jknProportion / 100);
     const name = center.nama.toLowerCase();
     if (center.kategori === 'icu' || ['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif'].some(keyword => name.includes(keyword))) {
       mapped.intensive_amt += cost;
@@ -46,7 +47,7 @@ export function buildBiayaRSMap(
     }
   });
 
-  const indirectPool = config.totalOverheadCost + config.totalIntermediateCost;
+  const indirectPool = (config.totalOverheadCost + config.totalIntermediateCost) * (jknProportion / 100);
   if (grandTotalEKlaim > 0) {
     ALL_KOMPONEN_KEYS.forEach(key => {
       mapped[key] += indirectPool * (totalsEKlaim[key] / grandTotalEKlaim);
