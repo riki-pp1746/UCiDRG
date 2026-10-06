@@ -7,7 +7,7 @@ import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { detectPeriodNormalization, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
-import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 type UploadState = 'idle' | 'dragging' | 'parsing' | 'done' | 'error';
@@ -22,7 +22,7 @@ interface ProcessResult {
 
 export default function UploadPage() {
   const navigate = useNavigate();
-  const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization } = useCostingStore();
+  const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization, sessions, activeSessionId, setActiveSession, deleteSession } = useCostingStore();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ProcessResult | null>(null);
@@ -263,7 +263,7 @@ export default function UploadPage() {
                     <p className="text-sm font-bold text-blue-900">Periode Klaim Berdasarkan Tanggal Pulang</p>
                     <p className="mt-1 text-lg font-bold text-blue-800">{periodNormalization.label}</p>
                     <p className="mt-1 text-xs text-blue-700">
-                      {periodNormalization.detectedMonths.length} bulan terdeteksi · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
+                      {periodNormalization.detectedMonths.length} bulan terdeteksi Â· faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%)
                     </p>
                   </div>
                   <label className="text-xs font-semibold text-blue-900">
@@ -280,9 +280,9 @@ export default function UploadPage() {
 
                 {(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
                   <div className="mt-4 space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    {periodNormalization.yearMismatch && <p>⚠ Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
-                    {periodNormalization.fallbackCount > 0 && <p>⚠ {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
-                    {periodNormalization.invalidDateCount > 0 && <p>⚠ {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
+                    {periodNormalization.yearMismatch && <p>âš  Tahun klaim ({periodNormalization.claimYears.join(', ')}) berbeda dari Tahun Data biaya ({periodNormalization.costYear}). Biaya tahunan dipakai sebagai baseline/proksi.</p>}
+                    {periodNormalization.fallbackCount > 0 && <p>âš  {periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date valid; periode memakai admission_date sebagai fallback.</p>}
+                    {periodNormalization.invalidDateCount > 0 && <p>âš  {periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal masuk maupun pulang yang valid.</p>}
                   </div>
                 )}
               </div>
@@ -410,6 +410,44 @@ export default function UploadPage() {
               <p className="font-semibold text-[#0B1F3A]">Template Costing (.XLSX)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke input biaya RS.</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {sessions.length > 0 && uploadState === 'idle' && (
+        <div className="bg-white rounded-[24px] border border-[#E7E5DF] shadow-sm overflow-hidden mt-8">
+          <div className="px-6 py-4 border-b border-[#E7E5DF] bg-[#F7F6F3] flex items-center justify-between">
+            <h2 className="text-lg font-bold text-[#0B1F3A] flex items-center gap-2">
+              <History className="w-5 h-5 text-[#B08D57]" /> Riwayat Upload
+            </h2>
+          </div>
+          <div className="divide-y divide-[#E7E5DF]">
+            {sessions.map(session => (
+              <div key={session.id} className={clsx('p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors', activeSessionId === session.id ? 'bg-[#0B1F3A]/5' : 'hover:bg-gray-50')}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-[#0B1F3A]">{session.filename}</h3>
+                    {activeSessionId === session.id && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#B08D57] text-white uppercase tracking-wider">Aktif</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-[#55524C]">
+                    <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {new Date(session.uploadedAt).toLocaleString('id-ID')}</span>
+                    <span className="flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {session.parsedRows.toLocaleString('id-ID')} baris data</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {activeSessionId !== session.id && (
+                    <button onClick={() => setActiveSession(session.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#0B1F3A] border border-[#0B1F3A] rounded-lg hover:bg-[#0B1F3A] hover:text-white transition-colors">
+                      <PlayCircle className="w-4 h-4" /> Gunakan Data
+                    </button>
+                  )}
+                  <button onClick={() => { if(confirm('Yakin ingin menghapus riwayat ini?')) deleteSession(session.id); }} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Hapus riwayat">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -64,6 +64,7 @@ interface CostingState {
   setFilter: (key: string, value: any) => void;
   clearData: () => void;
   setActiveSession: (id: string) => void;
+  deleteSession: (id: string) => void;
   toggleViewMode: (mode: 'INACBG' | 'IDRG') => void;
 }
 
@@ -192,6 +193,10 @@ export const useCostingStore = create<CostingState>()(
       },
 
       setActiveSession: (id) => set({ activeSessionId: id }),
+      deleteSession: (id) => set((state) => ({
+        sessions: state.sessions.filter(s => s.id !== id),
+        ...(state.activeSessionId === id && { activeSessionId: null, rawRecords: [], patientResults: [] })
+      })),
       toggleViewMode: (mode) => set({ viewMode: mode }),
     }),
     {
