@@ -1,6 +1,6 @@
 // ============================================================
 // STORE: hospitalCostStore.ts
-// Zustand store untuk input biaya RS â€” tersimpan di localStorage
+// Zustand store untuk input biaya RS — tersimpan di localStorage
 // Sesuai standar operasional Hal. 26-56
 // ============================================================
 
@@ -14,7 +14,7 @@ import {
 } from '../types/hospitalCost.types';
 
 // ============================================================
-// Engine Perhitungan Biaya RS â€” distribusi langsung
+// Engine Perhitungan Biaya RS — distribusi langsung
 // ============================================================
 function calcDirectCost(center: OverheadCenter | IntermediateCenter | FinalCenter): number {
   const dep5 = Math.round((center.hargaPeralatan5Tahun || 0) / 5);

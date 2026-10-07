@@ -6,7 +6,7 @@
 
 // ============================================================
 // OVERHEAD CENTER (Pusat Biaya Penunjang Umum)
-// Hal 41 â€” 12 pusat biaya dengan dasar alokasi masing-masing
+// Hal 41 — 12 pusat biaya dengan dasar alokasi masing-masing
 // ============================================================
 export type OverheadDasarAlokasi =
   | 'jumlah_staf'
@@ -35,7 +35,7 @@ export interface OverheadCenter {
 
 // ============================================================
 // INTERMEDIATE CENTER (Pusat Biaya Penunjang Medik)
-// Hal 42 â€” 12 pusat biaya dengan dasar alokasi SPESIFIK
+// Hal 42 — 12 pusat biaya dengan dasar alokasi SPESIFIK
 // ============================================================
 export type IntermediateDasarAlokasi =
   | 'resep_ddd'          // Farmasi
@@ -75,7 +75,7 @@ export interface IntermediateCenter {
 
 // ============================================================
 // FINAL CENTER (Pusat Biaya Layanan Langsung)
-// Hal 43 â€” Rawat Inap & Rawat Jalan dengan dasar alokasi
+// Hal 43 — Rawat Inap & Rawat Jalan dengan dasar alokasi
 // ============================================================
 export type FinalKategori =
   | 'rawat_inap'
@@ -267,7 +267,7 @@ export const DEFAULT_OVERHEAD_CENTERS: OverheadCenter[] = [
   mkOverhead('oh-12', 12, 'Parkir',                                'luas_lantai',  0, 0, 0, 0, 0, 0),
 ];
 
-// Intermediate sesuai Hal 42 Materi Workshop â€” dasar alokasi SPESIFIK
+// Intermediate sesuai Hal 42 Materi Workshop — dasar alokasi SPESIFIK
 export const DEFAULT_INTERMEDIATE_CENTERS: IntermediateCenter[] = [
   mkIntermediate('im-1',  1,  'Farmasi',                       'resep_ddd',           0, 0, 0, 0, 0, 0, 0),
   mkIntermediate('im-2',  2,  'Radiologi',                     'jumlah_pemeriksaan',  0, 0, 0, 0, 0, 0, 0),
@@ -283,7 +283,7 @@ export const DEFAULT_INTERMEDIATE_CENTERS: IntermediateCenter[] = [
   mkIntermediate('im-12', 12, 'Bank Jaringan',                 'jaringan',            0, 0, 0, 0, 0, 0, 0),
 ];
 
-// Final sesuai Hal 43 Materi Workshop â€” Rawat Inap + Rawat Jalan lengkap
+// Final sesuai Hal 43 Materi Workshop — Rawat Inap + Rawat Jalan lengkap
 export const DEFAULT_FINAL_CENTERS: FinalCenter[] = [
   // Rawat Inap
   mkFinal('fn-1',  1,  'Kamar Kelas III',                          'rawat_inap',  'hari_rawat',       0,0,0,0, 0,0,0, 0,0,0,0,0),

@@ -1,6 +1,6 @@
 // ============================================================
 // TYPES: tarifPasien.types.ts
-// 18 Variabel Komponen Tarif dari E-Klaim â€” sesuai Materi Hal. 36
+// 18 Variabel Komponen Tarif dari E-Klaim — sesuai Materi Hal. 36
 // ============================================================
 
 export type KelasRawat = 'kelas1' | 'kelas2' | 'kelas3' | 'rawat_jalan' | 'icu' | 'igd';

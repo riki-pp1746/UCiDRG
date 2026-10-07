@@ -137,5 +137,5 @@ describe('Analisis tambahan setelah login',()=>{
 
 it('mempertahankan halaman lama sebagai tampilan utama',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Panduan Penggunaan');expect(html).toContain('Step 4: Cost per Pasien');expect(html).toContain('href="/upload"');expect(html).toContain('href="/revisi4"');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+ expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Step 4: Cost per Pasien');expect(html).toContain('href="/upload"');expect(html).toContain('href="/revisi4"');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
 });
