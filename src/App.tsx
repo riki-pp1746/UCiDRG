@@ -2,14 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import AppLayout from './components/layout/AppLayout';
-import GuidePage from './pages/GuidePage';
-import DashboardPage from './pages/DashboardPage';
-import UploadPage from './pages/UploadPage';
-import CostingInputPage from './pages/CostingInputPage';
-import TarifPasienPage from './pages/TarifPasienPage';
-import ComparisonPage from './pages/ComparisonPage';
-import ReportPage from './pages/ReportPage';
-import SettingsPage from './pages/SettingsPage';
+import { V4Page } from './v4/Pages';
+import { SessionGuard } from './components/layout/SessionGuard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -17,9 +11,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function App() {
+export function AppRoutes() {
   return (
-    <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
@@ -31,20 +24,23 @@ export default function App() {
           }
         >
           {/* Halaman awal: Panduan Penggunaan */}
-          <Route index element={<GuidePage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="upload" element={<UploadPage />} />
-          <Route path="costing" element={<CostingInputPage />} />
-          <Route path="input-biaya" element={<CostingInputPage />} />
-          <Route path="tarif-pasien" element={<TarifPasienPage />} />
-          <Route path="compare" element={<ComparisonPage />} />
-          <Route path="comparison" element={<ComparisonPage />} />
-          <Route path="reports" element={<ReportPage />} />
-          <Route path="report" element={<ReportPage />} />
-          <Route path="settings" element={<SettingsPage />} />
+          <Route index element={<V4Page view="guide" />} />
+          <Route path="dashboard" element={<V4Page view="dashboard" />} />
+          <Route path="upload" element={<V4Page view="upload" />} />
+          <Route path="costing" element={<V4Page view="input" />} />
+          <Route path="input-biaya" element={<V4Page view="input" />} />
+          <Route path="tarif-pasien" element={<V4Page view="patients" />} />
+          <Route path="compare" element={<V4Page view="comparison" />} />
+          <Route path="comparison" element={<V4Page view="comparison" />} />
+          <Route path="reports" element={<V4Page view="reports" />} />
+          <Route path="report" element={<V4Page view="reports" />} />
+          <Route path="settings" element={<V4Page view="settings" />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
   );
+}
+
+export default function App() {
+  return <BrowserRouter><SessionGuard /><AppRoutes /></BrowserRouter>;
 }

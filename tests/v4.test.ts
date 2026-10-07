@@ -15,8 +15,10 @@ import {createElement} from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {MemoryRouter} from 'react-router-dom';
 import {V4Page} from '../src/v4/Pages';
+import {AppRoutes} from '../src/App';
 import {workingProfile,workflowSteps} from '../src/v4/workflow';
 import {mergeCostInput,appendClaims} from '../src/v4/inputData';
+vi.mock('../src/stores/authStore',()=>({useAuthStore:Object.assign((selector?: (state:unknown)=>unknown)=>{const state={isAuthenticated:true,user:{username:'uji',namaRS:'RS Uji'},logout:()=>{}};return selector?selector(state):state;},{getState:()=>({isAuthenticated:true})})}));
 vi.mock('../src/v4/store',async importOriginal=>{
   const actual=await importOriginal<typeof import('../src/v4/store')>();
   // Render the upload view against the current fixture; server hydration otherwise uses the empty initial store.
@@ -115,4 +117,20 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
   const line=(n:number)=>{const cols=Array(94).fill('');cols[4]=n%2?'2':'1';cols[5]='2025-01-01';cols[6]='2025-01-31';cols[19]='INA-A';cols[50]='SEP-SYNTHETIC-'+String(n).padStart(8,'0');cols[38]='1000';cols[60]='1.25';cols[82]='A';cols[90]='900';return cols.join('\t');};
   writeFileSync('tmp/revisi4-fixtures/claims-small.txt',Array.from({length:10},(_,n)=>line(n)).join('\n'));
   writeFileSync('tmp/revisi4-fixtures/claims-100k.txt',Array.from({length:100000},(_,n)=>line(n)).join('\n'));
+});
+
+// Exercise the actual post-login route tree, so a disconnected engine cannot pass unnoticed.
+describe('Alur utama setelah login',()=>{
+  for(const [path,title] of [['/','Tiga langkah dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
+    it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
+      const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
+      const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[path]},createElement(AppRoutes)));
+      expect(html).toContain(title);if(path!=='/')expect(html).toContain('LANGKAH');
+    });
+  }
+  it('menahan unduh ketika input berubah setelah dihitung',()=>{
+    const result=snap();const w=workspace();w.version=2;useV4Store.setState({workspace:w,snapshots:[result],selected:result.id,busy:false,error:''});
+    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/reports']},createElement(AppRoutes)));
+    expect(html).toContain('Ekspor ditahan');expect(html).toMatch(/disabled=""[^>]*>Unduh Excel/);expect(html).toContain('Perlu dihitung ulang');
+  });
 });

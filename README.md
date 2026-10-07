@@ -1,66 +1,27 @@
 # UnitCOSt PRO
 
-Aplikasi perhitungan **Unit Cost DRG & Patient Level Costing** berbasis Vite + React.
+Aplikasi lokal untuk menghitung biaya per pasien dan membandingkan dengan tarif INA-CBG/iDRG. Aplikasi utama kini menggunakan mesin Revisi 4.
 
-## Fitur
+## Alur pengguna
 
-- 🔐 **Login** dengan credentials via environment variable
-- 📤 **Upload** file TXT INACBG/iDRG (tab-delimited, 93 kolom)
-- 📊 **Kalkulasi** Patient Level Costing dengan metode step-down
-- 📈 **Perbandingan** Unit Cost RS vs Tarif iDRG/INACBG
-- 📋 **Laporan** dengan export Excel (4 sheet) dan Print/PDF
-- ⚙️ **Pengaturan** faktor overhead yang dapat dikonfigurasi
+1. **Siapkan data**: unggah satu Excel biaya RS dan satu atau beberapa TXT/CSV klaim. Pilihan bawaan menambah klaim, dan mempertahankan SEP yang sudah tersimpan.
+2. **Periksa biaya**: periksa periode, pusat biaya, porsi JKN dan komponen biaya. Pembagian antarunit ditampilkan jika metode membutuhkannya. Referensi tarif dan asumsi tambahan tersedia terpisah.
+3. **Lihat hasil**: pilih Hitung unit cost untuk membuka ringkasan. Lanjutkan ke rincian pasien, perbandingan tarif atau laporan.
 
-## Setup Lokal
+Kesalahan yang memblokir hasil harus diperbaiki sebelum ekspor. Perubahan input mengharuskan hitung ulang. Riwayat perhitungan tersimpan sebagai versi terpisah; simulasi tidak mengganti input utama.
 
-```bash
-# Install dependencies
-npm install
+## Menjalankan lokal
 
-# Copy env file
-cp .env.example .env.local
-# Edit .env.local dengan credentials yang diinginkan
+Jalankan `npm install` lalu `npm run dev`. Kredensial lokal mengikuti `.env.local` atau konfigurasi pengembangan pada authStore.
 
-# Run dev server
-npm run dev
-```
+## Penyimpanan dan status
 
-## Deploy ke Vercel
+Data kerja dan versi hasil disimpan di IndexedDB pada browser ini. Pengaturan tampilan disimpan lokal. Sesi login menggunakan sessionStorage dan batas tidak aktif. Simpan cadangan dari menu Referensi & cadangan.
 
-1. Push ke GitHub
-2. Import repo di vercel.com
-3. Tambahkan Environment Variables di Vercel dashboard:
-   - `VITE_USER1` — username login
-   - `VITE_PASS1` — password login
-   - `VITE_RS_NAME` — nama rumah sakit
-4. Deploy!
+Konfigurasi lama disalin saat penyimpanan Revisi 4 pertama kali dibuat. Klaim lama perlu diunggah ulang. Data sumber lama tidak dihapus.
 
-## Format File TXT yang Didukung
+Mode pengembangan masih aktif: hasil berstatus Draft dan kontrol reviewer disembunyikan. Login/profil lokal belum merupakan autentikasi server; data kerja browser belum dienkripsi. Gunakan data sintetis untuk pengujian.
 
-File tab-delimited dari SIMRS dengan 93 kolom:
-- Kolom 0–55: Data pasien, klaim, INACBG
-- Kolom 60–77: Billing breakdown (prosedur, bedah, obat, dll)
-- Kolom 78–92: iDRG data (kode DRG, cost weight, tarif)
+## Verifikasi
 
-Contoh file: `AGUSTUS 2026.TXT`, `RAJALAGUSTUS2026+DETAIL+IDRG.TXT`
-
-## Rumus Patient Level Costing
-
-```
-Unit Cost per Pasien = Biaya Langsung × (1 + Total Overhead Factor)
-
-Biaya Langsung = Σ billing (prosedur + bedah + obat + alkes + kamar + lab + ...)
-Overhead Factor = Overhead Operasional + Administrasi + Depresiasi + Jaminan Mutu
-
-Default: 15% + 5% + 3% + 2% = 25% total overhead
-```
-
-## Stack
-
-- Vite + React 18 + TypeScript
-- Tailwind CSS
-- Zustand (state management)
-- PapaParse (TXT parser)
-- Recharts (visualisasi)
-- xlsx (export Excel)
-- react-router-dom
+`npm test`, `npm run build`, dan `npm run lint` tersedia. Pengujian mencakup mesin, impor, rekonsiliasi, penyimpanan, integritas cadangan, delapan halaman utama setelah login, dan penahanan ekspor hasil yang kedaluwarsa.

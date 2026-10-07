@@ -163,3 +163,5 @@ button:disabled { cursor:not-allowed; opacity:.45; }
   .overflow-x-auto { overflow: visible !important; }
   button, select { display: none !important; }
 }
+
+@media print { details::details-content { content-visibility:visible!important; } details > :not(summary) { display:block!important; } details > summary { display:none!important; } }
