@@ -5,3 +5,7 @@ Aplikasi utama setelah login terhubung ke mesin dan penyimpanan Revisi 4. Naviga
 Ringkasan menampilkan biaya JKN, biaya pasien, sisa alokasi dan akses lanjutan. Riwayat, rincian rekonsiliasi, simulasi, populasi pasien dan pengelolaan penghapusan tersedia melalui bagian yang dapat dibuka. Validasi tetap ditampilkan, beserta tautan untuk memperbaiki kesalahan. Perubahan input menahan ekspor sampai hasil dihitung ulang. Mode pengembangan tetap aktif; hasil masih Draft.
 
 Verifikasi: 65 pengujian lulus termasuk delapan rute utama dan ekspor hasil kedaluwarsa. Build produksi berhasil. Pemeriksaan browser interaktif belum selesai: browser pengujian tidak dapat menjangkau server lokal (connection refused/timeout). PDF/PowerPoint dan data RS nyata belum diverifikasi secara visual/numerik pada pekerjaan ini.
+
+## Koreksi sesuai preferensi pengguna
+
+Tampilan dan halaman utama dikembalikan ke versi sebelum penyederhanaan. Revisi 4 tersedia melalui satu menu tambahan Analisis Revisi 4, dengan alamat /revisi4. Navigasi internal tambahan tetap berada di modul itu. Kedua analisis menggunakan data kerja dan pilihan tarif masing-masing; data lama tidak dihapus.

@@ -120,17 +120,22 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
 });
 
 // Exercise the actual post-login route tree, so a disconnected engine cannot pass unnoticed.
-describe('Alur utama setelah login',()=>{
+describe('Analisis tambahan setelah login',()=>{
   for(const [path,title] of [['/','Tiga langkah dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
-      const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[path]},createElement(AppRoutes)));
-      expect(html).toContain(title);if(path!=='/')expect(html).toContain('LANGKAH');
+      const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
+      expect(html).toContain(title);if(path!=='/')expect(html).toContain('LANGKAH');expect(html).toContain('href="/revisi4/upload"');
     });
   }
   it('menahan unduh ketika input berubah setelah dihitung',()=>{
     const result=snap();const w=workspace();w.version=2;useV4Store.setState({workspace:w,snapshots:[result],selected:result.id,busy:false,error:''});
-    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/reports']},createElement(AppRoutes)));
+    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/reports']},createElement(AppRoutes)));
     expect(html).toContain('Ekspor ditahan');expect(html).toMatch(/disabled=""[^>]*>Unduh Excel/);expect(html).toContain('Perlu dihitung ulang');
   });
+});
+
+it('mempertahankan halaman lama sebagai tampilan utama',()=>{
+ const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
+ expect(html).toContain('Panduan Penggunaan');expect(html).toContain('Step 4: Cost per Pasien');expect(html).toContain('href="/upload"');expect(html).toContain('href="/revisi4"');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
 });

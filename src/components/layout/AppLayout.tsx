@@ -4,10 +4,11 @@
 // ============================================================
 
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
-import { usePreferences } from '../../v4/preferences';
+import { useCostingStore } from '../../stores/costingStore';
 import { useV4Store } from '../../v4/store';
+import { usePreferences } from '../../v4/preferences';
 import {
   LayoutDashboard,
   Upload,
@@ -25,21 +26,27 @@ import clsx from 'clsx';
 import { BrandLogo } from '../../pages/LoginPage';
 
 const navItems = [
-  { path: '/', icon: BookOpen, label: 'Mulai', exact: true },
-  { path: '/upload', icon: Upload, label: '1. Siapkan data' },
-  { path: '/costing', icon: Calculator, label: '2. Periksa biaya' },
-  { path: '/dashboard', icon: LayoutDashboard, label: '3. Lihat hasil' },
-  { path: '/tarif-pasien', icon: Pill, label: 'Rincian pasien' },
-  { path: '/compare', icon: BarChart3, label: 'Bandingkan tarif' },
+  { path: '/', icon: BookOpen, label: 'Panduan', exact: true },
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/upload', icon: Upload, label: 'Upload Data' },
+  { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
+  { path: '/tarif-pasien', icon: Pill, label: 'Step 4: Cost per Pasien' },
+  { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
-  { path: '/settings', icon: Settings, label: 'Referensi & cadangan' },
+  { path: '/settings', icon: Settings, label: 'Pengaturan' },
+  { path: '/revisi4', icon: Calculator, label: 'Analisis Revisi 4' },
 ];
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const { user, logout } = useAuthStore();
-  const viewMode = usePreferences(s => s.viewMode);
-  const toggleViewMode = usePreferences(s => s.toggleViewMode);
+  const legacyMode = useCostingStore(s => s.viewMode);
+  const legacyToggle = useCostingStore(s => s.toggleViewMode);
+  const revisionMode = usePreferences(s => s.viewMode);
+  const revisionToggle = usePreferences(s => s.toggleViewMode);
+  const revision = useLocation().pathname.startsWith('/revisi4');
+  const viewMode = revision ? revisionMode : legacyMode;
+  const toggleViewMode = revision ? revisionToggle : legacyToggle;
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -61,7 +68,7 @@ export default function AppLayout() {
       {/* Sidebar - deep navy */}
       <aside
         className={clsx(
-          'print:hidden fixed inset-y-0 left-0 lg:relative flex flex-col transition-all duration-300 ease-in-out z-40',
+          'fixed inset-y-0 left-0 lg:relative flex flex-col transition-all duration-300 ease-in-out z-40',
           'bg-gradient-to-b from-[#0B1F3A] via-[#0B1F3A] to-[#071529] text-white border-r border-[#B08D57]/20',
           sidebarOpen ? 'w-64 translate-x-0' : '-translate-x-full lg:translate-x-0 lg:w-20'
         )}
@@ -142,7 +149,7 @@ export default function AppLayout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 min-h-screen lg:h-screen overflow-hidden relative">
-        <header className="print:hidden h-16 bg-white/85 backdrop-blur-md border-b border-[#E7E5DF] flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
+        <header className="h-16 bg-white/85 backdrop-blur-md border-b border-[#E7E5DF] flex items-center justify-between px-4 sm:px-8 sticky top-0 z-20">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -154,7 +161,7 @@ export default function AppLayout() {
 
             {/* View mode: segmented control */}
             <div className="hidden sm:flex items-center bg-[#F3F2EE] p-1 rounded-lg ring-1 ring-[#E7E5DF]">
-              {([['INACBG', 'INA-CBG'], ['IDRG', 'iDRG']] as const).map(([mode, label]) => (
+              {([['INACBG', 'Klaim JKN (INA-CBG/iDRG)'], ['IDRG', 'iDRG']] as const).map(([mode, label]) => (
                 <button
                   key={mode}
                   onClick={() => toggleViewMode(mode)}
