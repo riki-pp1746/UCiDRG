@@ -1,3 +1,4 @@
+import PageIntro from '../components/ui/PageIntro';
 import { useCallback, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
@@ -199,6 +200,7 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Template biaya RS (.XLSX), opsional - biaya juga bisa diisi manual di langkah berikutnya']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Upload Center</h1>

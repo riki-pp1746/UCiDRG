@@ -1,3 +1,4 @@
+import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: DashboardPage.tsx
 // KPI Overview & Summary
@@ -122,6 +123,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <PageIntro title="Ringkasan hasil analisis" what="Halaman ini menampilkan gambaran umum: total kasus, unit cost rata-rata, serta berapa kasus yang untung, impas, dan rugi." result="Gunakan stepper di atas untuk melanjutkan ke langkah berikutnya." />
       <div>
         <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>

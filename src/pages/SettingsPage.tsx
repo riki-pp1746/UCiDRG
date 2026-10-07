@@ -1,9 +1,13 @@
+import { useUiPrefsStore } from '../stores/uiPrefsStore';
+import { DEFAULT_TARIF_IDRG_CONFIG } from '../lib/calculations/patientLevelCosting';
+import PageIntro from '../components/ui/PageIntro';
 import { useAuthStore } from '../stores/authStore';
 import { useCostingStore } from '../stores/costingStore';
 import { Settings, Info, Trash2, Calculator } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
+  const { beginnerMode, setBeginnerMode } = useUiPrefsStore();
   const { clearData, tarifIDRGConfig, setTarifIDRGConfig, jknProportion, setJknProportion } = useCostingStore();
 
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,6 +21,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <PageIntro title="Pengaturan perhitungan" what="Atur parameter tarif iDRG (Base Rate, Adj Regional, Adj Swasta) dan proporsi JKN. Perubahan langsung memengaruhi seluruh hasil perhitungan." />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
         <p className="text-gray-500 text-sm mt-1">Informasi aplikasi dan pengelolaan data lokal</p>
@@ -131,6 +136,33 @@ export default function SettingsPage() {
         <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
           <div><p className="text-xs text-gray-500">Nama RS</p><p className="font-medium text-gray-800">{user?.namaRS || '-'}</p></div>
           <div><p className="text-xs text-gray-500">Pengguna</p><p className="font-medium text-gray-800">{user?.username || '-'}</p></div>
+        </div>
+      </div>
+      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
+        <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+          <Info className="w-4 h-4 text-[#B08D57]" /> Tampilan &amp; Bantuan
+        </h2>
+        <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={beginnerMode}
+            onChange={(e) => setBeginnerMode(e.target.checked)}
+            className="mt-0.5 rounded border-gray-300"
+          />
+          <span>
+            <strong className="text-[#0B1F3A]">Mode Pemula</strong>
+            <span className="block text-xs text-gray-500">Tampilkan penjelasan singkat di setiap halaman dan petunjuk langkah berikutnya. Matikan jika sudah terbiasa.</span>
+          </span>
+        </label>
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+          <p className="text-xs text-gray-500">Kembalikan Base Rate, faktor penyesuaian, dan proporsi JKN ke nilai standar.</p>
+          <button
+            type="button"
+            onClick={() => { if (window.confirm('Kembalikan parameter tarif iDRG dan proporsi JKN ke nilai standar?')) { setTarifIDRGConfig(DEFAULT_TARIF_IDRG_CONFIG); setJknProportion(100); } }}
+            className="shrink-0 px-4 py-2 rounded-xl border border-[#0B1F3A] text-[#0B1F3A] text-sm font-semibold hover:bg-[#0B1F3A] hover:text-white transition-colors"
+          >
+            Kembalikan nilai standar
+          </button>
         </div>
       </div>
 

@@ -1,3 +1,4 @@
+import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: CostingInputPage.tsx
 // Form input biaya RS — distribusi langsung ke 18 variabel E-Klaim
@@ -625,6 +626,7 @@ export default function CostingInputPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
+      <PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Biaya dibagi bertahap: Penunjang Umum (Overhead), lalu Penunjang Medis (Intermediate), lalu ke Pusat Biaya Utama (layanan pasien)." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight flex items-center gap-2">

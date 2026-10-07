@@ -24,13 +24,14 @@ import {
 import clsx from 'clsx';
 
 import { BrandLogo } from '../../pages/LoginPage';
+import WorkflowStepper from '../ui/WorkflowStepper';
 
 const navItems = [
-  { path: '/', icon: BookOpen, label: 'Panduan', exact: true },
+  { path: '/', icon: BookOpen, label: 'Mulai Cepat (Panduan)', exact: true },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
   { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
-  { path: '/tarif-pasien', icon: Pill, label: 'Step 4: Cost per Pasien' },
+  { path: '/tarif-pasien', icon: Pill, label: 'Cost per Pasien' },
   { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
@@ -194,6 +195,7 @@ export default function AppLayout() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-10">
           <div className="max-w-7xl mx-auto">
+            {!revision && <WorkflowStepper />}
             <Outlet />
           </div>
         </main>

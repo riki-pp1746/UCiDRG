@@ -1,3 +1,4 @@
+import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ComparisonPage.tsx
 // Tabel & grafik perbandingan Unit Cost vs INA-CBG
@@ -140,6 +141,7 @@ export default function ComparisonPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
+      <PageIntro title="Langkah 4: Bandingkan unit cost dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara biaya riil RS (unit cost) dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI ditentukan dari selisih keduanya." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs {viewMode}</h1>

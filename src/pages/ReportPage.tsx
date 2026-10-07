@@ -1,3 +1,4 @@
+import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ReportPage.tsx
 // Laporan akhir dengan export PDF & Excel
@@ -254,6 +255,7 @@ export default function ReportPage() {
   return (
     <div className="space-y-6">
       {/* Action Bar */}
+      <PageIntro title="Langkah 5: Unduh laporan" what="Unduh atau cetak hasil analisis dalam bentuk Excel atau PDF untuk dibawa ke rapat manajemen." result="Laporan memuat ringkasan biaya RS, unit cost, tarif klaim, dan status tiap kelompok kasus." />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Laporan Unit Cost</h1>

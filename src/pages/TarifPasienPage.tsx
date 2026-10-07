@@ -1,3 +1,6 @@
+import PageIntro from '../components/ui/PageIntro';
+import HelpTip from '../components/ui/HelpTip';
+import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
@@ -27,7 +30,7 @@ export default function TarifPasienPage() {
   } = useTarifPasienStore();
 
   const { config } = useHospitalCostStore();
-  const { rawRecords, periodNormalization } = useCostingStore();
+  const { rawRecords, periodNormalization, tarifIDRGConfig, jknProportion } = useCostingStore();
   const periodFactor = periodNormalization?.factor || 1;
 
 
@@ -110,6 +113,27 @@ export default function TarifPasienPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
+      <PageIntro title="Langkah 3: Cost per pasien" what="Biaya RS dibagi ke setiap pasien mengikuti proporsi tagihan di 18 variabel tarif. Tarif iDRG dihitung dengan rumus: Cost Weight × Base Rate × Adj Regional × Adj Swasta." result="Unit cost dan tarif iDRG per pasien. Nilai Base Rate dan faktor penyesuaian dapat diubah di menu Pengaturan." />
+      <section aria-label="Cara hitung tarif iDRG" className="rounded-2xl bg-white border border-[#E7E5DF] shadow-sm p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-[#0B1F3A] flex items-center gap-2">Cara hitung tarif iDRG <HelpTip term="rumusIdrg" /></h2>
+          <Link to="/settings" className="text-xs font-semibold text-[#977544] hover:text-[#0B1F3A]">Ubah pengaturan</Link>
+        </div>
+        <p className="mt-2 text-sm text-[#3D3A33]">
+          Tarif iDRG = <strong>Cost Weight</strong> <HelpTip term="costWeight" /> &times; <strong>Base Rate</strong> <HelpTip term="baseRate" /> &times; <strong>Adj Regional</strong> &times; <strong>Adj Swasta</strong> <HelpTip term="adjFaktor" />
+        </p>
+        {tarifIDRGConfig.useFormula ? (
+          <dl className="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Base Rate Rawat Inap</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{formatRupiah(tarifIDRGConfig.baseRateInap)}</dd></div>
+            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Base Rate Rawat Jalan</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{formatRupiah(tarifIDRGConfig.baseRateJalan)}</dd></div>
+            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Adj Regional</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{tarifIDRGConfig.adjRegional}</dd></div>
+            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Adj Swasta</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{tarifIDRGConfig.adjSwasta}</dd></div>
+            <div className="rounded-xl bg-[#FBF7EE] p-3 ring-1 ring-[#B08D57]/30"><dt className="text-[#977544]">Proporsi JKN <HelpTip term="proporsiJkn" /></dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{jknProportion}%</dd></div>
+          </dl>
+        ) : (
+          <p className="mt-3 text-xs text-[#77746D]">Rumus iDRG sedang dimatikan. Sistem memakai tarif iDRG bawaan dari data klaim. Aktifkan di Pengaturan.</p>
+        )}
+      </section>
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
