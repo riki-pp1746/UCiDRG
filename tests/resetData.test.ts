@@ -8,7 +8,7 @@ import {useCostingStore} from '../src/stores/costingStore';
 import {useHospitalCostStore} from '../src/stores/hospitalCostStore';
 import {useTarifPasienStore} from '../src/stores/tarifPasienStore';
 import {useV4Store} from '../src/v4/store';
-import {resetWorkspaceStorage,openDB,readWorkspace,listSnapshots} from '../src/v4/storage';
+import {resetWorkspaceStorage,saveSnapshot,readWorkspace,listSnapshots} from '../src/v4/storage';
 import ResetDataPage from '../src/pages/ResetDataPage';
 
 it('total reset removes only application keys and preserves login and unrelated sites',()=>{
@@ -28,7 +28,7 @@ it('reset is blocked during calculation or pending save',async()=>{
  useV4Store.setState({busy:true});await expect(resetApplicationData('active',false)).rejects.toThrow('Tunggu');useV4Store.setState({busy:false,saving:true});await expect(resetApplicationData('total',false)).rejects.toThrow('Tunggu');useV4Store.setState({saving:false});
 });
 it('total storage reset removes historical snapshots and writes an empty workspace without importing legacy',async()=>{
- const db=await openDB();await new Promise<void>((resolve,reject)=>{const t=db.transaction('snapshots','readwrite');t.objectStore('snapshots').put({id:'old-final',state:'Final',at:'2025'});t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);});
+ await saveSnapshot({id:'old-final',state:'Final',at:'2025'} as import('../src/v4/types').Snapshot);
  await resetWorkspaceStorage();expect(await listSnapshots()).toEqual([]);const w=await readWorkspace();expect(w?.input.claims).toEqual([]);expect(w?.input.centers).toEqual([]);expect(w?.input.references).toEqual([]);expect(w?.migrated).toBe(true);
 });
 it('reset menu clearly describes irreversible total reset and requires typed confirmation',()=>{

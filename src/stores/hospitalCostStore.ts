@@ -1,6 +1,7 @@
+import {sessionMemoryStorage} from '../lib/sessionMemory';
 // ============================================================
 // STORE: hospitalCostStore.ts
-// Zustand store untuk input biaya RS — tersimpan di localStorage
+// Zustand store untuk input biaya RS — hanya selama sesi
 // Sesuai standar operasional Hal. 26-56
 // ============================================================
 
@@ -250,8 +251,9 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
     }),
     {
+      storage:sessionMemoryStorage,
       name: 'unitcost-hospital-cost-store-v5',
-      // Setelah data dimuat dari localStorage, jalankan ulang kalkulasi
+      // Setelah konfigurasi sesi dimuat, jalankan ulang kalkulasi
       // agar nilai totalFinalCost, unitCostPerHariRawat, dll selalu up-to-date
       onRehydrateStorage: () => (state) => {
         if (state && state.config) {

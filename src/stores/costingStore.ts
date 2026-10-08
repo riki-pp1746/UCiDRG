@@ -1,3 +1,4 @@
+import {sessionMemoryStorage} from '../lib/sessionMemory';
 // ============================================================
 // STORE: costingStore.ts
 // Zustand state management untuk data costing
@@ -120,6 +121,8 @@ export const useCostingStore = create<CostingState>()(
 
         // Gunakan metode RVU baru
         setTimeout(() => {
+          // A logout/reset or a newer upload must invalidate the queued calculation.
+          if(get().rawRecords!==rawRecords)return;
           const { results, rejectedCount } = runRVUAllocation(
             rawRecords,
             rvuGlobalCosts || null,
@@ -206,6 +209,7 @@ export const useCostingStore = create<CostingState>()(
       toggleViewMode: (mode) => set({ viewMode: mode }),
     }),
     {
+      storage:sessionMemoryStorage,
       name: 'unitcost-costing-store',
       merge:(persisted,current)=>{
         const old=persisted as Partial<CostingState>|undefined;

@@ -5,35 +5,27 @@ const decimalString=z.string().refine(v=>v===''||/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(
 const moneyFields=z.record(decimalString);
 const inputSchema=z.object({schema:z.literal(4),hospital:z.string(),centers:z.array(z.object({id:z.string().min(1),name:z.string(),group:z.enum(['overhead','intermediate','final']),care:z.enum(['inap','jalan','campuran']),costs:moneyFields,mapping:moneyFields,recipients:moneyFields,excluded:decimalString,building:decimalString,assets:z.array(z.object({id:z.string(),name:z.string(),value:decimalString,years:decimalString})),depreciationIncluded:z.boolean(),driverUnit:z.string(),jknVolume:decimalString,totalVolume:decimalString,inpatientVolume:decimalString,outpatientVolume:decimalString,allocationUnit:z.string(),coveredVolume:decimalString,coverageTotal:decimalString})),claims:z.array(z.object({id:z.string().min(1),sep:z.string(),care:z.enum(['inap','jalan']),code:z.string(),inacbg:z.string(),description:z.string(),mdc:z.string(),admission:z.string(),discharge:z.string(),bill:moneyFields,tariffINA:decimalString,tariffIDRG:decimalString,pending:z.boolean(),disputed:z.boolean(),file:z.string(),row:z.number().int().positive()})),settings:z.object({methods:z.enum(['M1','M2','keduanya']),costType:z.enum(['tahunan','periode']),priceActive:z.boolean(),sampleSize:z.number().int().positive(),inflation:moneyFields}).passthrough(),references:z.array(z.object({id:z.string(),kind:z.enum(['weight','base','adjustment','inflation']),adjustmentUnit:z.enum(['factor','percent']).optional(),care:z.enum(['inap','jalan','semua']),value:decimalString,from:z.string(),until:z.string(),version:z.string(),source:z.string(),verified:z.boolean(),code:z.string()})),mappingVersion:z.number().int(),corrections:z.array(z.object({id:z.string(),actor:z.string(),method:z.enum(['M1','M2']),care:z.enum(['inap','jalan']),key:z.string(),value:decimalString,before:decimalString,reason:z.string(),at:z.string()}))}).passthrough();
 const DB='unitcost-revisi4';
-let connection:Promise<IDBDatabase>|null=null;
-export function openDB() {
-  if(!connection)connection=new Promise<IDBDatabase>((resolve,reject)=>{
-    const request=indexedDB.open(DB,1);
-    request.onupgradeneeded=()=>{request.result.createObjectStore('workspace');request.result.createObjectStore('snapshots',{keyPath:'id'});};
-    request.onsuccess=()=>resolve(request.result);request.onerror=()=>{connection=null;reject(request.error);};
-  });
-  return connection;
+export function freshWorkspace():Workspace{return {schema:4,version:1,input:initialInput(),profiles:defaultProfiles(),activeProfile:'admin',audit:[],migrated:true};}
+let sessionWorkspace:Workspace|undefined;
+const sessionSnapshots=new Map<string,Snapshot>();
+let sessionEpoch=0;
+export function clearAnalysisMemory(){sessionEpoch++;sessionWorkspace=undefined;sessionSnapshots.clear();}
+export async function readWorkspace():Promise<Workspace|undefined>{return sessionWorkspace?structuredClone(sessionWorkspace):undefined;}
+export async function writeWorkspace(value:Workspace){sessionWorkspace=structuredClone(value);}
+export async function resetWorkspaceStorage(){
+  clearAnalysisMemory();const workspace=freshWorkspace();
+  workspace.audit=[audit('admin','Reset total','Data sesi dan riwayat dikosongkan oleh pengguna.')];
+  await writeWorkspace(workspace);return workspace;
 }
-export async function readWorkspace():Promise<Workspace|undefined> {
-  const db=await openDB();return new Promise((resolve,reject)=>{const r=db.transaction('workspace').objectStore('workspace').get('current');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+export async function listSnapshots():Promise<Snapshot[]>{return structuredClone([...sessionSnapshots.values()].sort((a,b)=>b.at.localeCompare(a.at)));}
+export async function saveSnapshot(snapshot:Snapshot){
+  if(sessionSnapshots.has(snapshot.id))throw new Error('Snapshot tidak boleh ditimpa.');
+  sessionSnapshots.set(snapshot.id,structuredClone(snapshot));
 }
-export async function writeWorkspace(value:Workspace) {
-  const db=await openDB();return new Promise<void>((resolve,reject)=>{const t=db.transaction('workspace','readwrite');t.objectStore('workspace').put(value,'current');t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
-}
-/** Replace the workspace and remove its history in one transaction. */
-export async function resetWorkspaceStorage() {
-  const workspace=migrateLegacy({getItem:()=>null});
-  workspace.migrated=true;
-  workspace.audit=[audit('admin','Reset total','Data analisis dan riwayat lokal dikosongkan oleh pengguna.')];
-  const db=await openDB();
-  await new Promise<void>((resolve,reject)=>{const t=db.transaction(['workspace','snapshots'],'readwrite');t.objectStore('workspace').put(workspace,'current');t.objectStore('snapshots').clear();t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
-  return workspace;
-}
-export async function listSnapshots():Promise<Snapshot[]> {
-  const db=await openDB();return new Promise((resolve,reject)=>{const r=db.transaction('snapshots').objectStore('snapshots').getAll();r.onsuccess=()=>resolve(r.result.sort((a:Snapshot,b:Snapshot)=>b.at.localeCompare(a.at)));r.onerror=()=>reject(r.error);});
-}
-export async function saveSnapshot(snapshot:Snapshot) {
-  const db=await openDB();return new Promise<void>((resolve,reject)=>{const t=db.transaction('snapshots','readwrite');const store=t.objectStore('snapshots');const r=store.get(snapshot.id);r.onsuccess=()=>{if(r.result){t.abort();return;}store.add(snapshot);};t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(new Error('Snapshot tidak boleh ditimpa.'));});
+/** Remove the old persisted database; current analysis never opens it. */
+export async function purgeLegacyDatabase(){
+  if(typeof indexedDB==='undefined')return;
+  await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(DB);request.onsuccess=()=>resolve();request.onerror=()=>reject(new Error('Data lama belum dapat dibersihkan.'));request.onblocked=()=>reject(new Error('Tutup tab UnitCOSt lain, lalu muat ulang untuk membersihkan penyimpanan lama.'));});
 }
 export const hash=async(value:unknown)=>{
   const bytes=new TextEncoder().encode(JSON.stringify(value));
@@ -70,6 +62,7 @@ export async function backupPayload(workspace:Workspace,snapshots:Snapshot[]) {
   const payload={schema:4 as const,workspace,snapshots};return {payload,checksum:await hash(payload)};
 }
 export async function restorePayload(text:string) {
+  const epoch=sessionEpoch;
   const data=JSON.parse(text);
   if(!data.payload||data.payload.schema!==4||await hash(data.payload)!==data.checksum)throw new Error('Versi atau checksum cadangan tidak valid.');
   const {workspace,snapshots}=data.payload as {workspace:Workspace;snapshots:Snapshot[]};
@@ -79,7 +72,7 @@ export async function restorePayload(text:string) {
     if(!inputSchema.safeParse(snap.input).success||!['Draft','Direview','Final'].includes(snap.state)||!Array.isArray(snap.result?.methods)||!Array.isArray(snap.audit))throw new Error('Struktur snapshot tidak valid.');
     if(await hash({input:snap.input,result:snap.result})!==snap.hash)throw new Error('Integritas snapshot tidak valid.');
   }
-  const db=await openDB();
-  await new Promise<void>((resolve,reject)=>{const t=db.transaction(['workspace','snapshots'],'readwrite');t.objectStore('workspace').put(workspace,'current');const st=t.objectStore('snapshots');st.clear();snapshots.forEach(s=>st.add(s));t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
+  if(epoch!==sessionEpoch)throw new Error('Sesi telah berakhir. Pemulihan dibatalkan.');
+  sessionWorkspace=structuredClone(workspace);sessionSnapshots.clear();snapshots.forEach(s=>sessionSnapshots.set(s.id,structuredClone(s)));
   return {workspace,snapshots};
 }

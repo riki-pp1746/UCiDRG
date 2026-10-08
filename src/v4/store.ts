@@ -1,12 +1,17 @@
 import { create } from 'zustand';
 import type { Input, Workspace, Snapshot, Profile, Role } from './types';
-import { readWorkspace,writeWorkspace,listSnapshots,saveSnapshot,migrateLegacy,audit,backupPayload,restorePayload } from './storage';
+import { readWorkspace,writeWorkspace,listSnapshots,saveSnapshot,freshWorkspace,audit,backupPayload,restorePayload,clearAnalysisMemory } from './storage';
 import { calculationJob,importJob } from './jobs';
 import type { Issue } from './types';
 import {workingProfile} from './workflow';
 import {encryptBackup,decryptBackup,validateFiles} from './security';
 import {mergeCostInput,appendClaims} from './inputData';
 let init:Promise<void>|null=null;let writing=Promise.resolve();let cancelJob:(()=>void)|null=null;
+let sessionGeneration=0;
+export function endIntegratedSession(){
+  sessionGeneration++;cancelJob?.();cancelJob=null;init=null;clearAnalysisMemory();
+  useV4Store.setState({workspace:null,snapshots:[],selected:null,busy:false,progress:0,error:'',saving:false,importIssues:[]});
+}
 const copy=<T,>(value:T):T=>structuredClone(value);
 export function canEdit(role:Role){return role==='Administrator'||role==='Analis';}
 export function canReview(snapshot:Snapshot,profile:Profile){return profile.role==='Reviewer' && snapshot.actor!==profile.id && !snapshot.input.corrections.some(c=>c.actor===profile.id);}
@@ -22,14 +27,16 @@ interface Store {
   backup:(password:string)=>Promise<string>; restore:(text:string,password?:string)=>Promise<void>;
 }
 async function persist(workspace:Workspace) {
+  const generation=sessionGeneration;
   useV4Store.setState({saving:true});
-  const task=writing.catch(()=>{}).then(()=>writeWorkspace(workspace));writing=task;
-  try{await task;useV4Store.setState({saving:false});}catch(e){useV4Store.setState({saving:false,error:`Penyimpanan gagal: ${String(e)}. Hasil belum aman tersimpan.`});throw e;}
+  const task=writing.catch(()=>{}).then(()=>generation===sessionGeneration?writeWorkspace(workspace):undefined);writing=task;
+  try{await task;if(generation===sessionGeneration)useV4Store.setState({saving:false});}catch(e){if(generation===sessionGeneration)useV4Store.setState({saving:false,error:`Data sesi gagal disiapkan: ${String(e)}.`});throw e;}
 }
 export const useV4Store=create<Store>((set,get)=>({
   workspace:null,snapshots:[],selected:null,busy:false,progress:0,error:'',saving:false,importIssues:[],
   initialize:()=>{
-    if(!init)init=(async()=>{try{const workspace=await readWorkspace()||migrateLegacy(localStorage);await persist(workspace);const snapshots=await listSnapshots();set({workspace,snapshots,selected:snapshots.find(s=>!s.sensitivity&&s.inputVersion===workspace.version)?.id||null});}catch(e){set({error:String(e)});init=null;}})();return init;
+    const generation=sessionGeneration;
+    if(!init)init=(async()=>{try{const workspace=await readWorkspace()||freshWorkspace();if(generation!==sessionGeneration)return;await persist(workspace);const snapshots=await listSnapshots();if(generation===sessionGeneration)set({workspace,snapshots,selected:snapshots.find(s=>!s.sensitivity&&s.inputVersion===workspace.version)?.id||null});}catch(e){if(generation===sessionGeneration){set({error:String(e)});init=null;}}})();return init;
   },
   update:async(transform,reason)=>{
     const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses yang sedang berjalan.');
@@ -40,15 +47,17 @@ export const useV4Store=create<Store>((set,get)=>({
   selectProfile:async(id)=>{const w=get().workspace;if(!w||get().busy)return;if(!w.profiles.some(p=>p.id===id))throw new Error('Profil tidak ditemukan.');const workspace={...w,activeProfile:id,audit:[...w.audit,audit(id,'Profil aktif','Profil lokal dipilih')]};set({workspace});await persist(workspace);},
   addProfile:async(name,role)=>{const w=get().workspace;if(!w)return;const p=w.profiles.find(p=>p.id===w.activeProfile)!;if(p.role!=='Administrator')throw new Error('Hanya Administrator mengelola profil.');if(!name.trim())throw new Error('Nama profil wajib diisi.');const workspace={...w,profiles:[...w.profiles,{id:crypto.randomUUID(),name:name.trim(),role}],audit:[...w.audit,audit(p.id,'Tambah profil',`${name} (${role})`)]};set({workspace});await persist(workspace);},
   calculate:async(scenario)=>{
+    const generation=sessionGeneration;
     const w=get().workspace;if(!w||get().busy)return;const p=workingProfile(w);
     if(!canEdit(p.role)){set({error:'Profil ini tidak dapat menghitung atau membuat skenario.'});return;}
     set({busy:true,progress:0,error:''});const input=scenario||w.input;const version=w.version;
     try{
       const job=calculationJob(input,n=>set({progress:n}));cancelJob=job.cancel;
       const {result,hash:checksum}=await job.promise;
+      if(generation!==sessionGeneration)return;
       const snap:Snapshot={id:crypto.randomUUID(),previous:get().selected,at:new Date().toISOString(),actor:p.id,state:'Draft',inputVersion:version,input,result,audit:[...w.audit,audit(p.id,scenario?'Sensitivitas':'Hitung','Mesin Revisi 4')],hash:checksum,reviewedBy:null,finalizedBy:null,stale:false,sensitivity:Boolean(scenario)};
-      await saveSnapshot(snap);set({snapshots:[snap,...get().snapshots],selected:scenario?get().selected:snap.id,progress:100});
-    }catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
+      await saveSnapshot(snap);if(generation===sessionGeneration)set({snapshots:[snap,...get().snapshots],selected:scenario?get().selected:snap.id,progress:100});
+    }catch(e){if(generation===sessionGeneration)set({error:String(e)});}finally{if(generation===sessionGeneration){cancelJob=null;set({busy:false});}}
   },
   cancel:()=>cancelJob?.(),
   importCosts:async(input,reason)=>get().update(current=>mergeCostInput(current,input),reason),
@@ -57,10 +66,11 @@ export const useV4Store=create<Store>((set,get)=>({
     set({selected:null,importIssues:scope==='claims'?[]:get().importIssues});
   },
   upload:async(files,mode='append')=>{
+    const generation=sessionGeneration;
     validateFiles(files,['txt','csv']);
     const w=get().workspace;if(!w||get().busy)return;const p=workingProfile(w);if(!canEdit(p.role))throw new Error('Profil tidak dapat mengunggah data.');
     set({busy:true,progress:0,error:''});
-    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>{const merged=mode==='append'?appendClaims(i.claims,result.claims,[...(i.importIssues||[]),...result.issues]):result;return {...i,claims:merged.claims,importIssues:merged.issues,corrections:[]};},`Unggah ${files.length} file (${result.claims.length} baris; ${mode})`);set({importIssues:get().workspace!.input.importIssues||[]});}catch(e){set({error:String(e)});}finally{cancelJob=null;set({busy:false});}
+    try{const job=importJob(files,n=>set({progress:n}));cancelJob=job.cancel;const result=await job.promise;if(generation!==sessionGeneration)return;set({busy:false,importIssues:result.issues});if(!result.claims.length)throw new Error(`Tidak ada baris klaim yang dapat dibaca (${result.issues.length} masalah). Data pasien sebelumnya tetap tersimpan. Periksa rincian kesalahan pembacaan.`);await get().update(i=>{const merged=mode==='append'?appendClaims(i.claims,result.claims,[...(i.importIssues||[]),...result.issues]):result;return {...i,claims:merged.claims,importIssues:merged.issues,corrections:[]};},`Unggah ${files.length} file (${result.claims.length} baris; ${mode})`);set({importIssues:get().workspace!.input.importIssues||[]});}catch(e){if(generation===sessionGeneration)set({error:String(e)});}finally{if(generation===sessionGeneration){cancelJob=null;set({busy:false});}}
   },
   selectSnapshot:(id)=>{if(!get().snapshots.some(s=>s.id===id))return;set({selected:id});},
   transition:async(state,reason)=>{
@@ -72,9 +82,9 @@ export const useV4Store=create<Store>((set,get)=>({
     if(state==='Final'&&!canFinalize(old,w,p))throw new Error('Reviewer berbeda wajib meninjau; hasil tidak boleh dikoreksi sendiri.');
     if(state==='Draft'&&(old.state!=='Direview'||!canReview(old,p)||!reason.trim()))throw new Error('Penolakan memerlukan Reviewer berbeda dan alasan.');
     const snap={...copy(old),id:crypto.randomUUID(),previous:old.id,at:new Date().toISOString(),state,reviewedBy:state==='Final'?p.id:old.reviewedBy,finalizedBy:state==='Final'?p.id:null,audit:[...old.audit,audit(p.id,state,reason)]};
-    await saveSnapshot(snap);set({snapshots:[snap,...get().snapshots],selected:snap.id});
+    const generation=sessionGeneration;await saveSnapshot(snap);if(generation===sessionGeneration)set({snapshots:[snap,...get().snapshots],selected:snap.id});
   },
   backup:async(password)=>{const w=get().workspace;if(!w)throw new Error('Data belum tersedia.');await writing;return encryptBackup(JSON.stringify(await backupPayload(w,get().snapshots)),password);},
-  restore:async(text,password='')=>{const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses.');if(workingProfile(w).role!=='Administrator')throw new Error('Pemulihan hanya oleh Administrator.');await writing;const restored=await restorePayload(await decryptBackup(text,password));set({workspace:restored.workspace,snapshots:restored.snapshots,selected:restored.snapshots[0]?.id||null,error:''});},
+  restore:async(text,password='')=>{const generation=sessionGeneration;const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses.');if(workingProfile(w).role!=='Administrator')throw new Error('Pemulihan hanya oleh Administrator.');await writing;const plain=await decryptBackup(text,password);if(generation!==sessionGeneration)return;const restored=await restorePayload(plain);if(generation!==sessionGeneration)return;set({workspace:restored.workspace,snapshots:restored.snapshots,selected:restored.snapshots[0]?.id||null,error:''});},
 }));
 export const activeSnapshot=(state:Pick<Store,'snapshots'|'selected'>)=>state.snapshots.find(s=>s.id===state.selected)||null;

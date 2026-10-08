@@ -1,3 +1,4 @@
+import {sessionMemoryStorage} from '../lib/sessionMemory';
 // ============================================================
 // STORE: uiPrefsStore.ts
 // Preferensi tampilan: Mode Pemula (bantuan & penjelasan tampil)
@@ -16,6 +17,7 @@ export const useUiPrefsStore = create<UiPrefsState>()(
       beginnerMode: true,
       setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
     }),
-    { name: 'unitcost-ui-prefs' }
+    { storage:sessionMemoryStorage,
+      name: 'unitcost-ui-prefs' }
   )
 );

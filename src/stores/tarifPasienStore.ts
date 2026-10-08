@@ -1,3 +1,4 @@
+import {sessionMemoryStorage} from '../lib/sessionMemory';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -298,6 +299,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
     {
       // Versi baru agar mapping lama (metode alokasi ke layanan final) tidak
       // terbawa ke alur distribusi langsung.
+      storage:sessionMemoryStorage,
       name: 'unitcost-tarif-pasien-v2-pak-adiet',
       partialize: (state) => ({
         biayaRSMap: state.biayaRSMap,
@@ -307,8 +309,6 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         calculationVersion:state.calculationVersion,
       }),
       merge:(saved,current)=>{const old=saved as Partial<TarifPasienState>|undefined;return {...current,biayaRSMap:old?.biayaRSMap||{},distribusi:old?.distribusi||[],calculationVersion:old?.calculationVersion||0,localCosting:null};},
-      // Compact the old cache once it has been read, freeing quota before upload.
-      onRehydrateStorage:()=> (_state,error)=>{if(!error)queueMicrotask(()=>useTarifPasienStore.setState({localCosting:null}));}
     }
   )
 );

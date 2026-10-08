@@ -4,7 +4,9 @@
 // ============================================================
 
 import { create } from 'zustand';
-import { persist,createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
+import {sessionMemoryStorage} from '../lib/sessionMemory';
+import {clearAnalysisSession} from '../lib/sessionData';
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -59,12 +61,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
+        clearAnalysisSession();
         set({ isAuthenticated: false, user: null, error: '',lastActivity:0 });
       },
     }),
     {
       name: 'unitcost-session',
-      storage:createJSONStorage(()=>sessionStorage),
+      storage:sessionMemoryStorage,
       partialize: (state) => ({
         isAuthenticated: state.isAuthenticated,
         user: state.user,

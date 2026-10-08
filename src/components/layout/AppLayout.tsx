@@ -206,7 +206,7 @@ export default function AppLayout() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-10">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-5 rounded-xl border border-[#E7E5DF] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#0B1F3A]">{analysisName}</p><p className="text-xs text-[#77746D] mt-1">Data dan hasil tersimpan terpisah untuk setiap ruang analisis.</p></div>
+            <div className="mb-5 rounded-xl border border-[#E7E5DF] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#0B1F3A]">{analysisName} · Sesi sementara</p><p className="text-xs text-[#77746D] mt-1">Data kedua ruang hanya berada di memori. Logout, refresh atau menutup tab menghapus data. Ekspor atau unduh cadangan sebelum keluar.</p></div>
             {!revision && <WorkflowStepper />}
             <Outlet />
           </div>

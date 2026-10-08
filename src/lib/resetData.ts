@@ -5,6 +5,7 @@ import {useV4Store} from '../v4/store';
 import {resetWorkspaceStorage} from '../v4/storage';
 import {workingProfile} from '../v4/workflow';
 import {DEFAULT_DATA_DASAR} from '../types/hospitalCost.types';
+import {clearAnalysisSession} from './sessionData';
 
 export function resetStorageKeys(storage:Pick<Storage,'length'|'key'>){
   return Array.from({length:storage.length},(_,i)=>storage.key(i)).filter((k):k is string=>Boolean(k&&k.startsWith('unitcost-')&&k!=='unitcost-session'));
@@ -21,6 +22,7 @@ export async function resetApplicationData(scope:'active'|'total',integrated:boo
   if(scope==='total'){
     const workspace=await resetWorkspaceStorage();
     for(const key of resetStorageKeys(localStorage))localStorage.removeItem(key);
+    clearAnalysisSession();
     useV4Store.setState({workspace,snapshots:[],selected:null,importIssues:[],error:''});
     return;
   }
