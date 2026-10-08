@@ -92,6 +92,11 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           const basicRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataDasarSheetName], { header: 1, defval: null }) as any[][];
           basicRows.forEach(row => {
             const label = clean(row[0]);
+            if (label === 'nama rumah sakit') { if(row[1])parsedInfo.namaRS=String(row[1]);return; }
+            if (label === 'tipe rs') { if(row[1])parsedInfo.tipeRS=String(row[1]) as HospitalCostConfig['tipeRS'];return; }
+            if (label === 'kepemilikan rs') { if(row[1])parsedInfo.kepemilikan=String(row[1]);return; }
+            // Ignore headings and notes; only recognized numeric indicators are parsed.
+            if(!/bor|alos|tempat tidur|hari rawat|sdm|biaya gaji|jasa|remunerasi|operasional|penyusutan|pendapatan|subsidi|pendanaan pemerintah|^tahun data$/.test(label))return;
             const value = safeFloat(row[1]);
             if (label.includes('bor')) parsedDataDasar.bor = value;
             else if (label.includes('alos')) parsedDataDasar.alos = value;
@@ -109,9 +114,6 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
             else if (label.includes('pendapatan fungsional non')) parsedDataDasar.pendapatanNonJKN = value;
             else if (label.includes('pendapatan lainnya')) parsedDataDasar.pendapatanLain = value;
             else if (label.includes('subsidi') || label.includes('pendanaan pemerintah')) parsedDataDasar.subsidiPemerintah = value;
-            else if (label === 'nama rumah sakit' && row[1]) parsedInfo.namaRS = String(row[1]);
-            else if (label === 'tipe rs' && row[1]) parsedInfo.tipeRS = String(row[1]) as HospitalCostConfig['tipeRS'];
-            else if (label === 'kepemilikan rs' && row[1]) parsedInfo.kepemilikan = String(row[1]);
             else if (label === 'tahun data' && value) parsedInfo.tahunData = value;
           });
         }

@@ -86,6 +86,7 @@ export interface PatientRecord extends KomponenTarif18 {
   inaCBGs: string;
   drg: string;
   diagnosis: string;
+  idrgDescription?: string;
   kelasRawat: KelasRawat;
   poli?: string;
   lhr: number;

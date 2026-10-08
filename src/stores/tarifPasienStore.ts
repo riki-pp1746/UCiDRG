@@ -144,6 +144,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           inaCBGs: r.inacbg || '',
           drg: r.idrg?.drg_code || '',
           diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
+          idrgDescription: r.idrg?.drg_description || '',
           kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as any,
           lhr: r.los || 0,
           procedure_amt: r.billing?.procedure_amt || 0,
@@ -235,7 +236,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         });
 
         const period=useCostingStore.getState().periodNormalization?.label||'Periode klaim belum dikonfirmasi';
-        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
+        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
         set({ distribusi, patients: updatedPatients,localCosting,calculationVersion:get().calculationVersion+1 });
       },
 
@@ -301,10 +302,13 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       partialize: (state) => ({
         biayaRSMap: state.biayaRSMap,
         distribusi: state.distribusi,
-        localCosting:state.localCosting,
+        // Patient-level results can exceed localStorage quota. They are derived
+        // again from the current upload and must not be stored in this small cache.
         calculationVersion:state.calculationVersion,
       }),
-      merge:(saved,current)=>({...current,...saved as Partial<TarifPasienState>,localCosting:null})
+      merge:(saved,current)=>{const old=saved as Partial<TarifPasienState>|undefined;return {...current,biayaRSMap:old?.biayaRSMap||{},distribusi:old?.distribusi||[],calculationVersion:old?.calculationVersion||0,localCosting:null};},
+      // Compact the old cache once it has been read, freeing quota before upload.
+      onRehydrateStorage:()=> (_state,error)=>{if(!error)queueMicrotask(()=>useTarifPasienStore.setState({localCosting:null}));}
     }
   )
 );

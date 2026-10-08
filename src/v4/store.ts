@@ -29,7 +29,7 @@ async function persist(workspace:Workspace) {
 export const useV4Store=create<Store>((set,get)=>({
   workspace:null,snapshots:[],selected:null,busy:false,progress:0,error:'',saving:false,importIssues:[],
   initialize:()=>{
-    if(!init)init=(async()=>{try{const workspace=await readWorkspace()||migrateLegacy(localStorage);await persist(workspace);const snapshots=await listSnapshots();set({workspace,snapshots,selected:snapshots[0]?.id||null});}catch(e){set({error:String(e)});init=null;}})();return init;
+    if(!init)init=(async()=>{try{const workspace=await readWorkspace()||migrateLegacy(localStorage);await persist(workspace);const snapshots=await listSnapshots();set({workspace,snapshots,selected:snapshots.find(s=>!s.sensitivity&&s.inputVersion===workspace.version)?.id||null});}catch(e){set({error:String(e)});init=null;}})();return init;
   },
   update:async(transform,reason)=>{
     const w=get().workspace;if(!w||get().busy)throw new Error('Tunggu proses yang sedang berjalan.');

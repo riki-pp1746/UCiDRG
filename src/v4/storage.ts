@@ -20,6 +20,15 @@ export async function readWorkspace():Promise<Workspace|undefined> {
 export async function writeWorkspace(value:Workspace) {
   const db=await openDB();return new Promise<void>((resolve,reject)=>{const t=db.transaction('workspace','readwrite');t.objectStore('workspace').put(value,'current');t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
 }
+/** Replace the workspace and remove its history in one transaction. */
+export async function resetWorkspaceStorage() {
+  const workspace=migrateLegacy({getItem:()=>null});
+  workspace.migrated=true;
+  workspace.audit=[audit('admin','Reset total','Data analisis dan riwayat lokal dikosongkan oleh pengguna.')];
+  const db=await openDB();
+  await new Promise<void>((resolve,reject)=>{const t=db.transaction(['workspace','snapshots'],'readwrite');t.objectStore('workspace').put(workspace,'current');t.objectStore('snapshots').clear();t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error);});
+  return workspace;
+}
 export async function listSnapshots():Promise<Snapshot[]> {
   const db=await openDB();return new Promise((resolve,reject)=>{const r=db.transaction('snapshots').objectStore('snapshots').getAll();r.onsuccess=()=>resolve(r.result.sort((a:Snapshot,b:Snapshot)=>b.at.localeCompare(a.at)));r.onerror=()=>reject(r.error);});
 }

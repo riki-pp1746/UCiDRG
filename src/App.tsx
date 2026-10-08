@@ -10,6 +10,7 @@ import TarifPasienPage from './pages/TarifPasienPage';
 import ComparisonPage from './pages/ComparisonPage';
 import ReportPage from './pages/ReportPage';
 import SettingsPage from './pages/SettingsPage';
+import ResetDataPage from './pages/ResetDataPage';
 import { V4Page } from './v4/Pages';
 import { SessionGuard } from './components/layout/SessionGuard';
 
@@ -43,6 +44,8 @@ export function AppRoutes() {
           <Route path="reports" element={<ReportPage />} />
           <Route path="report" element={<ReportPage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="reset" element={<ResetDataPage />} />
+          <Route path="revisi4/reset" element={<ResetDataPage />} />
           <Route path="tarif-idrg" element={<Navigate to="/tarif-pasien?tab=tarif" replace />} />
           <Route path="revisi4/" element={<V4Page view="guide" />} />
           <Route path="revisi4/dashboard" element={<V4Page view="dashboard" />} />

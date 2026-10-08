@@ -41,7 +41,7 @@ it('does not substitute raw billing or invent denominators for missing or zero c
 });
 it('preserves decimal precision in calculations and exported values',()=>{
  const result=calculateHospitalBaseRate([row('1','A','0.125'),row('2','B','0.875')],context);expect(result.pools[0].hbr).toBe('0.5');expect(result.groups[0].cw).toBe('0.25');expect(rounded(result.pools[0].hbr!)).toBe('1');
- const sheets=hospitalBaseRateSheets(result);expect(sheets.HBR_RS[1][5]).toBe('0.5');expect(sheets.Pasien_RS[1][3]).toBe('0.125');expect(JSON.stringify(sheets)).not.toContain('SYNTHETIC-SEP');
+ const sheets=hospitalBaseRateSheets(result);expect(sheets.HBR_RS[1][5]).toBe('0.5');expect(sheets.Pasien_RS[1][4]).toBe('0.125');expect(JSON.stringify(sheets)).not.toContain('SYNTHETIC-SEP');
 });
 it('records local results for each allocation method independently of all external weights and tariffs',()=>{
  const input=fixture();const a=calculate(input);expect(a.methods).toHaveLength(2);for(const method of a.methods)expect(method.localCosting?.pools[0].hbr).toBe('250000');

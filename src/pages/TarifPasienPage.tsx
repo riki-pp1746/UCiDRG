@@ -49,6 +49,7 @@ export default function TarifPasienPage() {
         inaCBGs: r.inacbg || '',
         drg: r.idrg?.drg_code || '',
         diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
+        idrgDescription: r.idrg?.drg_description || '',
         kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
         lhr: r.los || 0,
         

@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  RotateCcw,
   LogOut,
   Menu,
   Calculator,
@@ -35,6 +36,7 @@ const navItems = [
   { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
+  { path: '/reset', icon: RotateCcw, label: 'Reset Data' },
 ];
 
 export default function AppLayout() {
