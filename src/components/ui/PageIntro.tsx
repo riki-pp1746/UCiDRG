@@ -19,31 +19,31 @@ export default function PageIntro({ title, what, prepare, result, children }: Pa
   return (
     <section
       aria-label={`Pengantar ${title}`}
-      className="relative mb-6 rounded-2xl border border-[#B08D57]/30 bg-[#FBF7EE] p-5 pr-12"
+      className="relative mb-6 rounded-2xl border border-[#B86649]/30 bg-[#FCF0E5] p-5 pr-12"
     >
       <button
         type="button"
         onClick={() => setBeginnerMode(false)}
         aria-label="Sembunyikan penjelasan (matikan Mode Pemula)"
         title="Sembunyikan penjelasan. Dapat diaktifkan lagi di Pengaturan."
-        className="absolute top-3 right-3 p-1 rounded-md text-[#977544] hover:bg-[#B08D57]/10"
+        className="absolute top-3 right-3 p-1 rounded-md text-[#965238] hover:bg-[#B86649]/10"
       >
         <X className="w-4 h-4" />
       </button>
       <div className="flex gap-3">
-        <Lightbulb className="w-5 h-5 text-[#B08D57] shrink-0 mt-0.5" strokeWidth={1.75} />
+        <Lightbulb className="w-5 h-5 text-[#B86649] shrink-0 mt-0.5" strokeWidth={1.75} />
         <div className="text-sm text-[#3D3A33] space-y-2 leading-relaxed">
-          <p className="font-semibold text-[#0B1F3A]">{title}</p>
+          <p className="font-semibold text-[#864735]">{title}</p>
           <p>{what}</p>
           {prepare && prepare.length > 0 && (
             <div>
-              <p className="font-medium text-[#0B1F3A]">Yang perlu disiapkan:</p>
+              <p className="font-medium text-[#864735]">Yang perlu disiapkan:</p>
               <ul className="list-disc ml-5">
                 {prepare.map(p => <li key={p}>{p}</li>)}
               </ul>
             </div>
           )}
-          {result && <p><span className="font-medium text-[#0B1F3A]">Hasil:</span> {result}</p>}
+          {result && <p><span className="font-medium text-[#864735]">Hasil:</span> {result}</p>}
           {children}
         </div>
       </div>

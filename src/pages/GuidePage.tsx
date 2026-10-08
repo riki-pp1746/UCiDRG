@@ -116,8 +116,8 @@ const DATA_YANG_DISIAPKAN = [
 // ────────────────────────────────────────────────────────────
 export default function GuidePage(){
   return <div className="space-y-6 max-w-5xl mx-auto">
-    <section className="bg-gradient-to-br from-[#0B1F3A] to-[#1B365D] rounded-2xl p-7 text-white">
-      <p className="flex items-center gap-2 text-[#E6D4AD] text-sm mb-3"><BookOpen size={22}/>Panduan Penggunaan</p>
+    <section className="bg-gradient-to-br from-[#864735] to-[#A65D43] rounded-2xl p-7 text-white">
+      <p className="flex items-center gap-2 text-[#F7DCC6] text-sm mb-3"><BookOpen size={22}/>Panduan Penggunaan</p>
       <h1 className="text-3xl font-bold !text-white">Analisis 18 Komponen</h1>
       <p className="text-white/75 mt-3">Siapkan biaya RS dan klaim, periksa alokasi, lalu telusuri unit cost serta tarif pasien dalam lima tahap kerja.</p>
       <Link to="/upload" className="uc-secondary mt-5">Mulai dari Data<ArrowRight size={16}/></Link>
@@ -139,7 +139,7 @@ export default function GuidePage(){
     <details className="uc-panel">
       <summary className="flex items-center gap-2 cursor-pointer font-semibold"><Database size={20}/>Daftar data yang harus disiapkan</summary>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">
-        {DATA_YANG_DISIAPKAN.map(data=>{const Icon=data.icon;return <section key={data.title} className="border border-[#E7E5DF] rounded-xl p-4 space-y-3"><h3 className="flex items-center gap-2 font-semibold text-sm"><Icon size={18}/>{data.title}</h3><span className={clsx('inline-block text-xs px-2 py-1 rounded-full',data.badgeColor)}>{data.badge}</span><p className="text-xs text-slate-500">{data.source}</p><ul className="space-y-2 text-sm text-slate-600">{data.items.map(item=><li className="flex items-start gap-2" key={item}><CheckCircle size={16} className="flex-none mt-0.5"/>{item}</li>)}</ul></section>;})}
+        {DATA_YANG_DISIAPKAN.map(data=>{const Icon=data.icon;return <section key={data.title} className="border border-[#EAE0D6] rounded-xl p-4 space-y-3"><h3 className="flex items-center gap-2 font-semibold text-sm"><Icon size={18}/>{data.title}</h3><span className={clsx('inline-block text-xs px-2 py-1 rounded-full',data.badgeColor)}>{data.badge}</span><p className="text-xs text-slate-500">{data.source}</p><ul className="space-y-2 text-sm text-slate-600">{data.items.map(item=><li className="flex items-start gap-2" key={item}><CheckCircle size={16} className="flex-none mt-0.5"/>{item}</li>)}</ul></section>;})}
       </div>
     </details>
     <p className="text-xs text-slate-500 text-center">UnitCOSt PRO · Panduan ruang Analisis 18 Komponen · Referensi tarif bawaan masih ilustratif sampai diverifikasi.</p>

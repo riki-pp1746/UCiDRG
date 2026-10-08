@@ -113,7 +113,7 @@ export default function SettingsPage() {
       </div>
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm space-y-4">
         <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#B08D57]" /> Tampilan &amp; Bantuan
+          <Info className="w-4 h-4 text-[#B86649]" /> Tampilan &amp; Bantuan
         </h2>
         <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
           <input
@@ -123,7 +123,7 @@ export default function SettingsPage() {
             className="mt-0.5 rounded border-gray-300"
           />
           <span>
-            <strong className="text-[#0B1F3A]">Mode Pemula</strong>
+            <strong className="text-[#864735]">Mode Pemula</strong>
             <span className="block text-xs text-gray-500">Tampilkan penjelasan singkat di setiap halaman dan petunjuk langkah berikutnya. Matikan jika sudah terbiasa.</span>
           </span>
         </label>
@@ -132,7 +132,7 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={() => { if (window.confirm('Kembalikan parameter tarif iDRG dan proporsi JKN ke nilai standar?')) { setTarifIDRGConfig(DEFAULT_TARIF_IDRG_CONFIG); setJknProportion(100); } }}
-            className="shrink-0 px-4 py-2 rounded-xl border border-[#0B1F3A] text-[#0B1F3A] text-sm font-semibold hover:bg-[#0B1F3A] hover:text-white transition-colors"
+            className="shrink-0 px-4 py-2 rounded-xl border border-[#864735] text-[#864735] text-sm font-semibold hover:bg-[#864735] hover:text-white transition-colors"
           >
             Kembalikan nilai standar
           </button>
