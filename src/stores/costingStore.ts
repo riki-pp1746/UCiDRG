@@ -1,4 +1,3 @@
-import {describeKND} from '../lib/kndDescriptions';
 // ============================================================
 // STORE: costingStore.ts
 // Zustand state management untuk data costing
@@ -229,7 +228,7 @@ export function useFilteredDRGResults() {
   const searchTerm = useCostingStore(s => s.searchTerm);
 
   return React.useMemo(() => {
-    let results = drgResults.map(r=>({...r,group_description:describeKND(r.group_code,r.group_description),idrg_description:describeKND(r.idrg_code,r.idrg_description)}));
+    let results = drgResults;
     if (filterStatus && filterStatus !== 'ALL') {
       results = results.filter(r => r.status === filterStatus);
     }
@@ -274,7 +273,7 @@ export function useFilteredPatientResults() {
         r =>
           r.patient.nama_pasien.toLowerCase().includes(term) ||
           r.patient.mrn.toLowerCase().includes(term) ||
-          describeKND(r.patient.idrg.drg_code,r.patient.idrg.drg_description).toLowerCase().includes(term)
+          r.patient.idrg.drg_description.toLowerCase().includes(term)
       );
     }
     return results;

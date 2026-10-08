@@ -1,4 +1,3 @@
-import {describeKND} from '../kndDescriptions';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
 // Metode: Patient Level Costing + Step-Down
@@ -243,11 +242,11 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
 
       groups.push({
         group_code: groupCode,
-        group_description: type === 'INACBG' ? (first.patient.deskripsi_inacbg || 'N/A') : (describeKND(first.patient.idrg?.drg_code,first.patient.idrg?.drg_description || 'N/A')),
+        group_description: type === 'INACBG' ? (first.patient.deskripsi_inacbg || 'N/A') : (first.patient.idrg?.drg_description || 'N/A'),
         inacbg_code: first.patient.inacbg || 'N/A',
         inacbg_description: first.patient.deskripsi_inacbg || 'N/A',
         idrg_code: first.patient.idrg?.drg_code || 'N/A',
-        idrg_description: describeKND(first.patient.idrg?.drg_code,first.patient.idrg?.drg_description || 'N/A'),
+        idrg_description: first.patient.idrg?.drg_description || 'N/A',
         ptd: first.patient.ptd,
         mdc_number: first.patient.idrg?.mdc_number,
         mdc_description: first.patient.idrg?.mdc_description,

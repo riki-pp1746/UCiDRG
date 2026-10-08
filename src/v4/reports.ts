@@ -1,4 +1,3 @@
-import {describeKND} from '../lib/kndDescriptions';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import { maskSEP,rounded,dec,sum } from './numbers';
@@ -11,8 +10,8 @@ export function reportSheets(snap:Snapshot) {
     Referensi:[['Jenis','Kode','Rawat','Nilai','Versi','Mulai','Akhir','Sumber','Terverifikasi','Dipakai'],...snap.input.references.map(r=>[r.kind,r.code,r.care,r.value,r.version,r.from,r.until,r.source,r.verified,snap.result.referenceIds.includes(r.id)])],
     Rekonsiliasi:[['Metode','Rawat','Pool JKN','Alokasi pasien','Cadangan cakupan','Belum teralokasi','Tanpa weight','Biaya populasi valid','Casemix','CMI','Base rate RS','Base nasional','Rasio base']],
     Komponen:[['Metode','Rawat','Komponen','Biaya internal','Rupiah tampilan']],
-    Pasien:[['Metode','SEP masking','Rawat','iDRG','INA-CBG','UC','Tarif INA','Tarif iDRG pembanding','Sumber','Simulasi RS','Skenario kelompok','Target pasien','Status INA','Status iDRG','CRR INA','CRR iDRG','Pending','Dispute','Outlier','Deskripsi iDRG']],
-    Grouping:[['Metode','Rawat','Kode','Deskripsi iDRG','Kasus','Mean UC','Median UC','Sampel rendah']],
+    Pasien:[['Metode','SEP masking','Rawat','iDRG','INA-CBG','UC','Tarif INA','Tarif iDRG pembanding','Sumber','Simulasi RS','Skenario kelompok','Target pasien','Status INA','Status iDRG','CRR INA','CRR iDRG','Pending','Dispute','Outlier']],
+    Grouping:[['Metode','Rawat','Kode','Kasus','Mean UC','Median UC','Sampel rendah']],
     JejakAlokasi:[['Metode','Donor','Penerima','Driver','Satuan','Biaya']],
     Validasi:[['Kode','Tingkat','Metode','File','Baris','Pesan'],...snap.result.issues.map(i=>[i.code,i.severity,i.method||'',i.file||'',i.row||'',i.message])],
     Koreksi:[['Metode','Rawat','Komponen','Sebelum','Sesudah','Alasan','Pengguna','Waktu'],...snap.input.corrections.map(c=>[c.method,c.care,c.key,c.before,c.value,c.reason,c.actor,c.at])],
@@ -25,8 +24,8 @@ export function reportSheets(snap:Snapshot) {
       KEYS.forEach((k,i)=>sheets.Komponen.push([m.method,p.care,LABELS[i],p.components[k],rounded(p.components[k])]));
       const displayTotal=sum(m.patients.filter(x=>x.care===p.care).map(x=>rounded(x.uc)));sheets.Rekonsiliasi.push([m.method,p.care,'Selisih pembulatan keluaran',dec(rounded(p.allocated)).minus(displayTotal).toString()]);
     }
-    for(const p of m.patients)sheets.Pasien.push([m.method,maskSEP(p.sep),p.care,p.code,p.inacbg,p.uc,p.tariffINA??'Tidak tersedia',p.tariffIDRG??'Tidak tersedia',p.source,p.simulation??'Tidak dapat dihitung',p.scenario??'Tidak dapat dihitung',p.target,p.statusINA,p.statusIDRG,p.crrINA??'Tidak dapat dihitung',p.crrIDRG??'Tidak dapat dihitung',p.pending,p.disputed,p.outlier,describeKND(p.code,p.description)]);
-    for(const g of m.groups)sheets.Grouping.push([m.method,g.care,g.code,describeKND(g.code,m.patients.find(p=>p.code===g.code)?.description),g.count,g.mean,g.median,g.lowSample]);
+    for(const p of m.patients)sheets.Pasien.push([m.method,maskSEP(p.sep),p.care,p.code,p.inacbg,p.uc,p.tariffINA??'Tidak tersedia',p.tariffIDRG??'Tidak tersedia',p.source,p.simulation??'Tidak dapat dihitung',p.scenario??'Tidak dapat dihitung',p.target,p.statusINA,p.statusIDRG,p.crrINA??'Tidak dapat dihitung',p.crrIDRG??'Tidak dapat dihitung',p.pending,p.disputed,p.outlier]);
+    for(const g of m.groups)sheets.Grouping.push([m.method,g.care,g.code,g.count,g.mean,g.median,g.lowSample]);
     for(const t of m.traces)sheets.JejakAlokasi.push([m.method,t.donor,t.recipient,t.driver,t.unit,t.amount]);
   }
   return sheets;

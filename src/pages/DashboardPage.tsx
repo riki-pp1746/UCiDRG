@@ -1,4 +1,3 @@
-import {describeKND} from '../lib/kndDescriptions';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: DashboardPage.tsx
@@ -70,7 +69,7 @@ export default function DashboardPage() {
   ].filter(d => d.value > 0) : [], [summary]);
   const top10DRG = React.useMemo(() => drgResults.slice(0, 10).map(d => ({
     name: d.group_code,
-    label: describeKND(d.group_code,d.group_description).slice(0, 30) + '...',
+    label: d.group_description.slice(0, 30) + '...',
     'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
     'Tarif': Math.round(d.rataTarif / 1000),
     status: d.status,
@@ -312,7 +311,7 @@ export default function DashboardPage() {
               <div key={i} className="flex items-center gap-3 p-2 bg-red-50 rounded-lg">
                 <span className="text-xs font-bold text-red-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{describeKND(drg.group_code,drg.group_description)}</p>
+                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-red-600 whitespace-nowrap">
@@ -337,7 +336,7 @@ export default function DashboardPage() {
               <div key={i} className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
                 <span className="text-xs font-bold text-green-400 w-5">{i + 1}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{describeKND(drg.group_code,drg.group_description)}</p>
+                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
                   <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
                 </div>
                 <span className="text-xs font-bold text-green-600 whitespace-nowrap">

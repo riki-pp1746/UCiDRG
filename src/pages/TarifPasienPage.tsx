@@ -1,4 +1,3 @@
-import {describeKND} from '../lib/kndDescriptions';
 import PageIntro from '../components/ui/PageIntro';
 import HelpTip from '../components/ui/HelpTip';
 import { Link } from 'react-router-dom';
@@ -44,7 +43,7 @@ export default function TarifPasienPage() {
         noSEP: r.sep || '',
         inaCBGs: r.inacbg || '',
         drg: r.idrg?.drg_code || r.inacbg || '',
-        diagnosis: describeKND(r.idrg?.drg_code,r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || ''),
+        diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
         kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
         lhr: r.los || 0,
         
