@@ -1,3 +1,4 @@
+import {describeKND} from '../kndDescriptions';
 // ============================================================
 // PARSER: inacbgParser.ts
 // Parse file TXT dari INACBG/iDRG
@@ -178,6 +179,7 @@ function parseRow(cols: string[]): PatientRecord | null {
     }
   }
 
+  idrg.drg_description=describeKND(idrg.drg_code,idrg.drg_description);
   // Jika tidak ada iDRG data sama sekali, skip row
   if (!idrg.drg_code && !get(COLUMN_MAP.INACBG)) return null;
 

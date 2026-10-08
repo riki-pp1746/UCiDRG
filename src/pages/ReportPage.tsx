@@ -1,3 +1,4 @@
+import {describeKND} from '../lib/kndDescriptions';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ReportPage.tsx
@@ -115,7 +116,7 @@ export default function ReportPage() {
       'Selisih (Rp)', 'Selisih (%)', 'CoV', 'Total Biaya RS', `Total Tarif ${viewMode}`, 'Status'
     ];
     const drgData = drgResults.map(d => [
-      d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || '-',
+      d.group_code, describeKND(d.group_code,d.group_description), d.mdc_number || '-', d.mdc_description || '-',
       d.jumlahKasus, d.rataUnitCost, d.rataTarif,
       d.selisih, d.selisihPersen.toFixed(1) + '%', (d.cov * 100).toFixed(2) + '%',
       d.totalBiayaRS, d.totalTarif, STATUS_LABEL[d.status]
@@ -135,7 +136,7 @@ export default function ReportPage() {
       r.patient.admission_date, r.patient.discharge_date, r.patient.los,
       r.patient.kelas_rawat,
       viewMode === 'INACBG' ? r.patient.inacbg : r.patient.idrg?.drg_code,
-      viewMode === 'INACBG' ? r.patient.deskripsi_inacbg : r.patient.idrg?.drg_description,
+      viewMode === 'INACBG' ? r.patient.deskripsi_inacbg : describeKND(r.patient.idrg?.drg_code,r.patient.idrg?.drg_description),
       r.patient.diaglist, r.patient.proclist,
       ...BILLING_EXPORT.map(item => r.patient.billing[item.key] || 0),
       r.unitCostDihitung, viewMode === 'INACBG' ? r.tarifINACBG : r.tarifIDRG,
@@ -149,7 +150,7 @@ export default function ReportPage() {
     const rugiData = [
       ['TOP DRG DEFISIT TERTINGGI'],
       [`Kode ${viewMode}`, `Nama ${viewMode}`, 'Kasus', 'Unit Cost', `Tarif ${viewMode}`, 'Selisih'],
-      ...summary.top10Rugi.map(d => [d.group_code, d.group_description, d.jumlahKasus, d.rataUnitCost, d.rataTarif, d.selisih]),
+      ...summary.top10Rugi.map(d => [d.group_code, describeKND(d.group_code,d.group_description), d.jumlahKasus, d.rataUnitCost, d.rataTarif, d.selisih]),
     ];
     const ws4 = XLSX.utils.aoa_to_sheet(rugiData);
     XLSX.utils.book_append_sheet(wb, ws4, 'Top DRG Defisit');
@@ -223,7 +224,7 @@ export default function ReportPage() {
     slide.addText(`Biaya tahunan ${formatRupiah(totalBiayaTahunan)} × ${periodNormalization?.effectiveMonths || 12}/12 = ${formatRupiah(totalBiayaLaporan)} • 18 variabel ${formatRupiah(totalBiaya18Variabel)} • selisih ${formatRupiah(selisihRekonsiliasi)}`, { x: 0.8, y: 5.35, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 13, color: gray, align: 'center' }); addFooter(slide, 3);
 
     slide = pptx.addSlide(); title(slide, 'DRG dengan Selisih Tertinggi', 'Prioritas review biaya dan tarif');
-    const rows = summary.top10Rugi.slice(0, 8).map(d => [d.group_code, d.group_description.slice(0, 52), String(d.jumlahKasus), formatRupiah(d.rataUnitCost), formatRupiah(d.rataTarif), formatRupiah(d.selisih)]);
+    const rows = summary.top10Rugi.slice(0, 8).map(d => [d.group_code, describeKND(d.group_code,d.group_description).slice(0, 52), String(d.jumlahKasus), formatRupiah(d.rataUnitCost), formatRupiah(d.rataTarif), formatRupiah(d.selisih)]);
     slide.addTable([['Kode', 'DRG', 'Kasus', 'Unit Cost', 'Tarif', 'Selisih'], ...rows] as any, { x: 0.55, y: 1.45, w: 12.2, h: 4.85, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, color: navy, fill: { color: 'FFFFFF' }, rowH: 0.44, colW: [1.1, 3.7, 0.8, 2.0, 2.0, 2.0], bold: false, }); addFooter(slide, 4);
 
     slide = pptx.addSlide(); title(slide, 'Kualitas Pengelompokan DRG', 'CoV mengukur homogenitas biaya, ROV mengukur variasi yang dijelaskan DRG');
@@ -231,7 +232,7 @@ export default function ReportPage() {
     slide.addText(`Rata-rata CoV DRG: ${(summary.rataCov * 100).toFixed(1)}%`, { x: 0.8, y: 2.3, w: 5.6, h: 0.4, fontFace: 'Aptos', fontSize: 17, color: gray });
     slide.addText('Interpretasi', { x: 7.0, y: 1.55, w: 2, h: 0.3, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy });
     slide.addText('CoV di bawah 1 menunjukkan biaya dalam grup DRG relatif homogen. ROV yang lebih tinggi menunjukkan DRG menjelaskan lebih banyak variasi biaya.', { x: 7.0, y: 2.1, w: 5.3, h: 1.0, fontFace: 'Aptos', fontSize: 16, color: gray, breakLine: false });
-    const covRows = drgResults.slice().sort((a, b) => b.cov - a.cov).slice(0, 5).map(d => [d.group_code, d.group_description.slice(0, 38), `${(d.cov * 100).toFixed(1)}%`]);
+    const covRows = drgResults.slice().sort((a, b) => b.cov - a.cov).slice(0, 5).map(d => [d.group_code, describeKND(d.group_code,d.group_description).slice(0, 38), `${(d.cov * 100).toFixed(1)}%`]);
     slide.addTable([['DRG', 'Deskripsi', 'CoV'], ...covRows] as any, { x: 0.8, y: 3.65, w: 11.5, h: 2.0, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, colW: [1.4, 7.8, 1.6] }); addFooter(slide, 5);
 
     slide = pptx.addSlide(); title(slide, 'Rekomendasi Tindak Lanjut', 'Berdasarkan biaya, variasi DRG, dan validasi data');
@@ -414,7 +415,7 @@ export default function ReportPage() {
                   <tr key={i} className={clsx('hover:bg-gray-50', i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50')}>
                     <td className="px-3 py-2 font-mono font-semibold text-blue-600 whitespace-nowrap">{drg.group_code}</td>
                     <td className="px-3 py-2 max-w-[200px]">
-                      <p className="truncate text-gray-800">{drg.group_description}</p>
+                      <p className="truncate text-gray-800">{describeKND(drg.group_code,drg.group_description)}</p>
                       <p className="text-gray-400 truncate">MDC {drg.mdc_number}</p>
                     </td>
                     <td className="px-3 py-2 text-center text-gray-700 font-medium">{drg.jumlahKasus}</td>

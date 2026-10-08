@@ -1,3 +1,4 @@
+import {describeKND} from '../lib/kndDescriptions';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import {
@@ -135,7 +136,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           noSEP: r.sep || '',
           inaCBGs: r.inacbg || '',
           drg: r.idrg?.drg_code || r.inacbg || '',
-          diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
+          diagnosis: describeKND(r.idrg?.drg_code,r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || ''),
           kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as any,
           lhr: r.los || 0,
           procedure_amt: r.billing?.procedure_amt || 0,

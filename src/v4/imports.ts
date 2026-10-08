@@ -1,3 +1,4 @@
+import {describeKND} from '../lib/kndDescriptions';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { parseNumber, dec } from './numbers';
@@ -18,7 +19,7 @@ export function claimFromRow(cols:string[],file:string,row:number):Claim {
   const code=cols[82]||String(json.drg_code||'');
   if(!code&&!cols[19])throw new Error('Kode DRG dan INA-CBG kosong.');
   const flags=cols.slice(93).join(' ').toLowerCase();
-  return {id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:cols[83]||cols[26]||'',mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
+  return {id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:describeKND(code,cols[83]||cols[26]||''),mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
 }
 export function parseClaimsText(text:string,file:string) {
   const claims:Claim[]=[];const issues:Issue[]=[];const rows=Papa.parse<string[]>(text,{delimiter:claimsDelimiter(text),skipEmptyLines:true}).data;

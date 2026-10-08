@@ -1,3 +1,4 @@
+import {describeKND} from '../lib/kndDescriptions';
 import { dec, sum, ratio } from './numbers';
 import { KEYS, EXPENSES, emptyBill } from './types';
 import type { Input, Claim, Center, Care, Method, Result, Issue, Reference, MethodResult, Pool, PatientResult, Status } from './types';
@@ -193,7 +194,7 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
       for(const [index,p] of pop.entries()) {
         const allocations=emptyBill();for(const k of KEYS) if(dec(billing[k]).gt(0)) allocations[k]=dec(p.bill[k]).div(billing[k]).mul(dec(components[care][k]).minus(reserves[care][k])).toString();
         const uc=sum(Object.values(allocations)).toString(); const weight=weights.get(p.id);
-        patients.push({id:p.id,care,code:p.code,sep:p.sep,inacbg:p.inacbg,description:p.description,mdc:p.mdc,uc,allocations,weight:weight?.value||null,tariffINA:dec(p.tariffINA).gt(0)?p.tariffINA:null,tariffIDRG:null,source:'Tidak tersedia',simulation:null,scenario:null,target:dec(uc).mul(dec(1).plus(dec(s.markup).div(100))).toString(),statusINA:classify(dec(p.tariffINA).gt(0)?p.tariffINA:null,uc,s.toleranceMode,s.tolerance),statusIDRG:'Tidak dapat dihitung',crrINA:dec(p.tariffINA).gt(0)?ratio(p.tariffINA,uc):null,crrIDRG:null,difference:null,pending:p.pending,disputed:p.disputed,outlier:false});
+        patients.push({id:p.id,care,code:p.code,sep:p.sep,inacbg:p.inacbg,description:describeKND(p.code,p.description),mdc:p.mdc,uc,allocations,weight:weight?.value||null,tariffINA:dec(p.tariffINA).gt(0)?p.tariffINA:null,tariffIDRG:null,source:'Tidak tersedia',simulation:null,scenario:null,target:dec(uc).mul(dec(1).plus(dec(s.markup).div(100))).toString(),statusINA:classify(dec(p.tariffINA).gt(0)?p.tariffINA:null,uc,s.toleranceMode,s.tolerance),statusIDRG:'Tidak dapat dihitung',crrINA:dec(p.tariffINA).gt(0)?ratio(p.tariffINA,uc):null,crrIDRG:null,difference:null,pending:p.pending,disputed:p.disputed,outlier:false});
         if(index%1000===0)onProgress(20+Math.round(index/Math.max(1,pop.length)*50));
       }
       const subset=patients.slice(start); const valid=subset.filter(p=>p.weight!==null);
