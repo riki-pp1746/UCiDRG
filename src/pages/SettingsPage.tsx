@@ -30,7 +30,7 @@ export default function SettingsPage() {
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
         <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-purple-600" /> Pengaturan Tarif iDRG (Revisi 4)
+          <Calculator className="w-4 h-4 text-purple-600" /> Pengaturan Tarif iDRG
         </h2>
         <p className="text-sm text-gray-600 mt-2">
           Rumus: Tarif iDRG = Cost Weight × National Base Rate × Adjustment Factor
