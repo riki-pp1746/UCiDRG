@@ -1,5 +1,4 @@
-import {buildBiayaRSMap,biayaRSMapToRVU,useTarifPasienStore} from '../stores/tarifPasienStore';
-import {useHospitalCostStore} from '../stores/hospitalCostStore';
+import JKNProportionControl from '../components/ui/JKNProportionControl';
 import { useUiPrefsStore } from '../stores/uiPrefsStore';
 import { DEFAULT_TARIF_IDRG_CONFIG } from '../lib/calculations/patientLevelCosting';
 import PageIntro from '../components/ui/PageIntro';
@@ -10,9 +9,8 @@ import { Settings, Info, Trash2, Calculator } from 'lucide-react';
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const { beginnerMode, setBeginnerMode } = useUiPrefsStore();
-  const { clearData, tarifIDRGConfig, setTarifIDRGConfig, jknProportion, setJknProportion } = useCostingStore();
+  const { clearData, tarifIDRGConfig, setTarifIDRGConfig, setJknProportion } = useCostingStore();
 
-  const changeJKN=(proportion:number)=>{const p=Math.min(100,Math.max(0,proportion));setJknProportion(p);const mapped=buildBiayaRSMap(useHospitalCostStore.getState().config,useTarifPasienStore.getState().patients,useCostingStore.getState().periodNormalization?.factor||1,p);useTarifPasienStore.setState({biayaRSMap:mapped});useTarifPasienStore.getState().calculateDistribution();useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));};
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     const numValue = parseFloat(value) || 0;
@@ -98,26 +96,7 @@ export default function SettingsPage() {
         <p className="text-sm text-gray-600 mt-2">
           Tentukan persentase dari Total Biaya Rumah Sakit yang akan dialokasikan ke layanan JKN. Biaya untuk pasien Non-JKN tidak akan dibebankan ke dalam analisis unit cost E-Klaim.
         </p>
-        <div className="mt-4 flex items-center gap-4">
-          <input 
-            type="range" 
-            min="0" 
-            max="100" 
-            value={jknProportion}
-            onChange={(e) => changeJKN(Number(e.target.value) || 0)}
-            className="flex-1 accent-emerald-600"
-          />
-          <div className="w-16 flex items-center gap-1 border border-gray-300 rounded-lg px-2 py-1.5 bg-gray-50">
-            <input 
-              type="number" 
-              min="0" max="100" 
-              value={jknProportion}
-              onChange={(e) => changeJKN(Number(e.target.value) || 0)}
-              className="w-full text-sm font-semibold text-center bg-transparent border-none p-0 focus:ring-0"
-            />
-            <span className="text-sm font-semibold text-gray-500">%</span>
-          </div>
-        </div>
+        <div className="mt-4"><JKNProportionControl/></div>
       </div>
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">

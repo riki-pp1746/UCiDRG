@@ -1,3 +1,4 @@
+import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadTemplateWorkbook} from '../lib/templateWorkbookExport';
 import TemplateGuide from '../components/ui/TemplateGuide';
@@ -296,7 +297,7 @@ export default function CostingInputPage() {
 
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
-  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion, setJknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
+  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
   const [centerQuery,setCenterQuery]=useState('');
   const [componentQuery,setComponentQuery]=useState('');
   const [componentFlag,setComponentFlag]=useState('all');
@@ -308,21 +309,21 @@ export default function CostingInputPage() {
       // 1. Sinkronisasi data TXT E-Klaim terlebih dahulu
       const rawRecords = useCostingStore.getState().rawRecords;
       const tarifState = useTarifPasienStore.getState();
-      const hasMappedCosts = Object.values(tarifState.biayaRSMap).some(value => (value || 0) > 0);
+      const hasMappedCosts = Object.keys(tarifState.biayaRSMap).length > 0;
       if (rawRecords.length > 0 && tarifState.patients.length === 0) {
         tarifState.syncFromCosting(rawRecords);
       }
       // Pulihkan juga sesi lama yang pasiennya sudah ada tetapi mapping biayanya
       // masih kosong akibat alur upload versi sebelumnya.
       if (rawRecords.length > 0 && !hasMappedCosts) {
-        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor, jknProportion);
+        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor, useCostingStore.getState().jknProportion);
         useTarifPasienStore.setState({ biayaRSMap: mapped });
         useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
       }
 
       calculateDistribution();
     }
-  }, [activeTab, biayaRSMap, calculateDistribution, config, periodFactor,jknProportion,mergeCarePool]);
+  }, [activeTab, calculateDistribution, config, periodFactor]);
 
   const totalBiayaTahunan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
   const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
@@ -1397,7 +1398,7 @@ export default function CostingInputPage() {
             </div>
           )}
 
-          <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><label className="uc-label">Porsi JKN (%)<input className="uc-input" type="number" min="0" max="100" step="0.1" value={jknProportion} onChange={e=>{const proportion=Math.min(100,Math.max(0,Number(e.target.value)));setJknProportion(proportion);const mapped=buildBiayaRSMap(config,useTarifPasienStore.getState().patients,periodFactor,proportion);useTarifPasienStore.setState({biayaRSMap:mapped});useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));calculateDistribution();}}/></label><p className="text-sm">JKN {displayDecimal(String(jknProportion))}%: {formatRupiah(biayaJKN)} · Non-JKN {displayDecimal(String(100-jknProportion))}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
+          <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><JKNProportionControl/><p className="text-sm">JKN {displayDecimal(String(jknProportion))}%: {formatRupiah(biayaJKN)} · Non-JKN {displayDecimal(String(100-jknProportion))}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">Total Biaya Tahunan</p>
