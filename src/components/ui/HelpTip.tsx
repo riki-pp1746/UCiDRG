@@ -28,14 +28,14 @@ export default function HelpTip({ term, className = '' }: { term: GlossaryKey; c
         onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        className="text-[#965238] hover:text-[#864735] transition-colors"
+        className="text-[#965238] hover:text-[#17645D] transition-colors"
       >
         <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
       </button>
       {open && (
         <span
           role="tooltip"
-          className="absolute z-50 left-1/2 -translate-x-1/2 top-6 w-64 rounded-xl bg-[#864735] text-white text-xs leading-relaxed p-3 shadow-xl ring-1 ring-[#B86649]/40 text-left font-normal normal-case tracking-normal"
+          className="absolute z-50 left-1/2 -translate-x-1/2 top-6 w-64 rounded-xl bg-[#17645D] text-white text-xs leading-relaxed p-3 shadow-xl ring-1 ring-[#568D7E]/40 text-left font-normal normal-case tracking-normal"
         >
           <strong className="block text-[#F7DCC6] mb-1">{entry.term}</strong>
           {entry.plain}

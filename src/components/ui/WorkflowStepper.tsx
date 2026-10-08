@@ -20,7 +20,7 @@ export default function WorkflowStepper() {
           Langkah kerja · {doneCount} dari {total} selesai
         </p>
         <div className="hidden sm:block w-40 h-1.5 rounded-full bg-[#F5EFE8] overflow-hidden" aria-hidden>
-          <div className="h-full bg-[#B86649] transition-all" style={{ width: `${(doneCount / total) * 100}%` }} />
+          <div className="h-full bg-[#568D7E] transition-all" style={{ width: `${(doneCount / total) * 100}%` }} />
         </div>
       </div>
 
@@ -35,15 +35,15 @@ export default function WorkflowStepper() {
                 title={s.hint}
                 className={clsx(
                   'flex items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors border',
-                  active ? 'border-[#864735] bg-[#864735] text-white'
+                  active ? 'border-[#17645D] bg-[#17645D] text-white'
                     : s.status === 'done' ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                    : s.status === 'current' ? 'border-[#B86649] bg-[#FCF0E5] text-[#864735] hover:bg-[#F7E5D7]'
+                    : s.status === 'current' ? 'border-[#568D7E] bg-[#FCF0E5] text-[#17645D] hover:bg-[#F7E5D7]'
                     : 'border-[#EAE0D6] bg-white text-[#796E64] hover:bg-[#FBF8F3]'
                 )}
               >
                 <span className={clsx(
                   'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                  active ? 'bg-[#EFC2A5] text-[#864735]'
+                  active ? 'bg-[#EFC2A5] text-[#17645D]'
                     : s.status === 'done' ? 'bg-emerald-600 text-white'
                     : 'bg-[#EAE0D6] text-[#625850]'
                 )}>
@@ -58,9 +58,9 @@ export default function WorkflowStepper() {
 
       {beginnerMode && next && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#625850]">
-          <span><strong className="text-[#864735]">Langkah berikutnya:</strong> {next.hint}</span>
+          <span><strong className="text-[#17645D]">Langkah berikutnya:</strong> {next.hint}</span>
           {pathname !== next.path && (
-            <Link to={next.path} className="inline-flex items-center gap-1 font-semibold text-[#864735] hover:text-[#965238]">
+            <Link to={next.path} className="inline-flex items-center gap-1 font-semibold text-[#17645D] hover:text-[#965238]">
               Buka {next.label} <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           )}

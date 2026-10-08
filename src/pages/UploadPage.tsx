@@ -204,13 +204,13 @@ export default function UploadPage() {
       <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Template biaya RS (.XLSX), opsional - biaya juga bisa diisi manual di langkah berikutnya']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#864735] tracking-tight">Upload Center</h1>
+          <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Upload Center</h1>
           <p className="text-gray-500 mt-1">Unggah beberapa file TXT Klaim JKN (INA-CBG/iDRG) dan Excel Template sekaligus.</p>
         </div>
         {rawRecords.length > 0 && (
           <button
             onClick={() => navigate('/comparison')}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#864735] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
+            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#17645D] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
           >
             Lihat Hasil Sebelumnya <ArrowRight className="w-4 h-4" />
           </button>
@@ -237,7 +237,7 @@ export default function UploadPage() {
                 {result.txtFiles.length > 0 ? (
                   <>
                     <p className="text-sm text-gray-600">Berhasil menggabungkan <strong>{result.txtFiles.length} file</strong></p>
-                    <p className="text-2xl font-bold text-[#864735] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
+                    <p className="text-2xl font-bold text-[#17645D] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 italic">Tidak ada file TXT yang diunggah.</p>
@@ -313,7 +313,7 @@ export default function UploadPage() {
               {result.txtFiles.length > 0 && (
                 <button
                   onClick={() => navigate('/comparison')}
-                  className="px-6 py-3 bg-[#864735] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
+                  className="px-6 py-3 bg-[#17645D] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
                 >
                   Lihat Hasil Kalkulasi <ArrowRight className="w-4 h-4" />
                 </button>
@@ -392,7 +392,7 @@ export default function UploadPage() {
           />
           <label
             htmlFor="file-upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#864735] text-white rounded-xl hover:bg-[#753E30] font-semibold cursor-pointer transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#17645D] text-white rounded-xl hover:bg-[#195C56] font-semibold cursor-pointer transition-all active:scale-95"
           >
             Pilih File
           </label>
@@ -404,14 +404,14 @@ export default function UploadPage() {
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5"/></div>
             <div>
-              <p className="font-semibold text-[#864735]">Data Klaim JKN (INA-CBG/iDRG) (.TXT)</p>
+              <p className="font-semibold text-[#17645D]">Data Klaim JKN (INA-CBG/iDRG) (.TXT)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Upload banyak bulan sekaligus, sistem akan menggabungkannya otomatis.</p>
             </div>
           </div>
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-teal-50 text-teal-600 rounded-xl"><FileSpreadsheet className="w-5 h-5"/></div>
             <div>
-              <p className="font-semibold text-[#864735]">Template Costing (.XLSX)</p>
+              <p className="font-semibold text-[#17645D]">Template Costing (.XLSX)</p>
               <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sistem mendeteksi format Excel dan mengarahkannya ke input biaya RS.</p>
             </div>
           </div>
@@ -422,18 +422,18 @@ export default function UploadPage() {
       {sessions.length > 0 && uploadState === 'idle' && (
         <div className="bg-white rounded-[24px] border border-[#EAE0D6] shadow-sm overflow-hidden mt-8">
           <div className="px-6 py-4 border-b border-[#EAE0D6] bg-[#FBF8F3] flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#864735] flex items-center gap-2">
-              <History className="w-5 h-5 text-[#B86649]" /> Riwayat Upload
+            <h2 className="text-lg font-bold text-[#17645D] flex items-center gap-2">
+              <History className="w-5 h-5 text-[#568D7E]" /> Riwayat Upload
             </h2>
           </div>
           <div className="divide-y divide-[#EAE0D6]">
             {sessions.filter(s=>s.filename.toLowerCase().includes(sessionQuery.toLowerCase())).map(session => (
-              <div key={session.id} className={clsx('p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors', activeSessionId === session.id ? 'bg-[#864735]/5' : 'hover:bg-gray-50')}>
+              <div key={session.id} className={clsx('p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors', activeSessionId === session.id ? 'bg-[#17645D]/5' : 'hover:bg-gray-50')}>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-[#864735]">{session.filename}</h3>
+                    <h3 className="font-semibold text-[#17645D]">{session.filename}</h3>
                     {activeSessionId === session.id && (
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#B86649] text-white uppercase tracking-wider">Aktif</span>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#568D7E] text-white uppercase tracking-wider">Aktif</span>
                     )}
                   </div>
                   <div className="flex items-center gap-3 mt-1.5 text-xs text-[#625850]">
@@ -443,7 +443,7 @@ export default function UploadPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {activeSessionId !== session.id && (
-                    <button onClick={() => setActiveSession(session.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#864735] border border-[#864735] rounded-lg hover:bg-[#864735] hover:text-white transition-colors">
+                    <button onClick={() => setActiveSession(session.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#17645D] border border-[#17645D] rounded-lg hover:bg-[#17645D] hover:text-white transition-colors">
                       <PlayCircle className="w-4 h-4" /> Gunakan Data
                     </button>
                   )}

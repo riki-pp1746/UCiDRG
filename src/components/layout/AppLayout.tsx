@@ -81,7 +81,7 @@ export default function AppLayout() {
       >
         {/* Brand */}
         <div className="flex items-center gap-3 px-5 h-20 border-b border-[#EAE0D6] overflow-hidden">
-          <div className="rounded-lg bg-white p-1.5 shadow-md ring-1 ring-[#B86649]/40 flex-shrink-0">
+          <div className="rounded-lg bg-white p-1.5 shadow-md ring-1 ring-[#568D7E]/40 flex-shrink-0">
             <BrandLogo className="w-7 h-7" />
           </div>
           {sidebarOpen && (
@@ -117,8 +117,8 @@ export default function AppLayout() {
                 clsx(
                   'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative text-[13px]',
                   isActive
-                    ? 'bg-[#F3DFD1] text-[#753E30] font-semibold'
-                    : 'text-[#796E64] hover:bg-[#F5EFE8] hover:text-[#753E30] font-medium'
+                    ? 'bg-[#E7F1E9] text-[#195C56] font-semibold'
+                    : 'text-[#796E64] hover:bg-[#F5EFE8] hover:text-[#195C56] font-medium'
                 )
               }
             >
@@ -130,13 +130,13 @@ export default function AppLayout() {
                   <item.icon
                     className={clsx(
                       'w-[18px] h-[18px] flex-shrink-0 transition-colors',
-                      isActive ? 'text-[#864735]' : 'text-[#A08A7A] group-hover:text-[#864735]'
+                      isActive ? 'text-[#17645D]' : 'text-[#A08A7A] group-hover:text-[#17645D]'
                     )}
                     strokeWidth={1.75}
                   />
                   {sidebarOpen && <span className="truncate">{item.label}</span>}
                   {!sidebarOpen && (
-                    <div className="absolute left-14 bg-[#864735] text-white text-xs px-2.5 py-1.5 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg ring-1 ring-[#B86649]/30">
+                    <div className="absolute left-14 bg-[#17645D] text-white text-xs px-2.5 py-1.5 rounded-md opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50 shadow-lg ring-1 ring-[#568D7E]/30">
                       {item.label}
                     </div>
                   )}
@@ -151,7 +151,7 @@ export default function AppLayout() {
           <button
             onClick={handleLogout}
             className={clsx(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-[#796E64] hover:bg-[#F5EFE8] hover:text-[#753E30] transition-colors group font-medium',
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-[#796E64] hover:bg-[#F5EFE8] hover:text-[#195C56] transition-colors group font-medium',
               !sidebarOpen && 'justify-center'
             )}
           >
@@ -182,8 +182,8 @@ export default function AppLayout() {
                   className={clsx(
                     'px-4 py-1.5 text-[11px] font-semibold tracking-wide rounded-md transition-all',
                     viewMode === mode
-                      ? 'bg-[#864735] text-white shadow-sm'
-                      : 'text-[#796E64] hover:text-[#864735]'
+                      ? 'bg-[#17645D] text-white shadow-sm'
+                      : 'text-[#796E64] hover:text-[#17645D]'
                   )}
                 >
                   {label}
@@ -194,21 +194,21 @@ export default function AppLayout() {
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block leading-tight">
-              <p className="text-sm font-semibold text-[#864735]">{user?.username}</p>
+              <p className="text-sm font-semibold text-[#17645D]">{user?.username}</p>
               <p className="text-[10px] uppercase tracking-[0.16em] text-[#965238] font-semibold">Administrator</p>
             </div>
-            <div className="w-9 h-9 bg-[#864735] rounded-full flex items-center justify-center ring-2 ring-[#B86649]/50 text-[#F7DCC6] text-sm font-semibold font-serif">
+            <div className="w-9 h-9 bg-[#17645D] rounded-full flex items-center justify-center ring-2 ring-[#568D7E]/50 text-[#F7DCC6] text-sm font-semibold font-serif">
               {user?.username?.charAt(0).toUpperCase()}
             </div>
           </div>
         </header>
 
         {/* warm hairline accent */}
-        <div className="h-px bg-gradient-to-r from-transparent via-[#B86649]/50 to-transparent" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[#568D7E]/50 to-transparent" />
 
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-10">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-5 rounded-xl border border-[#EAE0D6] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#864735]">{analysisName} · Sesi sementara</p><p className="text-xs text-[#796E64] mt-1">Data kedua ruang hanya berada di memori. Logout, refresh atau menutup tab menghapus data. Ekspor atau unduh cadangan sebelum keluar.</p></div>
+            <div className="mb-5 rounded-xl border border-[#EAE0D6] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#17645D]">{analysisName} · Sesi sementara</p><p className="text-xs text-[#796E64] mt-1">Data kedua ruang hanya berada di memori. Logout, refresh atau menutup tab menghapus data. Ekspor atau unduh cadangan sebelum keluar.</p></div>
             {!revision && <WorkflowStepper />}
             <Outlet />
           </div>

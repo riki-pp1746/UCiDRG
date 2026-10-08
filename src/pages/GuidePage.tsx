@@ -116,7 +116,7 @@ const DATA_YANG_DISIAPKAN = [
 // ────────────────────────────────────────────────────────────
 export default function GuidePage(){
   return <div className="space-y-6 max-w-5xl mx-auto">
-    <section className="bg-gradient-to-br from-[#864735] to-[#A65D43] rounded-2xl p-7 text-white">
+    <section className="bg-gradient-to-br from-[#17645D] to-[#A65D43] rounded-2xl p-7 text-white">
       <p className="flex items-center gap-2 text-[#F7DCC6] text-sm mb-3"><BookOpen size={22}/>Panduan Penggunaan</p>
       <h1 className="text-3xl font-bold !text-white">Analisis 18 Komponen</h1>
       <p className="text-white/75 mt-3">Siapkan biaya RS dan klaim, periksa alokasi, lalu telusuri unit cost serta tarif pasien dalam lima tahap kerja.</p>

@@ -16,7 +16,7 @@ export function BrandLogo({ className = "w-12 h-12" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
       {/* Background shape */}
-      <rect width="48" height="48" rx="14" fill="#9C503A" />
+      <rect width="48" height="48" rx="14" fill="#087D76" />
       
       {/* U and C intertwined with medical/chart vibe */}
       <path d="M14 16V28C14 32.4183 17.5817 36 22 36C26.4183 36 30 32.4183 30 28V24" stroke="#EFC2A5" strokeWidth="4" strokeLinecap="round" />
