@@ -26,9 +26,9 @@ export function useWorkflowProgress() {
 
     const flags = [uploaded, costed, calculated, calculated, calculated];
     const base: Omit<WorkflowStep, 'status'>[] = [
-      { id: 'upload', label: 'Upload Data', path: '/upload', hint: 'Unggah file klaim JKN (.TXT) dan template biaya (.XLSX).' },
-      { id: 'costing', label: 'Input Biaya RS', path: '/costing', hint: 'Lengkapi biaya Overhead, Intermediate, dan Pusat Biaya Utama.' },
-      { id: 'patient', label: 'Cost per Pasien', path: '/tarif-pasien', hint: 'Periksa biaya yang terbagi ke tiap pasien.' },
+      { id: 'upload', label: 'Data', path: '/upload', hint: 'Unggah file klaim JKN (.TXT) dan template biaya (.XLSX).' },
+      { id: 'costing', label: 'Biaya & Alokasi', path: '/costing', hint: 'Lengkapi biaya Overhead, Intermediate, dan Pusat Biaya Utama.' },
+      { id: 'patient', label: 'Hasil Pasien', path: '/tarif-pasien', hint: 'Periksa biaya yang terbagi ke tiap pasien.' },
       { id: 'compare', label: 'Perbandingan', path: '/compare', hint: 'Bandingkan unit cost dengan tarif klaim.' },
       { id: 'report', label: 'Laporan', path: '/reports', hint: 'Unduh laporan hasil analisis.' },
     ];

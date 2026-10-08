@@ -131,11 +131,11 @@ describe('Analisis tambahan setelah login',()=>{
     const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
     expect(html).toContain('Tarif dan perbandingan');expect(html).toContain('Adjustment Factor');expect(html).toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
   });
-  for(const [path,title] of [['/','Tiga langkah dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
+  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
       const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
-      expect(html).toContain(title);if(path!=='/')expect(html).toContain('LANGKAH');expect(html).toContain('href="/revisi4/upload"');
+      expect(html).toContain(title);if(['/upload','/costing','/tarif-pasien','/compare','/reports'].includes(path))expect(html).toContain('DARI 5');expect(html).toContain('href="/revisi4/upload"');
     });
   }
   it('menahan unduh ketika input berubah setelah dihitung',()=>{
@@ -147,5 +147,13 @@ describe('Analisis tambahan setelah login',()=>{
 
 it('mempertahankan halaman lama sebagai tampilan utama',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Step 4: Cost per Pasien');expect(html).toContain('href="/upload"');expect(html).toContain('href="/revisi4"');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+ expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Step 4: Cost per Pasien');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+});
+
+it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
+ const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
+ const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/upload']},createElement(AppRoutes)));
+ expect(html).toContain('value="integrated" selected=""');
+ for(const path of ['dashboard','upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="/revisi4/${path}"`);
+ expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).toContain('Data dan hasil tersimpan terpisah');
 });

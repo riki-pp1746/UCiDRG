@@ -165,3 +165,19 @@ button:disabled { cursor:not-allowed; opacity:.45; }
 }
 
 @media print { details::details-content { content-visibility:visible!important; } details > :not(summary) { display:block!important; } details > summary { display:none!important; } }
+
+/* Shared navy and brass presentation across both analysis workspaces. */
+.uc-primary { background:#0B1F3A; border-color:#0B1F3A; }
+.uc-primary:hover { background:#142F50; }
+.uc-eyebrow,.uc-guide-arrow { color:#977544; }
+.uc-panel,.uc-result-toolbar,.uc-guide-card,.uc-stepper { border-color:#E7E5DF; }
+.uc-panel h2,.uc-page-heading h1 { color:#0B1F3A; }
+.uc-welcome { background:linear-gradient(120deg,#F7F6F3,#FBF7EE); border-color:#E7E5DF; }
+.uc-icon { color:#977544; background:#FBF7EE; }
+.uc-guide-card:hover { border-color:#B08D57; }
+.uc-stepper { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); padding:16px; gap:8px; }
+.uc-step { border:1px solid #E7E5DF; padding:9px; color:#55524C; white-space:normal; }
+.uc-step.current { color:white; background:#0B1F3A; border-color:#0B1F3A; }
+.uc-step.current .uc-step-number { background:#C2A05D; border-color:#C2A05D; color:#0B1F3A; }
+.uc-input:focus-visible,.uc-primary:focus-visible,.uc-secondary:focus-visible,.uc-step:focus-visible { outline:2px solid #B08D57; outline-offset:3px; }
+@media (max-width:640px) { .uc-stepper { grid-template-columns:repeat(2,minmax(0,1fr)); } }

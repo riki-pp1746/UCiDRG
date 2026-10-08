@@ -30,12 +30,11 @@ const navItems = [
   { path: '/', icon: BookOpen, label: 'Mulai Cepat (Panduan)', exact: true },
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/upload', icon: Upload, label: 'Upload Data' },
-  { path: '/costing', icon: Calculator, label: 'Input Biaya RS' },
-  { path: '/tarif-pasien', icon: Pill, label: 'Cost per Pasien' },
+  { path: '/costing', icon: Calculator, label: 'Biaya & Alokasi' },
+  { path: '/tarif-pasien', icon: Pill, label: 'Hasil Pasien' },
   { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
-  { path: '/revisi4', icon: Calculator, label: 'Analisis Revisi 4' },
 ];
 
 export default function AppLayout() {
@@ -49,6 +48,8 @@ export default function AppLayout() {
   const viewMode = revision ? revisionMode : legacyMode;
   const toggleViewMode = revision ? revisionToggle : legacyToggle;
   const navigate = useNavigate();
+  const analysisName = revision ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
+  const activeNavItems = navItems.map(item => ({...item, path: revision ? '/revisi4' + (item.path === '/' ? '' : item.path) : item.path}));
 
   const handleLogout = () => {
     useV4Store.getState().cancel();
@@ -91,10 +92,17 @@ export default function AppLayout() {
 
         {/* Navigation */}
         <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+          <label className="block px-2 pb-4">
+            <span className={sidebarOpen ? 'block text-xs text-white/60 mb-2' : 'sr-only'}>Ruang analisis</span>
+            <select aria-label="Ruang analisis" value={revision ? 'integrated' : 'components'} onChange={e => navigate(e.target.value === 'integrated' ? '/revisi4' : '/')} className="w-full rounded-lg border border-white/20 bg-[#0B1F3A] text-white text-xs p-2">
+              <option value="components">Analisis 18 Komponen</option>
+              <option value="integrated">Analisis Biaya Terintegrasi</option>
+            </select>
+          </label>
           {sidebarOpen && (
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#C2A05D]/80">Navigasi</p>
           )}
-          {navItems.map((item) => (
+          {activeNavItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
@@ -195,6 +203,7 @@ export default function AppLayout() {
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-10">
           <div className="max-w-7xl mx-auto">
+            <div className="mb-5 rounded-xl border border-[#E7E5DF] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#0B1F3A]">{analysisName}</p><p className="text-xs text-[#77746D] mt-1">Data dan hasil tersimpan terpisah untuk setiap ruang analisis.</p></div>
             {!revision && <WorkflowStepper />}
             <Outlet />
           </div>
