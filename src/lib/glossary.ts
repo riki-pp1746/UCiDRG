@@ -9,6 +9,9 @@ export interface GlossaryEntry {
 }
 
 export const GLOSSARY: Record<string, GlossaryEntry> = {
+  hbr: {term:'Hospital Base Rate (HBR)',plain:'Biaya populasi pasien RS yang sama dibagi total casemix, terpisah inap/jalan, periode, dan metode. HBR lokal ini memakai CW RS yang dinormalisasi terhadap populasi sendiri; bukan NBR nasional.',example:'Biaya Rp10 juta / casemix 40 = HBR Rp250.000.'},
+  cwRS: {term:'Cost Weight RS',plain:'Rata-rata unit cost kelompok iDRG dibagi rata-rata unit cost seluruh kasus RS pada jenis rawat yang sama. Rata-rata seluruh kasus tertimbang jumlah kasus.',example:'Biaya rata-rata kelompok Rp100.000 / rata-rata RS Rp250.000 = CW RS 0,4.'},
+  casemixRS: {term:'Casemix RS',plain:'Jumlah CW RS kelompok dikalikan kasus kelompok. Populasi biaya dan kasus harus sama dengan pembentuk HBR.',example:'CW 0,4 × 10 kasus = casemix kelompok 4.'},
   overhead: {
     term: 'Biaya Penunjang Umum (Overhead)',
     plain: 'Biaya unit yang tidak merawat pasien langsung tetapi menopang seluruh RS, seperti administrasi, laundry, dapur, dan kebersihan.',

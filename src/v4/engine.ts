@@ -1,4 +1,5 @@
 import {calculateIDRGTariff} from '../lib/calculations/idrgTariff';
+import {calculateHospitalBaseRate} from '../lib/calculations/hospitalBaseRate';
 import { dec, sum, ratio } from './numbers';
 import { KEYS, EXPENSES, emptyBill } from './types';
 import type { Input, Claim, Center, Care, Method, Result, Issue, Reference, MethodResult, Pool, PatientResult, Status } from './types';
@@ -232,7 +233,8 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
       if(pop.length<s.sampleSize)issue('V10',`${pop[0].code}: kurang dari ${s.sampleSize} kasus.`,'warning',method);
       groups.push({code:pop[0].code,care:pop[0].care,count:pop.length,mean:sum(pop.map(p=>p.uc)).div(pop.length).toString(),median:quantile(.5).toString(),lowSample:pop.length<s.sampleSize});
     }
-    results.push({method,blocked:issues.some(i=>i.severity==='error'&&(!i.method||i.method===method)),total:sum(pools.map(p=>p.total)).toString(),pools,patients,traces,groups});
+    const localCosting=calculateHospitalBaseRate(patients.map(p=>({id:p.id,sep:p.sep,code:p.code,care:p.care,uc:p.uc})),{method,period:`LK ${s.lkStart}–${s.lkEnd}; klaim ${effective} bulan (${months.join(', ')})`,pools});
+    results.push({method,blocked:issues.some(i=>i.severity==='error'&&(!i.method||i.method===method)),total:sum(pools.map(p=>p.total)).toString(),pools,patients,traces,groups,localCosting});
   }
   // Set lookup per patient above should be linear, even with large populations.
   const problemClaims=new Set(issues.filter(i=>i.claim).map(i=>i.claim));

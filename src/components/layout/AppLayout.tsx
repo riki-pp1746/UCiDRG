@@ -48,6 +48,7 @@ export default function AppLayout() {
   const viewMode = revision ? revisionMode : legacyMode;
   const toggleViewMode = revision ? revisionToggle : legacyToggle;
   const navigate = useNavigate();
+  const patientView = useLocation().pathname.endsWith('/tarif-pasien');
   const analysisName = revision ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
   const activeNavItems = navItems.map(item => ({...item, path: revision ? '/revisi4' + (item.path === '/' ? '' : item.path) : item.path}));
 
@@ -169,7 +170,7 @@ export default function AppLayout() {
             </button>
 
             {/* View mode: segmented control */}
-            <div className="hidden sm:flex items-center bg-[#F3F2EE] p-1 rounded-lg ring-1 ring-[#E7E5DF]">
+            {!patientView&&<div className="hidden sm:flex items-center bg-[#F3F2EE] p-1 rounded-lg ring-1 ring-[#E7E5DF]">
               {([['INACBG', 'Klaim JKN (INA-CBG/iDRG)'], ['IDRG', 'iDRG']] as const).map(([mode, label]) => (
                 <button
                   key={mode}
@@ -184,7 +185,7 @@ export default function AppLayout() {
                   {label}
                 </button>
               ))}
-            </div>
+            </div>}
           </div>
 
           <div className="flex items-center gap-4">

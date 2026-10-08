@@ -129,9 +129,9 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
 describe('Analisis tambahan setelah login',()=>{
   it('menu tarif iDRG membuka rincian pasien setelah login',()=>{
     const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
-    expect(html).toContain('Tarif dan perbandingan');expect(html).toContain('Adjustment Factor');expect(html).toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
+    expect(html).toContain('CW, Casemix &amp; HBR RS');expect(html).not.toContain('National Base Rate');expect(html).not.toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
   });
-  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
+  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
       const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
@@ -147,7 +147,7 @@ describe('Analisis tambahan setelah login',()=>{
 
 it('mempertahankan halaman lama sebagai tampilan utama',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Tab 3. Tarif dan perbandingan');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+ expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
 });
 
 it('panduan kedua ruang menjelaskan lima tahap dan hanya menautkan data ruang aktif',()=>{
@@ -156,9 +156,9 @@ it('panduan kedua ruang menjelaskan lima tahap dan hanya menautkan data ruang ak
    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[prefix||'/']},createElement(AppRoutes)));
    for(const title of ['1. Data','2. Biaya &amp; Alokasi','3. Hasil Pasien','4. Perbandingan','5. Laporan'])expect(html).toContain(title);
    for(const path of ['upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="${prefix}/${path}"`);
-   expect(html).toContain('Cost Weight × National Base Rate × Adjustment Factor');expect(html).toContain('bawaan 1');expect(html).toContain('Data kedua ruang');expect(html).toContain('belum dienkripsi');
-   if(prefix){expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. Tarif dan perbandingan');}
-   else {expect(html).toContain('Tab 3. Tarif dan perbandingan');expect(html).toContain('rincian klaim unggahan tidak seluruhnya disimpan');expect(html).not.toContain('LANGKAH 06');expect(html).not.toContain('sesuai standar penghitungan tarif iDRG Nasional');}
+   expect(html).toContain('HBR = biaya populasi yang sama ÷ total casemix');expect(html).toContain('bawaan 1');expect(html).toContain('Data kedua ruang');expect(html).toContain('belum dienkripsi');
+   if(prefix){expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. CW, Casemix &amp; HBR RS');}
+   else {expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('rincian klaim unggahan tidak seluruhnya disimpan');expect(html).not.toContain('LANGKAH 06');expect(html).not.toContain('sesuai standar penghitungan tarif iDRG Nasional');}
  }
 });
 

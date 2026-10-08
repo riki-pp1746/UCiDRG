@@ -59,7 +59,7 @@ export interface Pool {
 }
 export interface Trace { donor: string; recipient: string; driver: string; unit: string; amount: Money; }
 export interface GroupResult { code: string; care: Care; count: number; mean: string; median: string; lowSample: boolean; }
-export interface MethodResult { method: Method; blocked: boolean; total: Money; pools: Pool[]; patients: PatientResult[]; traces: Trace[]; groups: GroupResult[]; }
+export interface MethodResult { method: Method; blocked: boolean; total: Money; pools: Pool[]; patients: PatientResult[]; traces: Trace[]; groups: GroupResult[]; localCosting?:import('../lib/calculations/hospitalBaseRate').HospitalCostResult; }
 export interface Result { methods: MethodResult[]; issues: Issue[]; quality: string; rows: number; accepted: number; rejected: number; referenceIds: string[]; }
 export type Role = 'Administrator'|'Analis'|'Reviewer'|'Pembaca';
 export interface Profile { id: string; name: string; role: Role; }

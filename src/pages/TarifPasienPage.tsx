@@ -1,6 +1,8 @@
+import {money,maskSEP} from '../v4/numbers';
+import * as XLSX from 'xlsx';
+import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import PageIntro from '../components/ui/PageIntro';
-import HelpTip from '../components/ui/HelpTip';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import IDRGTariffPage from './IDRGTariffPage';
 import React, { useState, useEffect } from 'react';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
@@ -27,13 +29,13 @@ export default function TarifPasienPage() {
   const pageSize = 10;
 
   const {
-    patients, biayaRSMap,
+    patients, biayaRSMap, localCosting,
     addPatient, updatePatient, removePatient, clearPatients,
     calculateDistribution, validationIssues, validateAgainstHospital
   } = useTarifPasienStore();
 
   const { config } = useHospitalCostStore();
-  const { rawRecords, periodNormalization, tarifIDRGConfig, jknProportion } = useCostingStore();
+  const { rawRecords, periodNormalization } = useCostingStore();
   const periodFactor = periodNormalization?.factor || 1;
 
 
@@ -45,7 +47,7 @@ export default function TarifPasienPage() {
         id: `sep-${r.sep || i}-${Date.now()}`,
         noSEP: r.sep || '',
         inaCBGs: r.inacbg || '',
-        drg: r.idrg?.drg_code || r.inacbg || '',
+        drg: r.idrg?.drg_code || '',
         diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
         kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
         lhr: r.los || 0,
@@ -79,14 +81,14 @@ export default function TarifPasienPage() {
 
   // Recalculate saat tab pindah
   useEffect(() => {
-    if (activeTab === 'hasil') {
+    if (activeTab !== 'input') {
       calculateDistribution();
     }
-  }, [activeTab, calculateDistribution]);
+  }, [activeTab, calculateDistribution,biayaRSMap,periodNormalization?.label]);
 
   useEffect(() => {
     validateAgainstHospital(config, periodFactor);
-  }, [patients, biayaRSMap, config, periodFactor, validateAgainstHospital]);
+  }, [patients, biayaRSMap, localCosting, config, periodFactor, validateAgainstHospital]);
 
   const inputTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
   const resultTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
@@ -95,6 +97,7 @@ export default function TarifPasienPage() {
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
   const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
   const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
+  const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(wb,'Costing-Pasien-CW-HBR-RS.xlsx');};
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
       <span>Menampilkan {(page - 1) * pageSize + (patients.length ? 1 : 0)}-{Math.min(page * pageSize, patients.length)} dari {patients.length} pasien</span>
@@ -116,26 +119,8 @@ export default function TarifPasienPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <PageIntro title="Langkah 3: Cost per pasien" what="Biaya RS dibagi ke setiap pasien mengikuti proporsi tagihan di 18 variabel tarif. Tarif iDRG dihitung dengan rumus: Cost Weight × National Base Rate × Adjustment Factor." result="Unit cost dan tarif iDRG per pasien. Nilai Base Rate dan faktor penyesuaian dapat diubah di menu Pengaturan." />
-      <section aria-label="Cara hitung tarif iDRG" className="rounded-2xl bg-white border border-[#E7E5DF] shadow-sm p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-[#0B1F3A] flex items-center gap-2">Cara hitung tarif iDRG <HelpTip term="rumusIdrg" /></h2>
-          <Link to="/settings" className="text-xs font-semibold text-[#977544] hover:text-[#0B1F3A]">Ubah pengaturan</Link>
-        </div>
-        <p className="mt-2 text-sm text-[#3D3A33]">
-          Tarif iDRG = <strong>Cost Weight</strong> <HelpTip term="costWeight" /> &times; <strong>Base Rate</strong> <HelpTip term="baseRate" /> &times; <strong>Adjustment Factor</strong> <HelpTip term="adjFaktor" />
-        </p>
-        {tarifIDRGConfig.useFormula ? (
-          <dl className="mt-3 grid grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Base Rate Rawat Inap</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{formatRupiah(tarifIDRGConfig.baseRateInap)}</dd></div>
-            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Base Rate Rawat Jalan</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{formatRupiah(tarifIDRGConfig.baseRateJalan)}</dd></div>
-            <div className="rounded-xl bg-[#F7F6F3] p-3"><dt className="text-[#77746D]">Adjustment Factor</dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{tarifIDRGConfig.adjFactor}</dd></div>
-            <div className="rounded-xl bg-[#FBF7EE] p-3 ring-1 ring-[#B08D57]/30"><dt className="text-[#977544]">Proporsi JKN <HelpTip term="proporsiJkn" /></dt><dd className="font-semibold text-[#0B1F3A] mt-0.5">{jknProportion}%</dd></div>
-          </dl>
-        ) : (
-          <p className="mt-3 text-xs text-[#77746D]">Rumus iDRG sedang dimatikan. Sistem memakai tarif iDRG bawaan dari data klaim. Aktifkan di Pengaturan.</p>
-        )}
-      </section>
+      <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
+      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · biaya populasi {money(p.total)} · casemix {p.casemix??'Tidak dapat dihitung'}</p></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = biaya populasi yang sama ÷ total casemix.</p></section>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -152,7 +137,7 @@ export default function TarifPasienPage() {
         {[
           { id: 'input', label: '1. Input Data Pasien (E-Klaim)', icon: Users },
           { id: 'hasil', label: '2. Rincian biaya dan unit cost', icon: Calculator },
-          { id: 'tarif', label: '3. Tarif dan perbandingan', icon: Calculator },
+          { id: 'tarif', label: '3. CW, Casemix & HBR RS', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
@@ -277,7 +262,7 @@ export default function TarifPasienPage() {
               <h2 className="text-sm font-bold text-gray-800">Unit Cost per Pasien (DRG)</h2>
               <p className="text-xs text-gray-500 mt-0.5">Penjumlahan alokasi akomodasi (Step 2) dan komponen medik (Step 3) per individu.</p>
             </div>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-100">
+            <button onClick={exportCosting} disabled={!localCosting} className="flex items-center gap-1.5 px-3 py-1.5 border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-100 disabled:opacity-50">
               <Download className="w-3.5 h-3.5" /> Export Excel
             </button>
           </div>
@@ -307,18 +292,18 @@ export default function TarifPasienPage() {
                 ) : (
                   resultPatients.map(p => (
                     <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-3 py-2 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 font-medium">{p.noSEP || '-'}</td>
+                      <td className="px-3 py-2 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 font-medium">{maskSEP(p.noSEP)}</td>
                       <td className="px-3 py-2">{p.drg || '-'}</td>
                       <td className="px-3 py-2">{KELAS_RAWAT_LABELS[p.kelasRawat]}</td>
                       <td className="px-3 py-2 text-right">{p.lhr}</td>
                       <td className="px-3 py-2 text-right font-medium text-blue-700 bg-blue-50/30">{formatRupiah(p.accommodationCost)}</td>
                       {ALL_KOMPONEN_KEYS.filter(k => k !== 'room_amt').map(k => (
                         <td key={k} className="px-3 py-2 text-right border-l border-gray-100 text-gray-500 font-mono">
-                          {formatRupiah(p.distributedCosts[k] || 0)}
+                          {money(p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0))}
                         </td>
                       ))}
                       <td className="px-3 py-2 sticky right-0 bg-teal-50 font-bold text-teal-700 border-l border-teal-100 text-right">
-                        {formatRupiah(p.totalCostPerPatient)}
+                        {money(p.totalCostPerPatientDecimal??String(p.totalCostPerPatient))}
                       </td>
                     </tr>
                   ))

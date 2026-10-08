@@ -94,6 +94,8 @@ export interface PatientRecord extends KomponenTarif18 {
   accommodationCost: number;
   distributedCosts: Partial<KomponenTarif18>;
   totalCostPerPatient: number;
+  totalCostPerPatientDecimal?: string;
+  distributedCostsDecimal?: Partial<Record<keyof KomponenTarif18,string>>;
 }
 
 export interface KomponenDistribusi {

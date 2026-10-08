@@ -4,8 +4,11 @@ import {renderToStaticMarkup} from 'react-dom/server';
 import {MemoryRouter} from 'react-router-dom';
 import IDRGTariffPage from '../src/pages/IDRGTariffPage';
 import {useCostingStore} from '../src/stores/costingStore';
+import {useTarifPasienStore} from '../src/stores/tarifPasienStore';
+import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
 import {KEYS} from '../src/v4/types';
 vi.mock('../src/stores/costingStore',async importOriginal=>{const actual=await importOriginal<typeof import('../src/stores/costingStore')>();return {...actual,useCostingStore:Object.assign((selector?: (s:ReturnType<typeof actual.useCostingStore.getState>)=>unknown)=>selector?selector(actual.useCostingStore.getState()):actual.useCostingStore.getState(),actual.useCostingStore)};});
+vi.mock('../src/stores/tarifPasienStore',async importOriginal=>{const actual=await importOriginal<typeof import('../src/stores/tarifPasienStore')>();return {...actual,useTarifPasienStore:Object.assign((selector?: (s:ReturnType<typeof actual.useTarifPasienStore.getState>)=>unknown)=>selector?selector(actual.useTarifPasienStore.getState()):actual.useTarifPasienStore.getState(),actual.useTarifPasienStore)};});
 import {calculateIDRGTariff,neutralAdjustment} from '../src/lib/calculations/idrgTariff';
 import {DEFAULT_TARIF_IDRG_CONFIG,upgradeTarifIDRGConfig,runRVUAllocation} from '../src/lib/calculations/patientLevelCosting';
 import {idrgPatientDetail,idrgDetailExport} from '../src/lib/calculations/idrgPatientDetails';
@@ -29,8 +32,9 @@ it('formula, existing E-Klaim tariffs and unit cost remain distinct in patient d
 it('main allocation engine uses same formula and preserves original E-Klaim tariff',()=>{
   const {results}=runRVUAllocation([record],null,undefined,config);expect(results[0].tarifIDRG).toBe(1000);expect(record.idrg.total_tarif).toBe(700);
 });
-it('patient page renders CW, NBR, adjustment, unit cost and all three tariff sources with masked SEP',()=>{
+it('patient page now renders hospital CW and HBR with no tariff comparisons',()=>{
   useCostingStore.setState({patientResults:[result],rawRecords:[record],tarifIDRGConfig:config,rvuGlobalCosts:record.billing,isProcessing:false});
+  useTarifPasienStore.setState({localCosting:calculateHospitalBaseRate([{id:'test',sep:record.sep,care:'inap',code:'A',uc:'600'}],{method:'18 Komponen',period:'2025-01'}),calculationVersion:1});
   const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(IDRGTariffPage)));
-  for(const text of ['Tarif iDRG per Pasien','CW','NBR','Adj Factor','Unit cost RS','Tarif INA-CBG','Tarif iDRG eksisting','Rp 1.000','Rp 600','Rp 700'])expect(html).toContain(text);expect(html).not.toContain('SYNTHETIC');expect(html).not.toContain('Masukkan Cost Weight');
+  for(const text of ['CW, Casemix &amp; HBR RS','HBR Inap','HBR Jalan','Unit cost pasien','Rp 600'])expect(html).toContain(text);expect(html).not.toContain('SYNTHETIC');for(const text of ['Tarif INA-CBG','Tarif iDRG eksisting','National Base Rate','PROFIT','DEFISIT','BEP'])expect(html).not.toContain(text);
 });

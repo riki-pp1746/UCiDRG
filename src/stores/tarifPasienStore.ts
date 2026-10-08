@@ -11,6 +11,10 @@ import {
 import type { HospitalCostConfig } from '../types/hospitalCost.types';
 import type { RVUGlobalCosts } from '../types/costing.types';
 import type { ValidationIssue } from '../types/tarifPasien.types';
+import {calculateHospitalBaseRate} from '../lib/calculations/hospitalBaseRate';
+import type {HospitalCostResult} from '../lib/calculations/hospitalBaseRate';
+import {dec,sum} from '../v4/numbers';
+import {useCostingStore} from './costingStore';
 
 /**
  * Membentuk nilai biaya RS untuk 18 variabel setelah data Excel dan TXT tersedia.
@@ -97,6 +101,8 @@ interface TarifPasienState {
   biayaRSMap: Partial<Record<keyof KomponenTarif18, number>>; // Total biaya RS inputan per komponen
   distribusi: KomponenDistribusi[]; // Ringkasan distribusi
   validationIssues: ValidationIssue[];
+  localCosting: HospitalCostResult|null;
+  calculationVersion: number;
   
   // Actions
   setPatients: (patients: PatientRecord[]) => void;
@@ -119,14 +125,16 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       biayaRSMap: {},
       distribusi: [],
       validationIssues: [],
+      localCosting: null,
+      calculationVersion: 0,
 
-      setPatients: (patients) => set({ patients }),
-      addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }] })),
+      setPatients: (patients) => set({ patients,localCosting:null }),
+      addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }],localCosting:null })),
       updatePatient: (id, data) => set((s) => ({
-        patients: s.patients.map(p => p.id === id ? { ...p, ...data } : p)
+        patients: s.patients.map(p => p.id === id ? { ...p, ...data } : p),localCosting:null
       })),
-      removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id) })),
-      clearPatients: () => set({ patients: [] }),
+      removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id),localCosting:null })),
+      clearPatients: () => set({ patients: [],localCosting:null }),
       syncFromCosting: (rawRecords: any[]) => {
         if (!rawRecords || rawRecords.length === 0) return;
         const mapped = rawRecords.map((r, i) => ({
@@ -134,7 +142,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           id: `sep-${r.sep || i}-${Date.now()}`,
           noSEP: r.sep || '',
           inaCBGs: r.inacbg || '',
-          drg: r.idrg?.drg_code || r.inacbg || '',
+          drg: r.idrg?.drg_code || '',
           diagnosis: r.idrg?.drg_description || r.deskripsi_inacbg || r.diaglist || '',
           kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as any,
           lhr: r.los || 0,
@@ -157,11 +165,11 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           consumable_amt: r.billing?.consumable_amt || 0,
           device_rent_amt: r.billing?.device_rent_amt || 0,
         }));
-        set({ patients: mapped });
+        set({ patients: mapped,localCosting:null });
       },
       
       setBiayaRS: (key, amount) => set((s) => ({
-        biayaRSMap: { ...s.biayaRSMap, [key]: amount }
+        biayaRSMap: { ...s.biayaRSMap, [key]: amount },localCosting:null
       })),
 
       calculateDistribution: () => {
@@ -187,28 +195,29 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           };
         });
 
-        const rasioMap = distribusi.reduce((acc, curr) => {
-          acc[curr.key] = curr.rasio;
+        const totalBillingMap = distribusi.reduce((acc, curr) => {
+          acc[curr.key] = sum(patients.map(row=>String(row[curr.key]||0))).toString();
           return acc;
-        }, {} as Record<keyof KomponenTarif18, number>);
+        }, {} as Record<keyof KomponenTarif18, string>);
 
         // Jika tidak ada pasien, cukup update distribusi saja
         if (patients.length === 0) {
-          set({ distribusi });
+          set({ distribusi,localCosting:null });
           return;
         }
 
         // 3. Distribusikan ke pasien
         const updatedPatients = patients.map((p) => {
           const distributedCosts: Partial<KomponenTarif18> = {};
-          let totalDist = 0;
+          const distributedCostsDecimal: Partial<Record<keyof KomponenTarif18,string>> = {};
 
           // Step 3: Alokasi 18 Variabel berdasarkan rasio E-Klaim
           ALL_KOMPONEN_KEYS.forEach(key => {
             const biayaPasienDariKlaim = p[key] || 0;
-            const alokasi = biayaPasienDariKlaim * rasioMap[key];
-            distributedCosts[key] = alokasi;
-            totalDist += alokasi;
+            const totalBilling=dec(totalBillingMap[key]);
+            const alokasi=totalBilling.gt(0)?dec(String(biayaPasienDariKlaim)).mul(String(biayaRSMap[key]||0)).div(totalBilling):dec(0);
+            distributedCostsDecimal[key]=alokasi.toString();
+            distributedCosts[key] = alokasi.toNumber();
           });
 
           // Satu sumber kebenaran: seluruh 18 komponen, termasuk kamar, memakai
@@ -219,11 +228,15 @@ export const useTarifPasienStore = create<TarifPasienState>()(
             ...p,
             accommodationCost: akomodasi,
             distributedCosts,
-            totalCostPerPatient: totalDist
+            totalCostPerPatient: sum(Object.values(distributedCostsDecimal)).toNumber(),
+            totalCostPerPatientDecimal: sum(Object.values(distributedCostsDecimal)).toString(),
+            distributedCostsDecimal
           };
         });
 
-        set({ distribusi, patients: updatedPatients });
+        const period=useCostingStore.getState().periodNormalization?.label||'Periode klaim belum dikonfirmasi';
+        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
+        set({ distribusi, patients: updatedPatients,localCosting,calculationVersion:get().calculationVersion+1 });
       },
 
       validateAgainstHospital: (config, periodFactor = 1) => {
@@ -288,7 +301,10 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       partialize: (state) => ({
         biayaRSMap: state.biayaRSMap,
         distribusi: state.distribusi,
-      })
+        localCosting:state.localCosting,
+        calculationVersion:state.calculationVersion,
+      }),
+      merge:(saved,current)=>({...current,...saved as Partial<TarifPasienState>,localCosting:null})
     }
   )
 );
