@@ -229,7 +229,7 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
       const inliers=pop.filter(p=>!p.outlier);
       const sorted=inliers.map(p=>dec(p.uc)).sort((a,b)=>a.cmp(b));
       const median=sorted[Math.floor((sorted.length-1)/2)].plus(sorted[Math.ceil((sorted.length-1)/2)]).div(2);
-      if(pop.some(p=>p.outlier))issue('V14',`${pop[0].code}: outlier di luar rata-rata ±2 SD sampel dikeluarkan dari pembentuk CW/Casemix/HBR; biaya tetap direkonsiliasi.`,'warning',method);
+      if(pop.some(p=>p.outlier))issue('V14',`${pop[0].code}: outlier di luar rata-rata ±2 SD sampel tidak membentuk CW lokal; biaya tetap masuk pool HBR lokal dan kasus berkodenya masuk casemix.`,'warning',method);
       if(inliers.length<s.sampleSize)issue('V10',`${pop[0].code}: kurang dari ${s.sampleSize} kasus inlier.`,'warning',method);
       groups.push({code:pop[0].code,care:pop[0].care,count:inliers.length,mean:sum(inliers.map(p=>p.uc)).div(inliers.length).toString(),median:median.toString(),lowSample:inliers.length<s.sampleSize});
     }

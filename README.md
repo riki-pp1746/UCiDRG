@@ -25,3 +25,7 @@ Mode pengembangan masih aktif: hasil berstatus Draft dan kontrol reviewer disemb
 ## Verifikasi
 
 `npm test`, `npm run build`, dan `npm run lint` tersedia. Pengujian mencakup mesin, impor, rekonsiliasi, penyimpanan, integritas cadangan, delapan halaman analisis tambahan setelah login, dan penahanan ekspor hasil yang kedaluwarsa.
+
+## SOP CW Casemix dan HBR
+
+[Rumus versi 3 dan SOP pool biaya JKN penuh](docs/SOP-CW-Casemix-HBR-Pool-JKN.md): trimming hanya untuk pembentuk CW; seluruh biaya JKN tetap membentuk HBR dan kasus outlier berkode tetap masuk casemix. Snapshot lama tidak ditimpa.

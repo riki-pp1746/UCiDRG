@@ -302,7 +302,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <AnalysisFilters/><p className="uc-notice">Ringkasan statistik memakai inlier ±2 SD. Biaya pool dan rekonsiliasi tetap untuk seluruh populasi unggahan; filter tidak mengubahnya. Outlier dikeluarkan dari pembentuk HBR dan dilaporkan terpisah.</p>
+      <AnalysisFilters/><p className="uc-notice">Ringkasan statistik memakai inlier ±2 SD. Biaya pool dan rekonsiliasi tetap untuk seluruh populasi unggahan; filter tidak mengubahnya. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6 print:space-y-4">
         <p className="uc-notice">Trimming ±2 SD sampel per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dikeluarkan dari statistik. Biaya tetap tercatat; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>

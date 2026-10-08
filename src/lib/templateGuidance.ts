@@ -10,7 +10,7 @@ export const templateRules=[
  'Pertahankan nama sheet, urutan kolom, judul kelompok A/B/C, dan ID unit (jika ada). Tambah unit pada kelompok yang sesuai.',
  'Masukkan biaya sebagai angka Excel, misalnya 1250000. Tampilan Rupiah boleh memakai format sel; jangan mengetik teks Rp di sel angka.',
  'Isi 0 hanya jika nilai memang nol. Nilai yang belum tersedia perlu dicatat dan diperiksa; kolom biaya kosong dapat dibaca sebagai nol oleh importer.',
- 'Trimming hasil: di luar rata-rata ±2 SD sampel per iDRG dan jenis rawat. HBR memakai inlier; biaya outlier direkonsiliasi terpisah.',
+ 'Trimming hasil: di luar rata-rata ±2 SD sampel per iDRG dan jenis rawat. CW memakai inlier; seluruh biaya outlier tetap masuk pool HBR dan kasusnya masuk casemix.',
  'Distribusi Analisis 18 Komponen: Kamar memakai LOS dan ICU memakai hari ICU jika lengkap; cadangan episode diberi peringatan. Rasio biaya/tagihan di luar 0,2–5 perlu ditinjau.',
  'Satu biaya dicatat sekali. Periksa apakah gaji, jasa medis, operasional, dan penyusutan sudah saling terpisah.',
  'Contoh dalam panduan adalah data sintetis. Jangan menyalinnya sebagai data RS sebenarnya.',

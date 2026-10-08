@@ -30,9 +30,9 @@ it('separates inpatient, outpatient, periods and methods',()=>{
  const result=calculateHospitalBaseRate([...cases,row('J','A','1250','jalan')],context);expect(result.pools[1].hbr).toBe('1250');expect(result.groups.filter(g=>g.code==='A')).toHaveLength(2);
  const other=calculateHospitalBaseRate([row('1','A','50')],{method:'M1',period:'2025-02'});expect(other.pools[0].hbr).toBe('50');expect(other.method).toBe('M1');expect(other.period).toBe('2025-02');expect(result.pools[0].hbr).toBe('250000');
 });
-it('reconciles uncoded patients, invalid costs and reserves outside HBR',()=>{
+it('reconciles uncoded patients, invalid costs and reserves in full JKN HBR',()=>{
  const result=calculateHospitalBaseRate([row('1','A','100'),row('2','','900'),row('3','B','-10'),row('4','A',null),row('5','B','NaN'),row('6','UNKNOWN','50')],{...context,pools:[{care:'inap',reserve:'500',unallocated:'700'}]});
- expect(result.pools[0]).toMatchObject({count:1,total:'100',hbr:'100',excludedCount:2,excludedCost:'950',invalidCount:3,allocated:'1050',reserve:'500',unallocated:'700'});
+ expect(result.pools[0]).toMatchObject({count:1,total:'2250',hbr:'2250',excludedCount:2,excludedCost:'950',invalidCount:3,allocated:'1050',reserve:'500',unallocated:'700'});
  expect(result.patients[1]).toMatchObject({uc:'900',cw:null,hbr:null});expect(result.patients[3].cw).toBe(null);
 });
 it('does not substitute raw billing or invent denominators for missing or zero costs',()=>{
@@ -59,6 +59,29 @@ it('preserves old immutable snapshots and stores local HBR in a new version',asy
 });
 it('18-component page source uses exactly its distribution and invalidates local results after edits',()=>{
  const store=useTarifPasienStore;store.setState({patients:[{...makeEmptyPatient(),id:'1',drg:'A',procedure_amt:1},{...makeEmptyPatient(),id:'2',drg:'B',procedure_amt:2}],biayaRSMap:{procedure_amt:1,laboratory_amt:10},localCosting:null});store.getState().calculateDistribution();
- const state=store.getState();expect(state.localCosting).not.toBe(null);for(const p of state.patients)expect(state.localCosting!.patients.find(r=>r.id===p.id)?.uc).toBe(p.totalCostPerPatientDecimal);expect(state.localCosting!.unassignedUnallocated).toBe('10');near(state.localCosting!.pools[0].hbr!,'0.5');
+ const state=store.getState();expect(state.localCosting).not.toBe(null);for(const p of state.patients)expect(state.localCosting!.patients.find(r=>r.id===p.id)?.uc).toBe(p.totalCostPerPatientDecimal);expect(state.localCosting!.unassignedUnallocated).toBe('10');near(state.localCosting!.pools[0].hbr!,'5.5');
  const version=state.calculationVersion;state.updatePatient('1',{procedure_amt:3});expect(store.getState().localCosting).toBe(null);store.getState().calculateDistribution();expect(store.getState().calculationVersion).toBe(version+1);store.getState().setBiayaRS('procedure_amt',0);expect(store.getState().localCosting).toBe(null);
+});
+
+it('retains all JKN cost and outlier cases with inlier-derived CW across two groups',()=>{
+ const rows=[...Array.from({length:20},(_,i)=>row('A'+i,'A','100')),row('out','A','10000'),...Array.from({length:20},(_,i)=>row('B'+i,'B','300'))];
+ const r=calculateHospitalBaseRate(rows,context);const p=r.pools[0];
+ expect(r.schema).toBe(3);expect(p).toMatchObject({count:41,cwCount:40,cwCost:'8000',total:'18000',casemix:'40.5',outlierCost:'10000'});
+ expect(r.groups[0]).toMatchObject({count:21,cwCount:20,cw:'0.5',casemix:'10.5',mean:'100',total:'12000'});
+ expect(r.patients.find(p=>p.id==='out')).toMatchObject({outlier:true,cw:'0.5',uc:'10000'});
+ near(sum(r.groups.map(g=>dec(g.standardCost!).mul(g.count))).toString(),'18000');near(p.hbr!,dec('18000').div('40.5').toString());
+});
+it('keeps original per-care JKN pools including reserves and missing-code cost',()=>{
+ const r=calculateHospitalBaseRate([row('1','A','100'),row('2','','300'),row('3','B','50','jalan')],{...context,pools:[{care:'inap',total:'1000',reserve:'200',unallocated:'400'},{care:'jalan',total:'150',reserve:'0',unallocated:'100'}]});
+ expect(r.pools[0]).toMatchObject({total:'1000',hbr:'1000',excludedCost:'300'});expect(r.pools[1]).toMatchObject({total:'150',hbr:'150'});
+});
+it('reconciles shared unassigned JKN pool without mixing inpatient and outpatient populations',()=>{
+ const r=calculateHospitalBaseRate([row('1','A','100'),row('2','B','300','jalan')],{...context,unassignedUnallocated:'200'});
+ expect(r.pools[0]).toMatchObject({total:'150',unassignedShare:'50',hbr:'150'});expect(r.pools[1]).toMatchObject({total:'450',unassignedShare:'150',hbr:'450'});expect(sum(r.pools.map(p=>p.total)).toString()).toBe('600');
+});
+
+it('both allocation methods preserve source JKN pool with a costly outlier',()=>{
+ const input=fixture();const original=input.claims[0];input.claims.push({...original,id:'OUTLIER',sep:'SYNTHETIC-OUTLIER',bill:{...emptyBill(),procedure_amt:'100000000'},row:100});
+ const r=calculate(input);expect(r.methods).toHaveLength(2);
+ for(const m of r.methods){const local=m.localCosting!;near(sum(local.pools.map(p=>p.total)).toString(),m.total);expect(local.pools[0].outlierCount).toBeGreaterThan(0);expect(local.patients.find(p=>p.id==='OUTLIER')?.cw).not.toBe(null);near(sum(local.groups.map(g=>dec(g.standardCost!).mul(g.count))).toString(),m.total);}
 });
