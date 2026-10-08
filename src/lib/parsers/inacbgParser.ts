@@ -1,3 +1,4 @@
+import {parseNumber} from '../../v4/numbers';
 // ============================================================
 // PARSER: inacbgParser.ts
 // Parse file TXT dari INACBG/iDRG
@@ -84,11 +85,11 @@ const COLUMN_MAP = {
   IDRG_LOGIC_VERSION: 92,
 };
 
-function parseNum(val: string | null | undefined): number {
-  if (!val || val === '-' || val === 'None' || val === '') return 0;
-  const cleaned = String(val).replace(/[,\s]/g, '');
-  const n = parseFloat(cleaned);
-  return isNaN(n) ? 0 : n;
+function parseNum(val: unknown): number {
+  if (val == null || String(val).trim() === '' || ['-', 'None'].includes(String(val).trim())) return 0;
+  const n = Number(parseNumber(val));
+  if (!Number.isFinite(n)) throw new Error('Nilai angka di luar jangkauan');
+  return n;
 }
 
 function parseDate(val: string | null | undefined): string {

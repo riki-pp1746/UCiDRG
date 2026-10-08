@@ -1,3 +1,4 @@
+import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import { maskSEP,rounded,dec,sum,displayDecimal } from './numbers';
@@ -35,7 +36,7 @@ export function reportSheets(snap:Snapshot) {
 export function download(text:string,name:string,type='application/json') {const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 export function exportExcel(snap:Snapshot) {
   const wb=XLSX.utils.book_new();for(const [name,data] of Object.entries(reportSheets(snap))){const sheet=XLSX.utils.aoa_to_sheet(data);sheet['!cols']=Array.from({length:data.reduce((n,r)=>Math.max(n,r.length),0)},()=>({wch:24}));XLSX.utils.book_append_sheet(wb,sheet,name);}
-  XLSX.writeFile(wb,`UnitCost-R4-${snap.state}-${snap.id.slice(0,8)}.xlsx`);
+  XLSX.writeFile(formatCostingWorkbook(wb),`UnitCost-R4-${snap.state}-${snap.id.slice(0,8)}.xlsx`);
 }
 export async function exportPPT(snap:Snapshot) {
   const cells=(rows:string[][])=>rows.map(row=>row.map(text=>({text})));

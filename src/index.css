@@ -7,48 +7,48 @@
    ============================================================ */
 @theme {
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-serif: 'Playfair Display', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-serif: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
 
-  --color-apple-bg: #F7F6F3;
-  --color-apple-text: #14213D;
-  --color-kemenkes: #1B365D;
-  --color-kemenkes-dark: #0B1F3A;
-  --color-deloitte: #0B1F3A;
-  --color-brass: #B08D57;
+  --color-apple-bg: #F5F8F9;
+  --color-apple-text: #18343B;
+  --color-kemenkes: #008C95;
+  --color-kemenkes-dark: #075B63;
+  --color-deloitte: #075B63;
+  --color-brass: #009DA5;
 
   /* Primary: deep executive navy (menggantikan teal & blue) */
   --color-teal-50: #F1F4F9;  --color-teal-100: #E3E9F2; --color-teal-200: #C6D2E3;
   --color-teal-300: #98AAC6; --color-teal-400: #667F9F; --color-teal-500: #3A5780;
-  --color-teal-600: #1B365D; --color-teal-700: #12294A; --color-teal-800: #0B1F3A;
+  --color-teal-600: #008C95; --color-teal-700: #12294A; --color-teal-800: #075B63;
   --color-teal-900: #071529; --color-teal-950: #040D1A;
   --color-blue-50: #F1F4F9;  --color-blue-100: #E3E9F2; --color-blue-200: #C6D2E3;
   --color-blue-300: #98AAC6; --color-blue-400: #667F9F; --color-blue-500: #3A5780;
-  --color-blue-600: #1B365D; --color-blue-700: #12294A; --color-blue-800: #0B1F3A;
+  --color-blue-600: #008C95; --color-blue-700: #12294A; --color-blue-800: #075B63;
   --color-blue-900: #071529; --color-blue-950: #040D1A;
-  --color-cyan-50: #F1F4F9;  --color-cyan-100: #E3E9F2; --color-cyan-500: #3A5780; --color-cyan-600: #1B365D; --color-cyan-700: #12294A;
-  --color-sky-50: #F1F4F9;   --color-sky-100: #E3E9F2;  --color-sky-500: #3A5780;  --color-sky-600: #1B365D;  --color-sky-700: #12294A;
+  --color-cyan-50: #F1F4F9;  --color-cyan-100: #E3E9F2; --color-cyan-500: #3A5780; --color-cyan-600: #008C95; --color-cyan-700: #12294A;
+  --color-sky-50: #F1F4F9;   --color-sky-100: #E3E9F2;  --color-sky-500: #3A5780;  --color-sky-600: #008C95;  --color-sky-700: #12294A;
 
   /* Accent: champagne brass (menggantikan indigo / violet / purple) */
-  --color-indigo-50: #FAF6EE; --color-indigo-100: #F3EAD7; --color-indigo-200: #E6D4AD; --color-indigo-300: #D4B87E;
-  --color-indigo-400: #C2A05D; --color-indigo-500: #B08D57; --color-indigo-600: #977544; --color-indigo-700: #765935;
+  --color-indigo-50: #F0FAF8; --color-indigo-100: #DAF2ED; --color-indigo-200: #B5E5DC; --color-indigo-300: #87D5C7;
+  --color-indigo-400: #73D2CE; --color-indigo-500: #009DA5; --color-indigo-600: #007D85; --color-indigo-700: #765935;
   --color-indigo-800: #5A4429; --color-indigo-900: #3F2F1C;
-  --color-violet-50: #FAF6EE; --color-violet-100: #F3EAD7; --color-violet-200: #E6D4AD; --color-violet-300: #D4B87E;
-  --color-violet-400: #C2A05D; --color-violet-500: #B08D57; --color-violet-600: #977544; --color-violet-700: #765935;
+  --color-violet-50: #F0FAF8; --color-violet-100: #DAF2ED; --color-violet-200: #B5E5DC; --color-violet-300: #87D5C7;
+  --color-violet-400: #73D2CE; --color-violet-500: #009DA5; --color-violet-600: #007D85; --color-violet-700: #765935;
   --color-violet-800: #5A4429; --color-violet-900: #3F2F1C;
-  --color-purple-50: #FAF6EE; --color-purple-100: #F3EAD7; --color-purple-200: #E6D4AD; --color-purple-300: #D4B87E;
-  --color-purple-400: #C2A05D; --color-purple-500: #B08D57; --color-purple-600: #977544; --color-purple-700: #765935;
+  --color-purple-50: #F0FAF8; --color-purple-100: #DAF2ED; --color-purple-200: #B5E5DC; --color-purple-300: #87D5C7;
+  --color-purple-400: #73D2CE; --color-purple-500: #009DA5; --color-purple-600: #007D85; --color-purple-700: #765935;
   --color-purple-800: #5A4429; --color-purple-900: #3F2F1C;
 
   /* Netral hangat (ivory / graphite) menggantikan gray & slate dingin */
-  --color-gray-50: #FAF9F7;  --color-gray-100: #F3F2EE; --color-gray-200: #E7E5DF; --color-gray-300: #D3D0C8;
+  --color-gray-50: #FAF9F7;  --color-gray-100: #F3F2EE; --color-gray-200: #DFEAEB; --color-gray-300: #CCDDE0;
   --color-gray-400: #A4A19A; --color-gray-500: #77746D; --color-gray-600: #55524C; --color-gray-700: #3B3935;
   --color-gray-800: #232220; --color-gray-900: #121A2B;
-  --color-slate-50: #FAF9F7; --color-slate-100: #F3F2EE; --color-slate-200: #E7E5DF; --color-slate-300: #D3D0C8;
+  --color-slate-50: #FAF9F7; --color-slate-100: #F3F2EE; --color-slate-200: #DFEAEB; --color-slate-300: #CCDDE0;
   --color-slate-400: #A4A19A; --color-slate-500: #77746D; --color-slate-600: #55524C; --color-slate-700: #3B3935;
   --color-slate-800: #232220; --color-slate-900: #121A2B;
 
   /* Radius lebih tegas & elegan, bayangan halus berlapis */
-  --radius-lg: 0.375rem; --radius-xl: 0.5rem; --radius-2xl: 0.625rem; --radius-3xl: 0.875rem;
+  --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-2xl: 1.25rem; --radius-3xl: 1.5rem;
   --shadow-xs: 0 1px 1px rgb(11 31 58 / 0.04);
   --shadow-sm: 0 1px 2px rgb(11 31 58 / 0.05), 0 1px 1px rgb(11 31 58 / 0.03);
   --shadow-md: 0 4px 12px -2px rgb(11 31 58 / 0.07), 0 2px 4px -2px rgb(11 31 58 / 0.04);
@@ -59,17 +59,17 @@
 
 @layer base {
   html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; font-feature-settings: 'cv11', 'ss01'; }
-  h1 { font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.015em; color: #0B1F3A; }
+  h1 { font-family: var(--font-serif); font-weight: 600; letter-spacing: -0.015em; color: #075B63; }
   h2 { letter-spacing: -0.01em; }
   /* Tabel: header kapital kecil ala laporan konsultan */
   thead th { text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.65rem !important; font-weight: 600 !important; color: #55524C; background-color: #F3F2EE; }
   tbody tr { transition: background-color .15s ease; }
-  input:not([type=checkbox]):not([type=radio]), select, textarea { border-color: #D3D0C8; transition: border-color .15s, box-shadow .15s; }
-  input:not([type=checkbox]):not([type=radio]):focus, select:focus, textarea:focus { outline: none; border-color: #B08D57; box-shadow: 0 0 0 3px rgb(176 141 87 / 0.18); }
-  ::selection { background: #E6D4AD; color: #0B1F3A; }
+  input:not([type=checkbox]):not([type=radio]), select, textarea { border-color: #CCDDE0; transition: border-color .15s, box-shadow .15s; }
+  input:not([type=checkbox]):not([type=radio]):focus, select:focus, textarea:focus { outline: none; border-color: #009DA5; box-shadow: 0 0 0 3px rgb(176 141 87 / 0.18); }
+  ::selection { background: #B5E5DC; color: #075B63; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-thumb { background: #D3D0C8; border-radius: 999px; border: 2px solid #F7F6F3; }
-  ::-webkit-scrollbar-thumb:hover { background: #B08D57; }
+  ::-webkit-scrollbar-thumb { background: #CCDDE0; border-radius: 999px; border: 2px solid #F5F8F9; }
+  ::-webkit-scrollbar-thumb:hover { background: #009DA5; }
 }
 
 @layer base {
@@ -85,8 +85,8 @@
 
   body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #F7F6F3;
-    color: #14213D;
+    background-color: #F5F8F9;
+    color: #18343B;
     margin: 0;
   }
 }
@@ -98,7 +98,7 @@
 
 /* Workspace design system: accessible focus, responsive shell and restrained clinical palette. */
 :root { --uc-ink:#17334a; --uc-teal:#087f80; --uc-line:#dde6ec; --uc-muted:#64748b; }
-:focus-visible { outline:2px solid #B08D57; outline-offset:3px; }
+:focus-visible { outline:2px solid #009DA5; outline-offset:3px; }
 button, a, input, select, summary { -webkit-tap-highlight-color:transparent; }
 button:not(:disabled), summary { cursor:pointer; }
 button:disabled { cursor:not-allowed; opacity:.45; }
@@ -167,17 +167,29 @@ button:disabled { cursor:not-allowed; opacity:.45; }
 @media print { details::details-content { content-visibility:visible!important; } details > :not(summary) { display:block!important; } details > summary { display:none!important; } }
 
 /* Shared navy and brass presentation across both analysis workspaces. */
-.uc-primary { background:#0B1F3A; border-color:#0B1F3A; }
+.uc-primary { background:#075B63; border-color:#075B63; }
 .uc-primary:hover { background:#142F50; }
-.uc-eyebrow,.uc-guide-arrow { color:#977544; }
-.uc-panel,.uc-result-toolbar,.uc-guide-card,.uc-stepper { border-color:#E7E5DF; }
-.uc-panel h2,.uc-page-heading h1 { color:#0B1F3A; }
-.uc-welcome { background:linear-gradient(120deg,#F7F6F3,#FBF7EE); border-color:#E7E5DF; }
-.uc-icon { color:#977544; background:#FBF7EE; }
-.uc-guide-card:hover { border-color:#B08D57; }
+.uc-eyebrow,.uc-guide-arrow { color:#007D85; }
+.uc-panel,.uc-result-toolbar,.uc-guide-card,.uc-stepper { border-color:#DFEAEB; }
+.uc-panel h2,.uc-page-heading h1 { color:#075B63; }
+.uc-welcome { background:linear-gradient(120deg,#F5F8F9,#EDF9F7); border-color:#DFEAEB; }
+.uc-icon { color:#007D85; background:#EDF9F7; }
+.uc-guide-card:hover { border-color:#009DA5; }
 .uc-stepper { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); padding:16px; gap:8px; }
-.uc-step { border:1px solid #E7E5DF; padding:9px; color:#55524C; white-space:normal; }
-.uc-step.current { color:white; background:#0B1F3A; border-color:#0B1F3A; }
-.uc-step.current .uc-step-number { background:#C2A05D; border-color:#C2A05D; color:#0B1F3A; }
-.uc-input:focus-visible,.uc-primary:focus-visible,.uc-secondary:focus-visible,.uc-step:focus-visible { outline:2px solid #B08D57; outline-offset:3px; }
+.uc-step { border:1px solid #DFEAEB; padding:9px; color:#55524C; white-space:normal; }
+.uc-step.current { color:white; background:#075B63; border-color:#075B63; }
+.uc-step.current .uc-step-number { background:#73D2CE; border-color:#73D2CE; color:#075B63; }
+.uc-input:focus-visible,.uc-primary:focus-visible,.uc-secondary:focus-visible,.uc-step:focus-visible { outline:2px solid #009DA5; outline-offset:3px; }
 @media (max-width:640px) { .uc-stepper { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+/* Fresh clinical workspace: Kemenkes inspired teal, generous spacing, system typography. */
+.uc-sidebar { background:#fff; color:#355B62; border-right:1px solid #DFEAEB; }
+.uc-brand-text strong,.uc-sidebar .uc-brand-text strong { color:#075B63; font-family:var(--font-sans); }
+.uc-sidebar .uc-nav-link { color:#46666D; border-radius:12px; }
+.uc-sidebar .uc-nav-link.active { background:#E2F5F1; color:#006D75; box-shadow:inset 3px 0 #00A0A7; }
+.uc-app { background:#F5F8F9; }
+.uc-panel,.uc-result-toolbar,.uc-guide-card { border-radius:20px; box-shadow:0 4px 20px #163F4706; }
+.uc-topbar { background:#FFFFFFE8; backdrop-filter:blur(16px); }
+.uc-inset { background:#F5FAFA; border-color:#E1ECEC; border-radius:16px; }
+.uc-trimming-impact { background:white; border:1px solid #DCEBEA; border-radius:14px; padding:16px; margin-top:16px; color:#345A60; }
+.uc-table th { text-transform:none; letter-spacing:.01em; font-size:12px!important; }
+:focus-visible { outline-color:#008C95; }

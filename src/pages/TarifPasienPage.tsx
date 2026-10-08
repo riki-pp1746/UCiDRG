@@ -1,3 +1,5 @@
+import TrimmingImpact from '../components/costing/TrimmingImpact';
+import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {displayDecimal} from '../v4/numbers';
 import {money,maskSEP} from '../v4/numbers';
 import * as XLSX from 'xlsx';
@@ -103,7 +105,7 @@ export default function TarifPasienPage() {
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
   const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
   const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
-  const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(wb,'Costing-Pasien-CW-HBR-RS.xlsx');};
+  const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(formatCostingWorkbook(wb),'Costing-Pasien-CW-HBR-RS.xlsx');};
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
       <span>Menampilkan {(page - 1) * pageSize + (filteredPatients.length ? 1 : 0)}-{Math.min(page * pageSize, filteredPatients.length)} dari {filteredPatients.length} pasien</span>
@@ -126,7 +128,7 @@ export default function TarifPasienPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
-      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · biaya populasi {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = biaya populasi yang sama ÷ total casemix.</p></section>}
+      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · biaya populasi {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = biaya populasi yang sama ÷ total casemix.</p></section>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">

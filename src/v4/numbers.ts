@@ -9,7 +9,7 @@ export function parseNumber(value: unknown): string {
   let s=String(value).trim().replace(/\s|Rp/gi,'');
   if(/^\(.*\)$/.test(s)) s='-'+s.slice(1,-1);
   if(s.includes(',') && s.includes('.')) s=s.lastIndexOf(',')>s.lastIndexOf('.')?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'');
-  else if(s.includes(',')) s=/^[+-]?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.');
+  else if(s.includes(',')) s=/^[+-]?[1-9]\d{0,2}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.');
   else if(typeof value==='string' && /^[+-]?\d{1,3}(\.\d{3}){2,}$/.test(s)) s=s.replace(/\./g,'');
   if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(s)) throw new Error(`Angka tidak valid: ${String(value)}`);
   return dec(s).toString();

@@ -1,3 +1,4 @@
+import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {maskSEP} from '../v4/numbers';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
@@ -194,7 +195,7 @@ export default function ReportPage() {
     XLSX.utils.book_append_sheet(wb, ws6, 'Validasi Data Dasar');
 
     const filename = `UnitCost_${user?.namaRS?.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(wb, filename);
+    XLSX.writeFile(formatCostingWorkbook(wb), filename);
   };
 
   const exportPptx = async () => {
