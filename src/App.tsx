@@ -1,4 +1,3 @@
-import IDRGTariffPage from './pages/IDRGTariffPage';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
@@ -43,7 +42,8 @@ export function AppRoutes() {
           <Route path="comparison" element={<ComparisonPage />} />
           <Route path="reports" element={<ReportPage />} />
           <Route path="report" element={<ReportPage />} />
-          <Route path="settings" element={<SettingsPage />} /><Route path="tarif-idrg" element={<IDRGTariffPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="tarif-idrg" element={<Navigate to="/tarif-pasien?tab=tarif" replace />} />
           <Route path="revisi4/" element={<V4Page view="guide" />} />
           <Route path="revisi4/dashboard" element={<V4Page view="dashboard" />} />
           <Route path="revisi4/upload" element={<V4Page view="upload" />} />

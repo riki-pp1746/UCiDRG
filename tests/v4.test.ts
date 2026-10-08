@@ -128,8 +128,8 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
 // Exercise the actual post-login route tree, so a disconnected engine cannot pass unnoticed.
 describe('Analisis tambahan setelah login',()=>{
   it('menu tarif iDRG membuka rincian pasien setelah login',()=>{
-    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-idrg']},createElement(AppRoutes)));
-    expect(html).toContain('Tarif iDRG per Pasien');expect(html).toContain('Adjustment Factor');expect(html).toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
+    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
+    expect(html).toContain('Tarif dan perbandingan');expect(html).toContain('Adjustment Factor');expect(html).toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
   });
   for(const [path,title] of [['/','Tiga langkah dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{

@@ -1,6 +1,7 @@
 import PageIntro from '../components/ui/PageIntro';
 import HelpTip from '../components/ui/HelpTip';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import IDRGTariffPage from './IDRGTariffPage';
 import React, { useState, useEffect } from 'react';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
@@ -13,10 +14,12 @@ import {
 } from 'lucide-react';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_SHORT, KELAS_RAWAT_LABELS, KelasRawat, makeEmptyPatient } from '../types/tarifPasien.types';
 
-type Tab = 'input' | 'hasil';
+type Tab = 'input' | 'hasil' | 'tarif';
 
 export default function TarifPasienPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('input');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab: Tab = searchParams.get('tab') === 'tarif' ? 'tarif' : searchParams.get('tab') === 'hasil' ? 'hasil' : 'input';
+  const setActiveTab = (tab: Tab) => setSearchParams(tab === 'input' ? {} : {tab});
   const [inputPage, setInputPage] = useState(1);
   const [resultPage, setResultPage] = useState(1);
   const [showValidationModal, setShowValidationModal] = useState(false);
@@ -76,7 +79,7 @@ export default function TarifPasienPage() {
 
   // Recalculate saat tab pindah
   useEffect(() => {
-    if (activeTab !== 'input') {
+    if (activeTab === 'hasil') {
       calculateDistribution();
     }
   }, [activeTab, calculateDistribution]);
@@ -145,10 +148,11 @@ export default function TarifPasienPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-white rounded-xl shadow-sm border border-gray-200 p-1">
+      <div className="flex flex-wrap bg-white rounded-xl shadow-sm border border-gray-200 p-1">
         {[
           { id: 'input', label: '1. Input Data Pasien (E-Klaim)', icon: Users },
-          { id: 'hasil', label: 'Step 4: Hasil Cost per Pasien', icon: Calculator },
+          { id: 'hasil', label: '2. Rincian biaya dan unit cost', icon: Calculator },
+          { id: 'tarif', label: '3. Tarif dan perbandingan', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
@@ -163,7 +167,9 @@ export default function TarifPasienPage() {
         ))}
       </div>
 
-      <div className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+      {activeTab === 'tarif' && <IDRGTariffPage embedded />}
+
+      <div hidden={activeTab === 'tarif'} className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="flex items-start gap-3">
           {validationIssues.length ? <AlertTriangle className={`w-5 h-5 mt-0.5 flex-none ${hasValidationErrors ? 'text-red-600' : 'text-amber-600'}`} /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-none" />}
           <div className="min-w-0 flex-1">
