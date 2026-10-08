@@ -1,3 +1,7 @@
+import AnalysisFilters from '../components/ui/AnalysisFilters';
+import {useFilteredPatientResults} from '../stores/costingStore';
+import {aggregateByDRG,generateSummary} from '../lib/calculations/patientLevelCosting';
+import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: DashboardPage.tsx
@@ -55,8 +59,10 @@ function KPICard({
 
 export default function DashboardPage() {
   const viewMode = useCostingStore(s => s.viewMode);
-  const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
-  const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
+  const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
+  const filteredResults=useFilteredPatientResults();
+  const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
+  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal):null,[filteredResults,drgResults,viewMode,originalSummary]);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
   const periodNormalization = useCostingStore(s => s.periodNormalization);
@@ -123,6 +129,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <AnalysisFilters/>
       <PageIntro title="Ringkasan hasil analisis" what="Halaman ini menampilkan gambaran umum: total kasus, unit cost rata-rata, serta berapa kasus yang untung, impas, dan rugi." result="Gunakan stepper di atas untuk melanjutkan ke langkah berikutnya." />
       <div>
         <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight">Dashboard Overview</h1>

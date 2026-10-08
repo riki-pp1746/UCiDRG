@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
-import { maskSEP,rounded,dec,sum } from './numbers';
+import { maskSEP,rounded,dec,sum,displayDecimal } from './numbers';
 import type { Snapshot } from './types';
 import { KEYS,LABELS } from './types';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
@@ -9,7 +9,7 @@ export function reportSheets(snap:Snapshot) {
     Ringkasan:[['Snapshot',snap.id],['Status',snap.state],['Tanggal',snap.at],['RS',snap.input.hospital],['Versi input',snap.inputVersion],['Kualitas data persen',snap.result.quality],['Baris diterima',snap.result.accepted],['Baris ditolak',snap.result.rejected],['Skenario sensitivitas',snap.sensitivity]],
     Asumsi:[['Parameter','Nilai'],...Object.entries(snap.input.settings).map(([k,v])=>[k,typeof v==='object'?JSON.stringify(v):String(v)]),['Matriks versi',snap.input.mappingVersion],['Kontrol lokal','Profil dan audit lokal bukan kontrol keamanan server']],
     Referensi:[['Jenis','Kode','Rawat','Nilai','Versi','Mulai','Akhir','Sumber','Terverifikasi','Dipakai'],...snap.input.references.map(r=>[r.kind,r.code,r.care,r.value,r.version,r.from,r.until,r.source,r.verified,snap.result.referenceIds.includes(r.id)])],
-    Rekonsiliasi:[['Metode','Rawat','Pool JKN','Alokasi pasien','Cadangan cakupan','Belum teralokasi','Tanpa weight','Biaya populasi valid','Casemix','CMI','Base rate RS','Base nasional','Rasio base']],
+    Rekonsiliasi:[['Metode','Rawat','Pool JKN','Alokasi pasien','Cadangan cakupan','Belum teralokasi','Tanpa weight','Biaya populasi valid','Casemix','CMI','Base rate RS','Base nasional','Rasio base','Kasus outlier','Biaya outlier berweight']],
     Komponen:[['Metode','Rawat','Komponen','Biaya internal','Rupiah tampilan']],
     Pasien:[['Metode','SEP masking','Rawat','iDRG','INA-CBG','UC','Tarif INA','Tarif iDRG pembanding','Sumber','Simulasi RS','Skenario kelompok','Target pasien','Status INA','Status iDRG','CRR INA','CRR iDRG','Pending','Dispute','Outlier']],
     Grouping:[['Metode','Rawat','Kode','Kasus','Mean UC','Median UC','Sampel rendah']],
@@ -22,7 +22,7 @@ export function reportSheets(snap:Snapshot) {
   for(const m of snap.result.methods) {
     if(m.localCosting)for(const [name,rows] of Object.entries(hospitalBaseRateSheets(m.localCosting)))sheets[`${m.method}_${name}`]=rows;
     for(const p of m.pools) {
-      sheets.Rekonsiliasi.push([m.method,p.care,p.total,p.allocated,p.reserve,p.unallocated,p.withoutWeight,p.validCost,p.casemix,p.cmi??'Tidak dapat dihitung',p.baseRate??'Tidak dapat dihitung',p.nationalBase??'Tidak tersedia',p.baseRatio??'Tidak dapat dihitung']);
+      sheets.Rekonsiliasi.push([m.method,p.care,p.total,p.allocated,p.reserve,p.unallocated,p.withoutWeight,p.validCost,p.casemix,p.cmi??'Tidak dapat dihitung',p.baseRate??'Tidak dapat dihitung',p.nationalBase??'Tidak tersedia',p.baseRatio??'Tidak dapat dihitung',p.outlierCount??0,p.outlierCost??'0']);
       KEYS.forEach((k,i)=>sheets.Komponen.push([m.method,p.care,LABELS[i],p.components[k],rounded(p.components[k])]));
       const displayTotal=sum(m.patients.filter(x=>x.care===p.care).map(x=>rounded(x.uc)));sheets.Rekonsiliasi.push([m.method,p.care,'Selisih pembulatan keluaran',dec(rounded(p.allocated)).minus(displayTotal).toString()]);
     }
@@ -44,7 +44,7 @@ export async function exportPPT(snap:Snapshot) {
   for(const m of snap.result.methods){const slide=ppt.addSlide();slide.addText(`Metode ${m.method} dan rekonsiliasi`,{x:.5,y:.3,w:12,h:.5,fontSize:23});slide.addTable(cells([['Rawat','Pool JKN','Alokasi','Sisa','Tanpa weight','Base rate'],...m.pools.map(p=>[p.care,rounded(p.total),rounded(p.allocated),rounded(p.unallocated),rounded(p.withoutWeight),p.baseRate?rounded(p.baseRate):'Tidak dapat dihitung'])]),{x:.5,y:1,w:12,h:2,fontSize:13,border:{pt:1,color:'DDDDDD'}});slide.addText(`Kualitas data: ${dec(snap.result.quality).toFixed(2)}%\nReferensi nasional ilustratif tidak digunakan sebagai pembanding produksi.\nSumber tarif tersedia pada Excel dan laporan rinci.`,{x:.5,y:3.7,w:12,h:1.5,fontSize:15});}
   const assumptions=ppt.addSlide();assumptions.addText('Asumsi dan sumber',{x:.5,y:.3,w:12,h:.5,fontSize:23});assumptions.addText(`Durasi LK: ${snap.input.settings.costMonths} bulan\nKlaim: ${snap.input.settings.claimMonths||'bulan unik'}\nInflasi: ${snap.input.settings.priceActive?'aktif':'nonaktif'}\nMark-up skenario: ${snap.input.settings.markup}%\nToleransi: ${snap.input.settings.tolerance} ${snap.input.settings.toleranceMode}\nMatriks versi: ${snap.input.mappingVersion}\nVersi referensi: ${[...new Set(snap.input.references.filter(r=>snap.result.referenceIds.includes(r.id)).map(r=>r.version))].join(', ')||'Tidak tersedia'}\nKoreksi manual: ${snap.input.corrections.length}; peringatan: ${snap.result.issues.length}\nKontrol akses dan audit bersifat lokal.`,{x:.5,y:1,w:12,h:5,fontSize:16});
   for(const m of snap.result.methods){
-    if(m.localCosting){const slide=ppt.addSlide();slide.addText(`CW RS, Casemix & HBR — ${m.method}`,{x:.5,y:.3,w:12,h:.5,fontSize:23});slide.addTable(cells([['Rawat','Kasus','Biaya populasi','Casemix','HBR','Tanpa kode'],...m.localCosting.pools.map(p=>[p.care,String(p.count),rounded(p.total),p.casemix??'Tidak dapat dihitung',p.hbr?rounded(p.hbr):'Tidak dapat dihitung',`${p.excludedCount} / ${rounded(p.excludedCost)}`])]),{x:.5,y:1,w:12,fontSize:13,border:{pt:1,color:'DDDDDD'}});slide.addText(`Sumber: Costing RS; periode ${m.localCosting.period}\nHBR = biaya populasi yang sama / total casemix. CW RS dinormalisasi pada populasi RS sendiri; adjustment dasar 1. HBR bukan NBR.`,{x:.5,y:3.7,w:12,h:1.5,fontSize:15});}
+    if(m.localCosting){const slide=ppt.addSlide();slide.addText(`CW RS, Casemix & HBR — ${m.method}`,{x:.5,y:.3,w:12,h:.5,fontSize:23});slide.addTable(cells([['Rawat','Kasus','Biaya populasi','Casemix','HBR','Tanpa kode'],...m.localCosting.pools.map(p=>[p.care,String(p.count),rounded(p.total),displayDecimal(p.casemix),p.hbr?rounded(p.hbr):'Tidak dapat dihitung',`${p.excludedCount} / ${rounded(p.excludedCost)}`])]),{x:.5,y:1,w:12,fontSize:13,border:{pt:1,color:'DDDDDD'}});slide.addText(`Sumber: Costing RS; periode ${m.localCosting.period}\nHBR = biaya populasi yang sama / total casemix. CW RS dinormalisasi pada populasi RS sendiri; adjustment dasar 1. HBR bukan NBR. Trimming ±2 SD sampel; outlier ${m.localCosting.pools.reduce((n,p)=>n+(p.outlierCount||0),0)} kasus / ${rounded(sum(m.localCosting.pools.map(p=>p.outlierCost||'0')))} terpisah.`,{x:.5,y:3.7,w:12,h:1.5,fontSize:15});}
     const counts=new Map<string,number>();m.patients.forEach(p=>counts.set(p.source,(counts.get(p.source)||0)+1));
     const slide=ppt.addSlide();slide.addText(`Sumber tarif ${m.method}`,{x:.5,y:.3,w:12,h:.5,fontSize:23});slide.addTable(cells([['Sumber pembanding iDRG','Kasus'],...Array.from(counts,([source,count])=>[source,String(count)])]),{x:.5,y:1,w:12,fontSize:14});
   }

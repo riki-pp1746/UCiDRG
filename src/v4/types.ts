@@ -54,6 +54,7 @@ export interface PatientResult {
 }
 export interface Pool {
   care: Care; total: Money; components: Record<Key,Money>; allocated: Money; reserve: Money;
+  outlierCost?:Money; outlierCount?:number;
   unallocated: Money; withoutWeight: Money; validCost: Money; casemix: string; cmi: string|null;
   baseRate: string|null; nationalBase: string|null; baseRatio: string|null;
 }

@@ -1,3 +1,6 @@
+import {twoSDFlags} from './trimming';
+import {allocateComponents} from './componentAllocation';
+import {sum} from '../../v4/numbers';
 import {calculateIDRGTariff,neutralAdjustment} from './idrgTariff';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
@@ -84,7 +87,8 @@ export function runRVUAllocation(
   records: PatientRecord[],
   globalCosts: RVUGlobalCosts | null,
   config: OverheadConfig = DEFAULT_OVERHEAD_CONFIG,
-  tarifConfig: TarifIDRGConfig = DEFAULT_TARIF_IDRG_CONFIG
+  tarifConfig: TarifIDRGConfig = DEFAULT_TARIF_IDRG_CONFIG,
+  mergeCarePool=false
 ): { results: PatientCostResult[]; rejectedCount: number } {
   const validRecords: PatientRecord[] = [];
   let rejectedCount = 0;
@@ -100,7 +104,7 @@ export function runRVUAllocation(
   // 1. Validasi & Hitung Total Tagihan Nasional/RS
   for (const r of records) {
     const sumBilling = calcBiayaLangsung(r.billing);
-    if (sumBilling <= 0) {
+    if (sumBilling <= 0 || Object.values(r.billing).some(v=>v<0)) {
       rejectedCount++;
       continue;
     }
@@ -111,10 +115,11 @@ export function runRVUAllocation(
     }
   }
 
+  const allocation=globalCosts?allocateComponents(validRecords.map(r=>({inpatient:r.ptd===1,los:r.los,icuDays:r.icuDays,billing:r.billing as unknown as Record<string,number>})),globalCosts as unknown as Record<string,number>,mergeCarePool):null;
   // 2. Alokasi Global Cost ke Pasien
   const results: PatientCostResult[] = [];
 
-  for (const r of validRecords) {
+  for (const [recordIndex,r] of validRecords.entries()) {
     const biayaLangsung = calcBiayaLangsung(r.billing);
     let unitCostDihitung = 0;
     let biayaTidakLangsung = 0;
@@ -122,18 +127,7 @@ export function runRVUAllocation(
     // Jika globalCosts diberikan, gunakan alokasi proporsional murni (RVU)
     // Overhead dianggap sudah include di dalam globalCosts
     if (globalCosts) {
-      for (const key in globalCosts) {
-        const k = key as keyof BillingGroup;
-        const patientCharge = r.billing[k] || 0;
-        const totalCharge = totalBilling[k];
-        const gCost = globalCosts[k];
-
-        let allocatedCost = 0;
-        if (totalCharge > 0) {
-          allocatedCost = (patientCharge / totalCharge) * gCost;
-        }
-        unitCostDihitung += allocatedCost;
-      }
+      unitCostDihitung=sum(Object.values(allocation!.values[recordIndex])).toNumber();
       biayaTidakLangsung = unitCostDihitung - biayaLangsung; // Sekadar formalitas matematis untuk laporan
     } else {
       // Tanpa hasil alokasi biaya RS, tampilkan billing aktual apa adanya.
@@ -189,6 +183,8 @@ export function runRVUAllocation(
     });
   }
 
+  const trimming=twoSDFlags(results.map(r=>({group:r.patient.idrg?.drg_code?`${r.patient.ptd}|${r.patient.idrg.drg_code}`:'',value:String(r.unitCostDihitung)})));
+  results.forEach((r,i)=>r.outlier=trimming.flags[i]);
   return { results, rejectedCount };
 }
 
@@ -196,17 +192,18 @@ export function runRVUAllocation(
 // Agregasi per DRG Group
 // ============================================================
 export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroupResult[], idrg: DRGGroupResult[] } {
+  results=results.filter(r=>!r.outlier);
   const inacbgMap = new Map<string, PatientCostResult[]>();
   const idrgMap = new Map<string, PatientCostResult[]>();
 
   for (const r of results) {
     // Group by INA-CBG
-    const inacbgKey = r.patient.inacbg || 'UNKNOWN_INACBG';
+    const inacbgKey = `${r.patient.ptd}|${r.patient.inacbg || 'UNKNOWN_INACBG'}`;
     if (!inacbgMap.has(inacbgKey)) inacbgMap.set(inacbgKey, []);
     inacbgMap.get(inacbgKey)!.push(r);
 
     // Group by iDRG
-    const idrgKey = r.patient.idrg?.drg_code || 'UNKNOWN_IDRG';
+    const idrgKey = `${r.patient.ptd}|${r.patient.idrg?.drg_code || 'UNKNOWN_IDRG'}`;
     if (!idrgMap.has(idrgKey)) idrgMap.set(idrgKey, []);
     idrgMap.get(idrgKey)!.push(r);
   }
@@ -244,7 +241,7 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       if (selisihIDRG < -50000) statusIDRG = 'RUGI';
 
       groups.push({
-        group_code: groupCode,
+        group_code: groupCode.slice(groupCode.indexOf('|')+1),
         group_description: type === 'INACBG' ? (first.patient.deskripsi_inacbg || 'N/A') : (first.patient.idrg?.drg_description || 'N/A'),
         inacbg_code: first.patient.inacbg || 'N/A',
         inacbg_description: first.patient.deskripsi_inacbg || 'N/A',
@@ -301,6 +298,7 @@ export function generateSummary(
   annualCostTotal = 0,
   adjustedCostTotal = 0,
 ): CostingSummary {
+  results=results.filter(r=>!r.outlier);
   if (results.length === 0) {
     return {
       periodeData: '-',

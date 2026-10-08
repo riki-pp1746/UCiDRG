@@ -1,3 +1,4 @@
+import {allocateComponents} from '../lib/calculations/componentAllocation';
 import {sessionMemoryStorage} from '../lib/sessionMemory';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -28,6 +29,7 @@ export function buildBiayaRSMap(
   periodFactor = 1,
   jknProportion = 100,
 ): Record<keyof KomponenTarif18, number> {
+  patients=patients.filter(p=>ALL_KOMPONEN_KEYS.every(k=>Number.isFinite(p[k])&&p[k]>=0)&&ALL_KOMPONEN_KEYS.some(k=>p[k]>0));
   const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
     acc[key] = patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
     return acc;
@@ -64,8 +66,7 @@ export function buildBiayaRSMap(
     acc[key] = Math.round(mapped[key] * safeFactor);
     return acc;
   }, {} as Record<keyof KomponenTarif18, number>);
-  const annualTotal = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
-  const adjustedTarget = Math.round(annualTotal * safeFactor);
+  const adjustedTarget = Math.round(Object.values(mapped).reduce((a,b)=>a+b,0) * safeFactor);
   const adjustedSum = Object.values(adjusted).reduce((sum, value) => sum + value, 0);
   const adjustmentKey = ALL_KOMPONEN_KEYS.reduce((best, key) => mapped[key] > mapped[best] ? key : best, ALL_KOMPONEN_KEYS[0]);
   adjusted[adjustmentKey] += adjustedTarget - adjustedSum;
@@ -131,9 +132,14 @@ export const useTarifPasienStore = create<TarifPasienState>()(
 
       setPatients: (patients) => set({ patients,localCosting:null }),
       addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }],localCosting:null })),
-      updatePatient: (id, data) => set((s) => ({
-        patients: s.patients.map(p => p.id === id ? { ...p, ...data } : p),localCosting:null
-      })),
+      updatePatient: (id, data) => {
+        const patient=get().patients.find(p=>p.id===id);
+        set(s=>({patients:s.patients.map(p=>p.id===id?{...p,...data}:p),localCosting:null}));
+        if(patient&&('icuDays' in data||'lhr' in data)){
+          useCostingStore.setState(s=>({rawRecords:s.rawRecords.map(r=>r.sep===patient.noSEP?{...r,...('icuDays' in data?{icuDays:data.icuDays}:{}),...('lhr' in data?{los:data.lhr!}:{})}:r)}));
+          useCostingStore.getState().processData();
+        }
+      },
       removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id),localCosting:null })),
       clearPatients: () => set({ patients: [],localCosting:null }),
       syncFromCosting: (rawRecords: any[]) => {
@@ -148,6 +154,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           idrgDescription: r.idrg?.drg_description || '',
           kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as any,
           lhr: r.los || 0,
+          icuDays:r.icuDays,
           procedure_amt: r.billing?.procedure_amt || 0,
           surgical_amt: r.billing?.surgical_amt || 0,
           consul_amt: r.billing?.consul_amt || 0,
@@ -177,30 +184,14 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       calculateDistribution: () => {
         const { patients, biayaRSMap } = get();
 
+        const allocation=allocateComponents(patients.map(p=>({inpatient:p.kelasRawat!=='rawat_jalan'&&p.kelasRawat!=='igd',los:p.lhr,icuDays:p.icuDays,billing:Object.fromEntries(ALL_KOMPONEN_KEYS.map(k=>[k,p[k]]))})),biayaRSMap as Record<string,number>,useCostingStore.getState().mergeCarePool);
         // 1. Hitung total klaim per komponen dari semua pasien
         const totalEKlaim: Record<keyof KomponenTarif18, number> = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
           acc[key] = patients.reduce((sum, p) => sum + (p[key] || 0), 0);
           return acc;
         }, {} as Record<keyof KomponenTarif18, number>);
 
-        // 2. Buat array distribusi
-        const distribusi = ALL_KOMPONEN_KEYS.map((key) => {
-          const tEKlaim = totalEKlaim[key];
-          const tBiayaRS = biayaRSMap[key] || 0;
-          return {
-            key,
-            label: KOMPONEN_LABELS[key],
-            totalEKlaim: tEKlaim,
-            totalBiayaRS: tBiayaRS,
-            rasio: tEKlaim > 0 ? tBiayaRS / tEKlaim : 0,
-            metodeAlokasi: tEKlaim > 0 ? 'Proporsional nilai E-Klaim' : 'Tidak dialokasikan (Total E-Klaim = 0)'
-          };
-        });
-
-        const totalBillingMap = distribusi.reduce((acc, curr) => {
-          acc[curr.key] = sum(patients.map(row=>String(row[curr.key]||0))).toString();
-          return acc;
-        }, {} as Record<keyof KomponenTarif18, string>);
+        const distribusi = ALL_KOMPONEN_KEYS.map(key=>{const t=allocation.traces.find(t=>t.key===key);return {key,label:KOMPONEN_LABELS[key],totalEKlaim:totalEKlaim[key],totalBiayaRS:biayaRSMap[key]||0,rasio:t?.billingRatio??0,metodeAlokasi:t?.basis||'Belum ada biaya',outlier:t?.outlier,warning:t?.warning,unit:t?.unit,denominator:t?.denominator,rate:t?.rate,unallocated:t?.unallocated};});
 
         // Jika tidak ada pasien, cukup update distribusi saja
         if (patients.length === 0) {
@@ -209,15 +200,13 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         }
 
         // 3. Distribusikan ke pasien
-        const updatedPatients = patients.map((p) => {
+        const updatedPatients = patients.map((p,index) => {
           const distributedCosts: Partial<KomponenTarif18> = {};
           const distributedCostsDecimal: Partial<Record<keyof KomponenTarif18,string>> = {};
 
           // Step 3: Alokasi 18 Variabel berdasarkan rasio E-Klaim
           ALL_KOMPONEN_KEYS.forEach(key => {
-            const biayaPasienDariKlaim = p[key] || 0;
-            const totalBilling=dec(totalBillingMap[key]);
-            const alokasi=totalBilling.gt(0)?dec(String(biayaPasienDariKlaim)).mul(String(biayaRSMap[key]||0)).div(totalBilling):dec(0);
+            const alokasi=dec(allocation.values[index][key]||0);
             distributedCostsDecimal[key]=alokasi.toString();
             distributedCosts[key] = alokasi.toNumber();
           });
@@ -238,11 +227,11 @@ export const useTarifPasienStore = create<TarifPasienState>()(
 
         const period=useCostingStore.getState().periodNormalization?.label||'Periode klaim belum dikonfirmasi';
         const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
-        set({ distribusi, patients: updatedPatients,localCosting,calculationVersion:get().calculationVersion+1 });
+        set({ distribusi, patients: updatedPatients.map((p,i)=>({...p,outlier:localCosting.patients[i].outlier})),localCosting,calculationVersion:get().calculationVersion+1 });
       },
 
       validateAgainstHospital: (config, periodFactor = 1) => {
-        const { patients, biayaRSMap } = get();
+        const { patients, biayaRSMap,distribusi } = get();
         const basic = config.dataDasar;
         const issues: ValidationIssue[] = [];
         const addMismatch = (
@@ -293,6 +282,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
               message: 'Biaya RS terisi tetapi tidak ada tagihan E-Klaim pasien sebagai dasar pembagian proporsional.' });
           }
         });
+        distribusi.filter(d=>d.warning).forEach(d=>issues.push({id:'driver-'+d.key,severity:'warning',label:d.label,expected:0,actual:d.rasio,message:d.warning!}));
         set({ validationIssues: issues });
       },
     }),

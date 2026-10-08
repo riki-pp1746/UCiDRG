@@ -195,6 +195,7 @@ function parseRow(cols: string[]): PatientRecord | null {
     admission_date: admissionDate,
     discharge_date: parseDate(get(COLUMN_MAP.DISCHARGE_DATE)),
     los: parseNum(get(COLUMN_MAP.LOS)),
+    icuDays:get(COLUMN_MAP.ICU_LOS)?parseNum(get(COLUMN_MAP.ICU_LOS)):undefined,
     kelas_rawat: parseNum(get(COLUMN_MAP.KELAS_RAWAT)),
     discharge_status: parseNum(get(COLUMN_MAP.DISCHARGE_STATUS)),
     diaglist: get(COLUMN_MAP.DIAGLIST),

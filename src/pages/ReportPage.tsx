@@ -1,3 +1,9 @@
+import {maskSEP} from '../v4/numbers';
+import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
+import AnalysisFilters from '../components/ui/AnalysisFilters';
+import {useFilteredPatientResults} from '../stores/costingStore';
+import {aggregateByDRG,generateSummary} from '../lib/calculations/patientLevelCosting';
+import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ReportPage.tsx
@@ -51,9 +57,11 @@ const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
 
 export default function ReportPage() {
   const viewMode = useCostingStore(s => s.viewMode);
-  const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
-  const drgResults = useCostingStore(s => viewMode === 'INACBG' ? s.inacbgResults : s.idrgResults);
-  const patientResults = useCostingStore(s => s.patientResults);
+  const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
+  const filteredResults=useFilteredPatientResults();
+  const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
+  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal):null,[filteredResults,drgResults,viewMode,originalSummary]);
+  const patientResults = filteredResults;
   const periodNormalization = useCostingStore(s => s.periodNormalization);
   const config = useHospitalCostStore(s => s.config);
   const validationIssues = useTarifPasienStore(s => s.validationIssues);
@@ -65,7 +73,9 @@ export default function ReportPage() {
   const periodFactor = periodNormalization?.factor || 1;
   const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-  const selisihRekonsiliasi = totalBiayaLaporan - totalBiaya18Variabel;
+  const jknProportion=useCostingStore(s=>s.jknProportion);
+  const poolJKN=totalBiayaLaporan*jknProportion/100;
+  const selisihRekonsiliasi = poolJKN - totalBiaya18Variabel;
 
   if (!summary) {
     return (
@@ -105,6 +115,9 @@ export default function ReportPage() {
       ['% DRG Defisit', summary.persenRugi.toFixed(1) + '%'],
       ['% DRG Profit', summary.persenUntung.toFixed(1) + '%'],
     ];
+    summaryData.push(['Trimming','Statistik menggunakan inlier ±2 SD sampel per iDRG/rawat'],['Kasus outlier pada filter',patientResults.filter(p=>p.outlier).length],['Biaya outlier pada filter',patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0)]);
+    const local=useTarifPasienStore.getState().localCosting;if(local)for(const [name,rows] of Object.entries(hospitalBaseRateSheets(local)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);
+    const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
 
@@ -128,10 +141,10 @@ export default function ReportPage() {
       'Nama Pasien', 'MRN', 'SEP', 'Tgl Masuk', 'Tgl Keluar', 'LOS',
       'Kelas Rawat', `Kode ${viewMode}`, `Deskripsi ${viewMode}`, 'Diagnosa', 'Prosedur',
       ...BILLING_EXPORT.map(item => item.label),
-      'Unit Cost Dihitung', `Tarif ${viewMode}`, 'Selisih', 'Status'
+      'Unit Cost Dihitung', `Tarif ${viewMode}`, 'Selisih', 'Status','Trimming ±2 SD'
     ];
     const patData = patientResults.map(r => [
-      r.patient.nama_pasien, r.patient.mrn, r.patient.sep,
+      r.patient.nama_pasien, r.patient.mrn, maskSEP(r.patient.sep),
       r.patient.admission_date, r.patient.discharge_date, r.patient.los,
       r.patient.kelas_rawat,
       viewMode === 'INACBG' ? r.patient.inacbg : r.patient.idrg?.drg_code,
@@ -140,7 +153,7 @@ export default function ReportPage() {
       ...BILLING_EXPORT.map(item => r.patient.billing[item.key] || 0),
       r.unitCostDihitung, viewMode === 'INACBG' ? r.tarifINACBG : r.tarifIDRG,
       viewMode === 'INACBG' ? r.selisihINACBG : r.selisihIDRG,
-      STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG]
+      STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG],r.outlier?'Outlier (dikeluarkan)':'Inlier'
     ]);
     const ws3 = XLSX.utils.aoa_to_sheet([patHeader, ...patData]);
     XLSX.utils.book_append_sheet(wb, ws3, 'Detail Pasien');
@@ -163,7 +176,9 @@ export default function ReportPage() {
       ['C. Pusat Biaya Utama (Layanan Pasien)', config.totalFinalCost || 0, Math.round((config.totalFinalCost || 0) * periodFactor), 'Biaya langsung'],
       ['Total Biaya Laporan Operasional/Keuangan', totalBiayaTahunan, totalBiayaLaporan, `Faktor ${periodNormalization?.effectiveMonths || 12}/12`],
       ['Total Biaya yang Dipetakan ke 18 Variabel E-Klaim', '', totalBiaya18Variabel, 'Distribusi berdasarkan proporsi TXT E-Klaim'],
-      ['Selisih Rekonsiliasi', '', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Usulan biaya Non-JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
+      ['Biaya Non-JKN', '', totalBiayaLaporan-poolJKN, 'Terpisah dari pool JKN'],
+      ['Pool JKN', '', poolJKN, jknProportion+'%'],
+      ['Selisih Rekonsiliasi Pool JKN', '', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Sisa pool JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
     ];
     const ws5 = XLSX.utils.aoa_to_sheet(reconciliationData);
     XLSX.utils.book_append_sheet(wb, ws5, 'Rekonsiliasi Biaya');
@@ -286,8 +301,10 @@ export default function ReportPage() {
         </div>
       </div>
 
+      <AnalysisFilters/><p className="uc-notice">Ringkasan statistik memakai inlier ±2 SD. Biaya pool dan rekonsiliasi tetap untuk seluruh populasi unggahan; filter tidak mengubahnya. Outlier dikeluarkan dari pembentuk HBR dan dilaporkan terpisah.</p>
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6 print:space-y-4">
+        <p className="uc-notice">Trimming ±2 SD sampel per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dikeluarkan dari statistik. Biaya tetap tercatat; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
 
         {/* Report Header */}
         <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white rounded-2xl p-6 print:rounded-none print:from-blue-800 print:to-blue-800">

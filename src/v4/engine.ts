@@ -1,3 +1,4 @@
+import {twoSDFlags} from '../lib/calculations/trimming';
 import {calculateIDRGTariff} from '../lib/calculations/idrgTariff';
 import {calculateHospitalBaseRate} from '../lib/calculations/hospitalBaseRate';
 import { dec, sum, ratio } from './numbers';
@@ -198,9 +199,9 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
         patients.push({id:p.id,care,code:p.code,sep:p.sep,inacbg:p.inacbg,description:p.description,mdc:p.mdc,uc,allocations,weight:weight?.value||null,tariffINA:dec(p.tariffINA).gt(0)?p.tariffINA:null,tariffIDRG:null,source:'Tidak tersedia',simulation:null,scenario:null,target:dec(uc).mul(dec(1).plus(dec(s.markup).div(100))).toString(),statusINA:classify(dec(p.tariffINA).gt(0)?p.tariffINA:null,uc,s.toleranceMode,s.tolerance),statusIDRG:'Tidak dapat dihitung',crrINA:dec(p.tariffINA).gt(0)?ratio(p.tariffINA,uc):null,crrIDRG:null,difference:null,pending:p.pending,disputed:p.disputed,outlier:false});
         if(index%1000===0)onProgress(20+Math.round(index/Math.max(1,pop.length)*50));
       }
-      const subset=patients.slice(start); const valid=subset.filter(p=>p.weight!==null);
+      const subset=patients.slice(start);const trimming=twoSDFlags(subset.map(p=>({group:p.code,value:p.uc})));subset.forEach((p,i)=>p.outlier=trimming.flags[i]); const valid=subset.filter(p=>p.weight!==null&&!p.outlier);
       const validCost=sum(valid.map(p=>p.uc)).toString();const casemix=sum(valid.map(p=>p.weight!)).toString();const baseRate=ratio(validCost,casemix);
-      const pool:Pool={care,total:poolTotal.toString(),components:components[care],allocated:sum(subset.map(p=>p.uc)).toString(),reserve:sum(Object.values(reserves[care])).toString(),unallocated:'0',withoutWeight:sum(subset.filter(p=>!p.weight).map(p=>p.uc)).toString(),validCost,casemix,cmi:valid.length?dec(casemix).div(valid.length).toString():null,baseRate,nationalBase:null,baseRatio:null};
+      const pool:Pool={outlierCost:sum(subset.filter(p=>p.weight!==null&&p.outlier).map(p=>p.uc)).toString(),outlierCount:subset.filter(p=>p.outlier).length,care,total:poolTotal.toString(),components:components[care],allocated:sum(subset.map(p=>p.uc)).toString(),reserve:sum(Object.values(reserves[care])).toString(),unallocated:'0',withoutWeight:sum(subset.filter(p=>!p.weight).map(p=>p.uc)).toString(),validCost,casemix,cmi:valid.length?dec(casemix).div(valid.length).toString():null,baseRate,nationalBase:null,baseRatio:null};
       pool.unallocated=poolTotal.minus(pool.allocated).minus(pool.reserve).toString();
       if(dec(pool.unallocated).abs().gt('0.000001'))issue('V15',`${care}: biaya belum teralokasi ${pool.unallocated}.`,'warning',method);
       for(const p of subset) {
@@ -225,13 +226,12 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
     const groupMap=new Map<string,PatientResult[]>();for(const p of patients){const key=p.care+'|'+p.code;const arr=groupMap.get(key)||[];arr.push(p);groupMap.set(key,arr);}
     const groups:MethodResult['groups']=[];
     for(const pop of groupMap.values()) {
-      const sorted=pop.map(p=>dec(p.uc)).sort((a,b)=>a.cmp(b));
-      const quantile=(q:number)=>{const pos=(sorted.length-1)*q;const i=Math.floor(pos);return sorted[i].plus((sorted[i+1]||sorted[i]).minus(sorted[i]).mul(String(pos-i)));};
-      const threshold=quantile(.75).plus(quantile(.75).minus(quantile(.25)).mul(s.outlierFactor));
-      for(const p of pop)if(dec(p.uc).gt(threshold))p.outlier=true;
-      if(pop.some(p=>p.outlier))issue('V14',`${pop[0].code}: outlier ditandai, tidak dihapus.`,'warning',method);
-      if(pop.length<s.sampleSize)issue('V10',`${pop[0].code}: kurang dari ${s.sampleSize} kasus.`,'warning',method);
-      groups.push({code:pop[0].code,care:pop[0].care,count:pop.length,mean:sum(pop.map(p=>p.uc)).div(pop.length).toString(),median:quantile(.5).toString(),lowSample:pop.length<s.sampleSize});
+      const inliers=pop.filter(p=>!p.outlier);
+      const sorted=inliers.map(p=>dec(p.uc)).sort((a,b)=>a.cmp(b));
+      const median=sorted[Math.floor((sorted.length-1)/2)].plus(sorted[Math.ceil((sorted.length-1)/2)]).div(2);
+      if(pop.some(p=>p.outlier))issue('V14',`${pop[0].code}: outlier di luar rata-rata ±2 SD sampel dikeluarkan dari pembentuk CW/Casemix/HBR; biaya tetap direkonsiliasi.`,'warning',method);
+      if(inliers.length<s.sampleSize)issue('V10',`${pop[0].code}: kurang dari ${s.sampleSize} kasus inlier.`,'warning',method);
+      groups.push({code:pop[0].code,care:pop[0].care,count:inliers.length,mean:sum(inliers.map(p=>p.uc)).div(inliers.length).toString(),median:median.toString(),lowSample:inliers.length<s.sampleSize});
     }
     const localCosting=calculateHospitalBaseRate(patients.map(p=>({id:p.id,sep:p.sep,code:p.code,description:p.description,care:p.care,uc:p.uc})),{method,period:`LK ${s.lkStart}–${s.lkEnd}; klaim ${effective} bulan (${months.join(', ')})`,pools});
     results.push({method,blocked:issues.some(i=>i.severity==='error'&&(!i.method||i.method===method)),total:sum(pools.map(p=>p.total)).toString(),pools,patients,traces,groups,localCosting});

@@ -5,6 +5,7 @@ import { newCenter,KEYS,emptyBill } from './types';
 import type { Input,Claim,Reference,Issue } from './types';
 import { validDate } from './engine';
 import {validateWorkbookSignature} from './security';
+import {appendTemplateHelp} from '../lib/templateGuidance';
 
 function date(value:unknown){const s=String(value||'').trim();const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s;}
 function num(value:unknown){return value===''||value===null||value===undefined||value==='None'||value==='-'?'0':parseNumber(value);}
@@ -89,7 +90,7 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
 export function templateWorkbook(input:Input) {
   if(!input.centers.length)input={...input,centers:(['overhead','intermediate','final'] as const).map(group=>({...newCenter(group),name:`${group} — isi data unit RS`}))};
   const wb=XLSX.utils.book_new();const append=(name:string,data:unknown[][])=>{const sheet=XLSX.utils.aoa_to_sheet(data);sheet['!cols']=Array.from({length:Math.max(...data.map(r=>r.length))},(_,i)=>({wch:i===1?34:22}));XLSX.utils.book_append_sheet(wb,sheet,name);};
-  append('Panduan Pengisian',[['TEMPLATE REVISI 4'],['Biaya dalam rupiah; gunakan angka typed Excel atau teks desimal invariant.'],['Isi pemicu dan satuan; kosong berarti data belum tersedia.'],['Driver penerima: unit yang sama per donor; overhead ke Intermediate/final, Intermediate ke final.'],['Cakupan: volume klaim dan total JKN pada periode/satuan sama.'],['Nilai ilustratif bukan referensi produksi.'],['Kolom ID harus tetap agar sheet saling terhubung.']]);
+  appendTemplateHelp(wb,'integrated');
   append('Data Dasar RS',[['Indikator','Nilai'],['Nama Rumah Sakit',input.hospital],['Tahun Data',Number(input.settings.lkStart.slice(0,4))||new Date().getFullYear()],['Pendapatan Fungsional JKN',input.settings.jknIncome],['Pendapatan Fungsional Non JKN',input.settings.otherIncome]]);
   const rows:unknown[][]=[['TEMPLATE COSTING REVISI 4'],['Tahun Data:',Number(input.settings.lkStart.slice(0,4))||new Date().getFullYear()]];
   for(const [g,title] of [['overhead','A. PUSAT BIAYA OVERHEAD'],['intermediate','B. PUSAT BIAYA INTERMEDIATE'],['final','C. PUSAT BIAYA FINAL']] as const) {

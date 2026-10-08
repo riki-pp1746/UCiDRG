@@ -17,3 +17,5 @@ export function parseNumber(value: unknown): string {
 export const money = (value: string|null|undefined) => value==null?'Tidak dapat dihitung':`Rp ${rounded(value).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}`;
 export const ratio = (a: string,b: string) => dec(b).gt(0)?dec(a).div(b).toString():null;
 export const maskSEP = (sep:string) => sep ? `${'*'.repeat(Math.max(4,sep.length-4))}${sep.slice(-4)}` : 'Tidak ada SEP';
+
+export const displayDecimal = (value: string|null|undefined,places=2) => value==null?'Tidak dapat dihitung':dec(value).toDecimalPlaces(places).toNumber().toLocaleString('id-ID',{maximumFractionDigits:places});

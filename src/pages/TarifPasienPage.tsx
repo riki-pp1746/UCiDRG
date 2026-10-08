@@ -1,3 +1,4 @@
+import {displayDecimal} from '../v4/numbers';
 import {money,maskSEP} from '../v4/numbers';
 import * as XLSX from 'xlsx';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
@@ -26,6 +27,8 @@ export default function TarifPasienPage() {
   const [resultPage, setResultPage] = useState(1);
   const [showValidationModal, setShowValidationModal] = useState(false);
 
+  const [query,setQuery]=useState('');
+  const [careFilter,setCareFilter]=useState('all');
   const pageSize = 10;
 
   const {
@@ -52,6 +55,7 @@ export default function TarifPasienPage() {
         idrgDescription: r.idrg?.drg_description || '',
         kelasRawat: r.ptd === 2 ? 'rawat_jalan' : (r.kelas_rawat === 1 ? 'kelas1' : r.kelas_rawat === 2 ? 'kelas2' : 'kelas3') as KelasRawat,
         lhr: r.los || 0,
+        icuDays:r.icuDays,
         
         // Map 18 komponen dari E-Klaim billing
         procedure_amt: r.billing?.procedure_amt || 0,
@@ -91,17 +95,18 @@ export default function TarifPasienPage() {
     validateAgainstHospital(config, periodFactor);
   }, [patients, biayaRSMap, localCosting, config, periodFactor, validateAgainstHospital]);
 
-  const inputTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
-  const resultTotalPages = Math.max(1, Math.ceil(patients.length / pageSize));
-  const inputPatients = patients.slice((inputPage - 1) * pageSize, inputPage * pageSize);
-  const resultPatients = patients.slice((resultPage - 1) * pageSize, resultPage * pageSize);
+  const filteredPatients=patients.filter(p=>(careFilter==='all'||(careFilter==='jalan'?p.kelasRawat==='rawat_jalan':p.kelasRawat!=='rawat_jalan'))&&`${maskSEP(p.noSEP)} ${p.drg} ${p.idrgDescription||''} ${p.diagnosis}`.toLowerCase().includes(query.toLowerCase()));
+  const inputTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const resultTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
+  const inputPatients = filteredPatients.slice((Math.min(inputPage,inputTotalPages) - 1) * pageSize, inputPage * pageSize);
+  const resultPatients = filteredPatients.slice((Math.min(resultPage,resultTotalPages) - 1) * pageSize, resultPage * pageSize);
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
   const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
   const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
   const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(wb,'Costing-Pasien-CW-HBR-RS.xlsx');};
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
-      <span>Menampilkan {(page - 1) * pageSize + (patients.length ? 1 : 0)}-{Math.min(page * pageSize, patients.length)} dari {patients.length} pasien</span>
+      <span>Menampilkan {(page - 1) * pageSize + (filteredPatients.length ? 1 : 0)}-{Math.min(page * pageSize, filteredPatients.length)} dari {filteredPatients.length} pasien</span>
       <div className="flex items-center gap-2">
         <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="p-1.5 rounded border border-gray-200 disabled:opacity-40 hover:bg-white"><ChevronLeft className="w-4 h-4" /></button>
         <span>Halaman {page} / {pages}</span>
@@ -121,7 +126,7 @@ export default function TarifPasienPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
-      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · biaya populasi {money(p.total)} · casemix {p.casemix??'Tidak dapat dihitung'}</p></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = biaya populasi yang sama ÷ total casemix.</p></section>}
+      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · biaya populasi {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = biaya populasi yang sama ÷ total casemix.</p></section>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -153,6 +158,7 @@ export default function TarifPasienPage() {
         ))}
       </div>
 
+      {activeTab!=='tarif'&&<section className="uc-panel flex gap-3 flex-wrap"><label className="uc-label">Cari iDRG, deskripsi atau SEP masking<input className="uc-input" value={query} onChange={e=>{setQuery(e.target.value);setInputPage(1);setResultPage(1);}}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={careFilter} onChange={e=>{setCareFilter(e.target.value);setInputPage(1);setResultPage(1);}}><option value="all">Semua</option><option value="inap">Inap</option><option value="jalan">Jalan</option></select></label><p className="text-xs self-end">Filter tampilan tidak menghitung ulang pool atau HBR.</p></section>}
       {activeTab === 'tarif' && <IDRGTariffPage embedded />}
 
       <div hidden={activeTab === 'tarif'} className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
@@ -204,7 +210,7 @@ export default function TarifPasienPage() {
                   <th className="px-3 py-2 sticky left-12 bg-gray-50 z-10 border-r border-gray-200">No. SEP</th>
                   <th className="px-3 py-2">DRG</th>
                   <th className="px-3 py-2">Kelas</th>
-                  <th className="px-3 py-2">LHR</th>
+                  <th className="px-3 py-2">LHR</th><th className="px-3 py-2">Hari ICU</th>
                   {ALL_KOMPONEN_KEYS.map(k => (
                     <th key={k} className="px-3 py-2 border-l border-gray-200">{KOMPONEN_SHORT[k]}</th>
                   ))}
@@ -238,6 +244,7 @@ export default function TarifPasienPage() {
                       <td className="px-3 py-1.5">
                         <input type="number" value={p.lhr} onChange={e => updatePatient(p.id, { lhr: parseFloat(e.target.value)||0 })} className={`w-12 px-2 py-1 border rounded text-xs text-right ${getIssueSeverity('lhr-jkn') === 'error' ? 'border-red-400 bg-red-50 text-red-800' : getIssueSeverity('lhr-jkn') === 'warning' ? 'border-amber-400 bg-amber-50 text-amber-800' : 'border-gray-200'}`} aria-invalid={hasIssue('lhr-jkn')} />
                       </td>
+                      <td className="px-3 py-1.5"><input aria-label={`Hari ICU ${maskSEP(p.noSEP)}`} type="number" min="0" max={p.lhr} value={p.icuDays??''} placeholder="Belum ada" onChange={e=>updatePatient(p.id,{icuDays:e.target.value===''?undefined:Number(e.target.value)})} className="uc-input w-24"/></td>
                       {ALL_KOMPONEN_KEYS.map(k => (
                         <td key={k} className="px-3 py-1.5 border-l border-gray-100">
                           <input type="number" value={p[k] || ''} onChange={e => updatePatient(p.id, { [k]: parseFloat(e.target.value)||0 })} placeholder="0" className="w-20 px-2 py-1 border border-gray-200 rounded text-xs text-right text-gray-700 bg-gray-50 focus:bg-white" />
@@ -249,7 +256,7 @@ export default function TarifPasienPage() {
               </tbody>
             </table>
           </div>
-          <Pagination page={Math.min(inputPage, inputTotalPages)} pages={inputTotalPages} setPage={setInputPage} />
+          {Pagination({page:Math.min(inputPage,inputTotalPages),pages:inputTotalPages,setPage:setInputPage})}
         </div>
       )}
 
@@ -275,7 +282,7 @@ export default function TarifPasienPage() {
                   <th className="px-3 py-2 sticky left-0 bg-gray-50 z-10 border-r border-gray-200">No. SEP</th>
                   <th className="px-3 py-2">DRG</th>
                   <th className="px-3 py-2">Kelas</th>
-                  <th className="px-3 py-2 text-right">LHR</th>
+                  <th className="px-3 py-2 text-right">LHR</th><th className="px-3 py-2">Trimming ±2 SD</th>
                   <th className="px-3 py-2 text-right text-blue-700 bg-blue-50">Akomodasi (Stp.2)</th>
                   {ALL_KOMPONEN_KEYS.filter(k => k !== 'room_amt').map(k => (
                     <th key={k} className="px-3 py-2 text-right border-l border-gray-200">{KOMPONEN_SHORT[k]}</th>
@@ -296,7 +303,7 @@ export default function TarifPasienPage() {
                       <td className="px-3 py-2 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 font-medium">{maskSEP(p.noSEP)}</td>
                       <td className="px-3 py-2">{p.drg || '-'}</td>
                       <td className="px-3 py-2">{KELAS_RAWAT_LABELS[p.kelasRawat]}</td>
-                      <td className="px-3 py-2 text-right">{p.lhr}</td>
+                      <td className="px-3 py-2 text-right">{p.lhr}</td><td className={p.outlier?'text-red-700':'text-emerald-700'}>{p.outlier?'Outlier; di luar CW/HBR':'Inlier'}</td>
                       <td className="px-3 py-2 text-right font-medium text-blue-700 bg-blue-50/30">{formatRupiah(p.accommodationCost)}</td>
                       {ALL_KOMPONEN_KEYS.filter(k => k !== 'room_amt').map(k => (
                         <td key={k} className="px-3 py-2 text-right border-l border-gray-100 text-gray-500 font-mono">
@@ -312,7 +319,7 @@ export default function TarifPasienPage() {
               </tbody>
             </table>
           </div>
-          <Pagination page={Math.min(resultPage, resultTotalPages)} pages={resultTotalPages} setPage={setResultPage} />
+          {Pagination({page:Math.min(resultPage,resultTotalPages),pages:resultTotalPages,setPage:setResultPage})}
         </div>
       )}
       {showValidationModal && (

@@ -90,6 +90,8 @@ export interface PatientRecord extends KomponenTarif18 {
   kelasRawat: KelasRawat;
   poli?: string;
   lhr: number;
+  icuDays?: number;
+  outlier?:boolean;
   
   // Hasil kalkulasi (diisi by store)
   accommodationCost: number;
@@ -106,6 +108,12 @@ export interface KomponenDistribusi {
   totalBiayaRS: number;
   rasio: number;
   metodeAlokasi: string;
+  outlier?: boolean;
+  warning?: string;
+  unit?: string;
+  denominator?: number;
+  rate?: number|null;
+  unallocated?: string;
 }
 
 export type ValidationSeverity = 'error' | 'warning';

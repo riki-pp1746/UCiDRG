@@ -46,6 +46,8 @@ interface CostingState {
   tarifIDRGConfig: TarifIDRGConfig;
   rvuGlobalCosts?: RVUGlobalCosts;
   periodNormalization: PeriodNormalization | null;
+  mergeCarePool:boolean;
+  setMergeCarePool:(enabled:boolean)=>void;
   jknProportion: number; // 0-100 percentage
   
   // UI State
@@ -88,6 +90,8 @@ export const useCostingStore = create<CostingState>()(
       tarifIDRGConfig: DEFAULT_TARIF_IDRG_CONFIG,
       periodNormalization: null,
       jknProportion: 100,
+      mergeCarePool:false,
+      setMergeCarePool:(enabled)=>{set({mergeCarePool:enabled});get().processData();},
       isProcessing: false,
       processProgress: 0,
       filterDRG: '',
@@ -123,11 +127,12 @@ export const useCostingStore = create<CostingState>()(
         setTimeout(() => {
           // A logout/reset or a newer upload must invalidate the queued calculation.
           if(get().rawRecords!==rawRecords)return;
-          const { results, rejectedCount } = runRVUAllocation(
+          const { results } = runRVUAllocation(
             rawRecords,
             rvuGlobalCosts || null,
             overheadConfig,
-            tarifIDRGConfig
+            tarifIDRGConfig,
+            get().mergeCarePool
           );
           
           set({ processProgress: 50 });
@@ -281,9 +286,9 @@ export function useFilteredPatientResults() {
       const term = searchTerm.toLowerCase();
       results = results.filter(
         r =>
-          r.patient.nama_pasien.toLowerCase().includes(term) ||
-          r.patient.mrn.toLowerCase().includes(term) ||
-          r.patient.idrg.drg_description.toLowerCase().includes(term)
+          (r.patient.nama_pasien||'').toLowerCase().includes(term) ||
+          (r.patient.mrn||'').toLowerCase().includes(term) ||
+          (r.patient.idrg?.drg_description||'').toLowerCase().includes(term) || (r.patient.idrg?.drg_code||'').toLowerCase().includes(term) || (r.patient.inacbg||'').toLowerCase().includes(term)
       );
     }
     return results;

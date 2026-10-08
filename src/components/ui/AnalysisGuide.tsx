@@ -1,5 +1,6 @@
 import {Link} from 'react-router-dom';
 import {ArrowRight,Upload,Calculator,Users,BarChart3,FileText} from 'lucide-react';
+import TemplateGuide from './TemplateGuide';
 
 export type AnalysisGuideMode = 'components' | 'integrated';
 const stages = [
@@ -23,7 +24,7 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
       'Periksa pemetaan biaya layanan serta distribusi biaya penunjang ke 18 komponen berdasarkan tagihan.',
       'Periksa peringatan LHR, dasar pembagi yang kosong, dan biaya periode. Jangan menganggap nilai kosong sebagai biaya yang sudah lengkap.',
     ]},
-    {description:'Buka Hasil Pasien untuk melihat input, rincian unit cost, dan perbandingan tarif.',items:[
+    {description:'Buka Hasil Pasien untuk melihat input, rincian unit cost, CW, casemix, dan HBR RS.',items:[
       'Tab 1. Input Data Pasien: periksa klaim dan 18 komponen tagihan; koreksi data yang diperlukan.',
       'Tab 2. Rincian biaya dan unit cost: periksa hasil distribusi setiap komponen ke pasien.',
       'Tab 3. CW, Casemix & HBR RS: lihat unit cost pasien, rata-rata biaya kelompok, jumlah kasus, CW RS, casemix, dan HBR inap/jalan.',
@@ -96,6 +97,7 @@ export default function AnalysisGuide({mode}:{mode:AnalysisGuideMode}){
   const integrated=mode==='integrated';
   const path=(p:string)=>integrated?'/revisi4'+p:p;
   return <div className="space-y-5">
+    <TemplateGuide mode={mode}/>
     <section className="uc-panel space-y-3"><h2>Pilih ruang analisis sebelum mulai</h2><p className="text-sm text-slate-600">Gunakan pilihan Ruang analisis pada sidebar. Analisis 18 Komponen membagi biaya melalui 18 komponen tagihan. Analisis Biaya Terintegrasi menambahkan pusat biaya, dua metode alokasi, pemisahan JKN, dan rekonsiliasi. Data kedua ruang tersimpan terpisah dan tidak tersinkron otomatis.</p><p className="text-sm text-slate-600">Lima tahap kerja: Data → Biaya &amp; Alokasi → Hasil Pasien → Perbandingan → Laporan. Dashboard dan Pengaturan dapat dibuka kapan diperlukan.</p></section>
     <section className="uc-panel space-y-3"><h2>Mulai kembali dengan data baru</h2><p className="text-sm text-slate-600">Buka menu Reset Data. Pilih data aktif untuk mengosongkan TXT dan Excel pada ruang ini, atau reset total untuk menghapus kedua ruang termasuk riwayat hasil dan konfigurasi. Buat cadangan terlebih dahulu, lalu ketik RESET untuk mengonfirmasi. Reset hanya berlaku pada browser dan alamat aplikasi ini.</p><Link className="uc-secondary" to={path('/reset')}>Buka Reset Data</Link></section>
     <section className="space-y-3" aria-label="Panduan lima tahap kerja"><h2 className="text-xl font-bold text-[#0B1F3A]">Langkah penggunaan {integrated?'Analisis Biaya Terintegrasi':'Analisis 18 Komponen'}</h2>{stages.map((stage,i)=>{const Icon=stage.icon;const content=instructions[mode][i];return <section className="uc-panel space-y-3" key={stage.path}><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-3 font-semibold"><Icon size={20}/>{i+1}. {stage.title}</h3><Link className="uc-secondary" to={path(stage.path)}>Buka {stage.title}<ArrowRight size={16}/></Link></div><p className="text-sm text-slate-600">{content.description}</p><ul className="list-disc pl-5 space-y-2 text-sm text-slate-600">{content.items.map(item=><li key={item}>{item}</li>)}</ul></section>;})}</section>

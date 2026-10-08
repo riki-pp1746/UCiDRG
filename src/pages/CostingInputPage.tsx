@@ -1,3 +1,7 @@
+import {displayDecimal,parseNumber} from '../v4/numbers';
+import {downloadTemplateWorkbook} from '../lib/templateWorkbookExport';
+import TemplateGuide from '../components/ui/TemplateGuide';
+import {appendTemplateHelp} from '../lib/templateGuidance';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: CostingInputPage.tsx
@@ -292,7 +296,10 @@ export default function CostingInputPage() {
 
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
-  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion } = useCostingStore();
+  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion, setJknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
+  const [centerQuery,setCenterQuery]=useState('');
+  const [componentQuery,setComponentQuery]=useState('');
+  const [componentFlag,setComponentFlag]=useState('all');
   const periodFactor = periodNormalization?.factor || 1;
 
   // Recalculate otomatis saat masuk ke tab distribusi18
@@ -315,12 +322,14 @@ export default function CostingInputPage() {
 
       calculateDistribution();
     }
-  }, [activeTab, biayaRSMap, calculateDistribution, config, periodFactor]);
+  }, [activeTab, biayaRSMap, calculateDistribution, config, periodFactor,jknProportion,mergeCarePool]);
 
   const totalBiayaTahunan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
   const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-  const selisihNonJKN = totalBiayaLaporan - totalBiaya18Variabel;
+  const biayaJKN=totalBiayaLaporan*jknProportion/100;
+  const selisihNonJKN = biayaJKN - totalBiaya18Variabel;
+  const outlierCount=distribusi.filter(d=>d.outlier).length;
 
   // Validasi sumber data dan dasar alokasi: biaya tidak boleh dialokasikan tanpa volume pemicu.
   const validation = useMemo(() => {
@@ -620,13 +629,16 @@ export default function CostingInputPage() {
     XLSX.utils.book_append_sheet(wb, wsDataDasar, 'Data Dasar RS');
     XLSX.utils.book_append_sheet(wb, wsDataOperasional, 'Data Operasional');
     XLSX.utils.book_append_sheet(wb, ws, 'Costing Template');
-    XLSX.writeFile(wb, `Template_Costing_${config.namaRS || 'RS'}_${config.tahunData || new Date().getFullYear()}.xlsx`);
+    appendTemplateHelp(wb,'components');
+    await downloadTemplateWorkbook(wb, `Template_Costing_${config.namaRS || 'RS'}_${config.tahunData || new Date().getFullYear()}.xlsx`);
   };
 
   return (
     <div className="space-y-5">
       {/* Header */}
-      <PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Biaya dibagi bertahap: Penunjang Umum (Overhead), lalu Penunjang Medis (Intermediate), lalu ke Pusat Biaya Utama (layanan pasien)." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>
+      <label className="uc-label">Cari pusat biaya<input className="uc-input" value={centerQuery} onChange={e=>setCenterQuery(e.target.value)}/></label>
+      <PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Periksa biaya Penunjang Umum (Overhead), Penunjang Medis (Intermediate), dan Pusat Biaya Utama. Pada ruang ini biaya penunjang dibagikan langsung ke 18 komponen tagihan pasien." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>
+      <TemplateGuide mode="components" compact/>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-[#0B1F3A] tracking-tight flex items-center gap-2">
@@ -998,7 +1010,7 @@ export default function CostingInputPage() {
             </button>
           </div>
 
-          {config.overheadCenters.map((center) => (
+          {config.overheadCenters.filter(c=>c.nama.toLowerCase().includes(centerQuery.toLowerCase())).map((center) => (
             <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`overhead-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
               {/* Header Row */}
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
@@ -1087,7 +1099,7 @@ export default function CostingInputPage() {
             </button>
           </div>
 
-          {config.intermediateCenters.map(center => (
+          {config.intermediateCenters.filter(c=>c.nama.toLowerCase().includes(centerQuery.toLowerCase())).map(center => (
             <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`intermediate-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                 <span className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{center.nomor}</span>
@@ -1183,7 +1195,7 @@ export default function CostingInputPage() {
                   {FINAL_KATEGORI_LABELS[kat]}
                 </h3>
                 <div className="space-y-3">
-                  {units.map(center => (
+                  {units.filter(c=>c.nama.toLowerCase().includes(centerQuery.toLowerCase())).map(center => (
                     <div key={center.id} className={clsx('bg-white rounded-2xl border shadow-sm overflow-hidden', validation.errors.has(`final-${center.id}`) ? 'border-red-400 ring-1 ring-red-100' : 'border-gray-100')}>
                       <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                         <span className="w-7 h-7 rounded-full bg-green-100 text-green-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{center.nomor}</span>
@@ -1385,6 +1397,7 @@ export default function CostingInputPage() {
             </div>
           )}
 
+          <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><label className="uc-label">Porsi JKN (%)<input className="uc-input" type="number" min="0" max="100" step="0.1" value={jknProportion} onChange={e=>{const proportion=Math.min(100,Math.max(0,Number(e.target.value)));setJknProportion(proportion);const mapped=buildBiayaRSMap(config,useTarifPasienStore.getState().patients,periodFactor,proportion);useTarifPasienStore.setState({biayaRSMap:mapped});useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));calculateDistribution();}}/></label><p className="text-sm">JKN {displayDecimal(String(jknProportion))}%: {formatRupiah(biayaJKN)} · Non-JKN {displayDecimal(String(100-jknProportion))}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">Total Biaya Tahunan</p>
@@ -1403,18 +1416,20 @@ export default function CostingInputPage() {
             </div>
             <div className={clsx('rounded-xl border p-4', Math.abs(selisihNonJKN) < 1 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
               <p className={clsx('text-xs', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-600' : 'text-amber-700')}>
-                {Math.abs(selisihNonJKN) < 1 ? 'Rekonsiliasi Sesuai' : selisihNonJKN > 0 ? 'Selisih / Usulan Biaya Non-JKN' : 'Kelebihan Alokasi 18 Variabel'}
+                {Math.abs(selisihNonJKN) < 1 ? 'Rekonsiliasi Sesuai' : selisihNonJKN > 0 ? 'Sisa pool JKN belum dipetakan' : 'Kelebihan Alokasi 18 Variabel'}
               </p>
               <p className={clsx('font-bold mt-1', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-900' : 'text-amber-900')}>{formatRupiah(selisihNonJKN)}</p>
-              <p className="text-[11px] opacity-70 mt-1">Total laporan − total 18 variabel</p>
+              <p className="text-[11px] opacity-70 mt-1">Pool JKN − total 18 variabel</p>
             </div>
           </div>
 
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
             <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
-            <p className="text-[11px] text-cyan-700 mt-1">Rasio = Total Biaya RS periode per komponen ÷ Total Tagihan E-Klaim komponen. Biaya pasien = tagihan pasien × rasio.</p>
+            <p className="text-[11px] text-cyan-700 mt-1">Rasio biaya/tagihan adalah indikator kewajaran (batas peninjauan 0,2–5), bukan batas harga. Kamar memakai LOS; ICU memakai hari ICU bila lengkap. Komponen lain memakai tagihan, atau cadangan episode penerima bila rasio tidak wajar. Tarif per hari tidak diuji dengan batas rasio rupiah/rupiah.</p>
           </div>
 
+          <div className={`uc-panel ${outlierCount?'text-red-700':'text-slate-700'}`} role="status"><strong>{outlierCount} komponen dengan rasio di luar batas 0,2–5</strong><p className="text-sm">Rekonsiliasi Rp0 tidak memastikan pembagi benar. Cadangan: {distribusi.filter(d=>d.metodeAlokasi.includes('Cadangan')).length} komponen · belum teralokasi: {formatRupiah(distribusi.reduce((v,d)=>v+Number(d.unallocated||0),0))}.</p></div>
+          <div className="flex gap-3 flex-wrap"><label className="uc-label">Cari komponen<input className="uc-input" value={componentQuery} onChange={e=>setComponentQuery(e.target.value)}/></label><label className="uc-label">Filter validasi<select className="uc-input" value={componentFlag} onChange={e=>setComponentFlag(e.target.value)}><option value="all">Semua</option><option value="outlier">Rasio di luar batas</option><option value="warning">Dengan peringatan</option></select></label></div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
@@ -1423,13 +1438,13 @@ export default function CostingInputPage() {
                   <th className="px-4 py-3">18 Variabel Tarif E-Klaim</th>
                   <th className="px-4 py-3 text-right">Total Biaya RS per Komponen</th>
                   <th className="px-4 py-3 text-right">Total Tagihan (E-Klaim Pasien)</th>
-                  <th className="px-4 py-3 text-center" title="Total Biaya RS komponen dibagi Total Tagihan E-Klaim komponen">Rasio Distribusi ⓘ</th>
+                  <th className="px-4 py-3 text-center" title="Total Biaya RS komponen dibagi Total Tagihan E-Klaim komponen">Rasio biaya/tagihan ⓘ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {distribusi.map(d => (
+                {distribusi.filter(d=>d.label.toLowerCase().includes(componentQuery.toLowerCase())&&(componentFlag==='all'||(componentFlag==='outlier'?d.outlier:!!d.warning))).map(d => (
                   <tr key={d.key} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}</td>
+                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}<p className="text-xs font-normal mt-1">{d.metodeAlokasi} · {displayDecimal(String(d.denominator||0))} {d.unit} · {d.rate==null?'Tidak dapat dihitung':d.unit==='rupiah'?displayDecimal(String(d.rate))+' × tagihan':formatRupiah(d.rate)+'/'+d.unit}</p>{d.warning&&<p className="text-xs text-amber-700 mt-1">{d.warning}</p>}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex justify-end items-center gap-2">
                         <span className="text-xs text-gray-400">Rp</span>
@@ -1437,7 +1452,7 @@ export default function CostingInputPage() {
                           type="text"
                           value={biayaRSMap[d.key] ? biayaRSMap[d.key]?.toLocaleString('id-ID') : ''}
                           onChange={e => {
-                            const val = parseFloat(e.target.value.replace(/[^0-9.-]+/g, '')) || 0;
+                            const val = Number(parseNumber(e.target.value.replace(/\./g,''))) || 0;
                             setBiayaRS(d.key, val);
                             calculateDistribution();
                           }}
@@ -1449,9 +1464,9 @@ export default function CostingInputPage() {
                     <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
                     <td className="px-4 py-2 text-center text-xs">
                       {d.rasio > 0 ? (
-                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded font-mono">{(d.rasio).toFixed(4)}</span>
+                        <span className={d.outlier?'bg-red-100 text-red-700 px-2 py-1 rounded font-mono':'bg-green-100 text-green-700 px-2 py-1 rounded font-mono'}>{displayDecimal(String(d.rasio))}</span>
                       ) : (
-                        <span className="text-gray-400 italic">0 (N/A)</span>
+                        <span className="text-gray-400 italic">Tidak dapat dihitung</span>
                       )}
                     </td>
                   </tr>
@@ -1467,7 +1482,7 @@ export default function CostingInputPage() {
               <div>
                 <h3 className="font-bold text-lg">Sinkronkan ke Patient Level Costing</h3>
                 <p className="text-sm text-white/70 mt-1">
-                  Step 3: gunakan hasil rekonsiliasi 18 variabel di atas untuk menghitung Cost per Pasien secara proporsional berdasarkan tagihan TXT E-Klaim.
+                  Step 3: gunakan hasil rekonsiliasi 18 variabel di atas untuk menghitung Cost per Pasien memakai pembagi yang tercatat (tagihan, LOS, hari ICU, atau cadangan).
                 </p>
               </div>
               <button

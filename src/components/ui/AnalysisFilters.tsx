@@ -1,0 +1,5 @@
+import {useCostingStore} from '../../stores/costingStore';
+export default function AnalysisFilters(){
+ const {searchTerm,filterPTD,setFilter}=useCostingStore();
+ return <section className="uc-panel flex flex-wrap gap-3 print:hidden"><label className="uc-label flex-1">Cari kode atau deskripsi kelompok<input className="uc-input" value={searchTerm} onChange={e=>setFilter('searchTerm',e.target.value)}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={filterPTD} onChange={e=>setFilter('filterPTD',e.target.value)}><option value="">Semua</option><option value="1">Rawat inap</option><option value="2">Rawat jalan</option></select></label><button className="uc-secondary" onClick={()=>{setFilter('searchTerm','');setFilter('filterPTD','');setFilter('filterStatus','ALL');}}>Hapus filter</button><p className="text-xs w-full">Filter ringkasan dan rincian; pembentukan alokasi biaya tetap memakai populasi lengkap. Statistik costing memakai inlier ±2 SD.</p></section>;
+}

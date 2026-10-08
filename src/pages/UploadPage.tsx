@@ -22,6 +22,7 @@ interface ProcessResult {
 }
 
 export default function UploadPage() {
+  const [sessionQuery,setSessionQuery]=useState('');
   const navigate = useNavigate();
   const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization, sessions, activeSessionId, setActiveSession, deleteSession } = useCostingStore();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
@@ -417,6 +418,7 @@ export default function UploadPage() {
         </div>
       )}
 
+      {sessions.length > 0 && <label className="uc-label">Cari berkas unggahan<input className="uc-input" value={sessionQuery} onChange={e=>setSessionQuery(e.target.value)}/></label>}
       {sessions.length > 0 && uploadState === 'idle' && (
         <div className="bg-white rounded-[24px] border border-[#E7E5DF] shadow-sm overflow-hidden mt-8">
           <div className="px-6 py-4 border-b border-[#E7E5DF] bg-[#F7F6F3] flex items-center justify-between">
@@ -425,7 +427,7 @@ export default function UploadPage() {
             </h2>
           </div>
           <div className="divide-y divide-[#E7E5DF]">
-            {sessions.map(session => (
+            {sessions.filter(s=>s.filename.toLowerCase().includes(sessionQuery.toLowerCase())).map(session => (
               <div key={session.id} className={clsx('p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors', activeSessionId === session.id ? 'bg-[#0B1F3A]/5' : 'hover:bg-gray-50')}>
                 <div>
                   <div className="flex items-center gap-2">

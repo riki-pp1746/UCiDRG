@@ -1,3 +1,5 @@
+import {buildBiayaRSMap,biayaRSMapToRVU,useTarifPasienStore} from '../stores/tarifPasienStore';
+import {useHospitalCostStore} from '../stores/hospitalCostStore';
 import { useUiPrefsStore } from '../stores/uiPrefsStore';
 import { DEFAULT_TARIF_IDRG_CONFIG } from '../lib/calculations/patientLevelCosting';
 import PageIntro from '../components/ui/PageIntro';
@@ -10,6 +12,7 @@ export default function SettingsPage() {
   const { beginnerMode, setBeginnerMode } = useUiPrefsStore();
   const { clearData, tarifIDRGConfig, setTarifIDRGConfig, jknProportion, setJknProportion } = useCostingStore();
 
+  const changeJKN=(proportion:number)=>{const p=Math.min(100,Math.max(0,proportion));setJknProportion(p);const mapped=buildBiayaRSMap(useHospitalCostStore.getState().config,useTarifPasienStore.getState().patients,useCostingStore.getState().periodNormalization?.factor||1,p);useTarifPasienStore.setState({biayaRSMap:mapped});useTarifPasienStore.getState().calculateDistribution();useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));};
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     const numValue = parseFloat(value) || 0;
@@ -101,7 +104,7 @@ export default function SettingsPage() {
             min="0" 
             max="100" 
             value={jknProportion}
-            onChange={(e) => setJknProportion(parseInt(e.target.value) || 0)}
+            onChange={(e) => changeJKN(Number(e.target.value) || 0)}
             className="flex-1 accent-emerald-600"
           />
           <div className="w-16 flex items-center gap-1 border border-gray-300 rounded-lg px-2 py-1.5 bg-gray-50">
@@ -109,7 +112,7 @@ export default function SettingsPage() {
               type="number" 
               min="0" max="100" 
               value={jknProportion}
-              onChange={(e) => setJknProportion(parseInt(e.target.value) || 0)}
+              onChange={(e) => changeJKN(Number(e.target.value) || 0)}
               className="w-full text-sm font-semibold text-center bg-transparent border-none p-0 focus:ring-0"
             />
             <span className="text-sm font-semibold text-gray-500">%</span>

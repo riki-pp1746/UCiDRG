@@ -75,6 +75,7 @@ export interface PatientRecord {
   admission_date: string;
   discharge_date: string;
   los: number;
+  icuDays?: number;
   kelas_rawat: number;   // 1=Kelas 1, 2=Kelas 2, 3=Kelas 3, VIP
   discharge_status: number;
   
@@ -144,6 +145,7 @@ export interface FinalCostCenter {
 // Hasil Perhitungan Per Pasien
 // ============================================================
 export interface PatientCostResult {
+  outlier?:boolean;
   patient: PatientRecord;
   
   // Unit Cost calculated
