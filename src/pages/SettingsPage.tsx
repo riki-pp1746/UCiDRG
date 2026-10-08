@@ -13,6 +13,7 @@ export default function SettingsPage() {
   const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     const numValue = parseFloat(value) || 0;
+    if(type!=='checkbox'&&(!Number.isFinite(numValue)||numValue<=0))return;
     
     setTarifIDRGConfig({
       [name]: type === 'checkbox' ? checked : numValue
@@ -21,7 +22,7 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageIntro title="Pengaturan perhitungan" what="Atur parameter tarif iDRG (Base Rate, Adj Regional, Adj Swasta) dan proporsi JKN. Perubahan langsung memengaruhi seluruh hasil perhitungan." />
+      <PageIntro title="Pengaturan perhitungan" what="Atur parameter tarif iDRG (National Base Rate, Adjustment Factor) dan proporsi JKN. Perubahan langsung memengaruhi seluruh hasil perhitungan." />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
         <p className="text-gray-500 text-sm mt-1">Informasi aplikasi dan pengelolaan data lokal</p>
@@ -32,7 +33,7 @@ export default function SettingsPage() {
           <Calculator className="w-4 h-4 text-purple-600" /> Pengaturan Tarif iDRG (Revisi 4)
         </h2>
         <p className="text-sm text-gray-600 mt-2">
-          Rumus: Tarif iDRG = Cost Weight x Base Rate x Adj Regional x Adj Swasta
+          Rumus: Tarif iDRG = Cost Weight × National Base Rate × Adjustment Factor
         </p>
         <div className="mt-4 space-y-4">
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -48,7 +49,7 @@ export default function SettingsPage() {
           
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Base Rate Inap (Rp)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">National Base Rate Inap (Rp)</label>
               <input 
                 type="number" 
                 name="baseRateInap"
@@ -59,7 +60,7 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Base Rate Jalan (Rp)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">National Base Rate Jalan (Rp)</label>
               <input 
                 type="number" 
                 name="baseRateJalan"
@@ -70,29 +71,19 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Adj Regional (Contoh 1.0103)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Adjustment Factor (bawaan 1)</label>
               <input 
                 type="number" 
                 step="0.0001"
-                name="adjRegional"
-                value={tarifIDRGConfig.adjRegional}
+                name="adjFactor"
+                min="0.0001"
+                value={tarifIDRGConfig.adjFactor}
                 onChange={handleConfigChange}
                 disabled={!tarifIDRGConfig.useFormula}
                 className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
               />
             </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Adj Kepemilikan (Contoh 1.03 untuk Swasta)</label>
-              <input 
-                type="number" 
-                step="0.0001"
-                name="adjSwasta"
-                value={tarifIDRGConfig.adjSwasta}
-                onChange={handleConfigChange}
-                disabled={!tarifIDRGConfig.useFormula}
-                className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
-              />
-            </div>
+
           </div>
         </div>
       </div>

@@ -34,6 +34,7 @@ const navItems = [
   { path: '/tarif-pasien', icon: Pill, label: 'Cost per Pasien' },
   { path: '/compare', icon: BarChart3, label: 'Perbandingan' },
   { path: '/reports', icon: FileText, label: 'Laporan' },
+  { path: '/tarif-idrg', icon: Calculator, label: 'Tarif iDRG per Pasien' },
   { path: '/settings', icon: Settings, label: 'Pengaturan' },
   { path: '/revisi4', icon: Calculator, label: 'Analisis Revisi 4' },
 ];

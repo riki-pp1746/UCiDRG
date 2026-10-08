@@ -25,6 +25,7 @@ export interface Claim {
   file: string; row: number;
 }
 export interface Reference {
+  adjustmentUnit?:'factor'|'percent';
   id: string; kind: 'weight'|'base'|'adjustment'|'inflation'; code: string;
   care: Care|'semua'; value: Money; from: string; until: string; version: string;
   source: string; verified: boolean;

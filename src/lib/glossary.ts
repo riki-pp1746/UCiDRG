@@ -53,13 +53,13 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   adjFaktor: {
     term: 'Faktor Penyesuaian (Adj)',
-    plain: 'Pengali tambahan untuk memperhitungkan wilayah (regional) dan kepemilikan RS (swasta).',
-    example: 'Adj regional 1,0103 dan adj swasta 1,03.',
+    plain: 'Satu faktor pengali tarif. Nilai bawaan 1 berarti tanpa penyesuaian.',
+    example: 'Adjustment Factor 1,03 berarti tarif naik 3%.',
   },
   rumusIdrg: {
     term: 'Rumus Tarif iDRG',
-    plain: 'Tarif iDRG = Cost Weight × Base Rate × Adj Regional × Adj Swasta.',
-    example: '1,2 × Rp 7.000.000 × 1,0103 × 1,03 ≈ Rp 8.740.000',
+    plain: 'Tarif iDRG = Cost Weight × National Base Rate × Adjustment Factor.',
+    example: '1,2 × Rp 7.000.000 × 1 = Rp 8.400.000',
   },
   alos: {
     term: 'ALOS (Average Length of Stay)',

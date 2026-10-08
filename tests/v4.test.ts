@@ -46,6 +46,12 @@ function snap(x=fixture()):Snapshot {return {id:crypto.randomUUID(),previous:nul
 const workspace=(input=fixture()):Workspace=>({schema:4,version:1,input,profiles:defaultProfiles(),activeProfile:'admin',audit:[],migrated:true});
 
 describe('U01–U26 mesin Revisi 4',()=>{
+  it('Adjustment Factor langsung 1,1 dan bawaan 1 tanpa referensi tambahan',()=>{
+    const x=fixture();x.references.forEach(r=>{r.verified=true;r.source='sumber uji';});x.references.push({id:'base-new',kind:'base',code:'',care:'semua',value:'400',from:'2025-01-01',until:'',version:'uji',source:'sumber uji',verified:true});
+    expect(m2(x).patients[0].tariffIDRG).toBe('800');
+    x.references.push({id:'factor',kind:'adjustment',adjustmentUnit:'factor',code:'Adj Factor',care:'semua',value:'1.1',from:'2025-01-01',until:'',version:'uji',source:'sumber uji',verified:true});expect(m2(x).patients[0].tariffIDRG).toBe('880');
+    const payload=importReferences('kind,care,from,until,version,source,value,code\nadjustment,inap,2025-01-01,,v1,manual,1.1,Adj Factor');expect(payload[0].adjustmentUnit).toBe('factor');
+  });
   it('U01 Metode 2 memakai hanya final dalam rasio tertimbang',()=>{const r=m2();near(r.total,'1200');expect(r.blocked).toBe(false);});
   it('U02 Metode 1 menutup donor, overhead selalu lebih dahulu',()=>{const r=calculate(fixture()).methods[0];near(r.total,'1200');near(r.pools[0].total,'600');expect(r.traces.find(t=>t.donor==='I'&&t.recipient==='A')?.amount).toBe('100');});
   it('U03 kedua pool merekonsiliasi total JKN',()=>{const r=m2();near(sum(r.pools.map(p=>p.total)).toString(),r.total);});
@@ -121,6 +127,10 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
 
 // Exercise the actual post-login route tree, so a disconnected engine cannot pass unnoticed.
 describe('Analisis tambahan setelah login',()=>{
+  it('menu tarif iDRG membuka rincian pasien setelah login',()=>{
+    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-idrg']},createElement(AppRoutes)));
+    expect(html).toContain('Tarif iDRG per Pasien');expect(html).toContain('Adjustment Factor');expect(html).toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
+  });
   for(const [path,title] of [['/','Tiga langkah dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Input Biaya RS dan Distribusi 18 Variabel'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Alokasi 18 komponen per pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});

@@ -1,3 +1,4 @@
+import {calculateIDRGTariff,neutralAdjustment} from './idrgTariff';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
 // Metode: Patient Level Costing + Step-Down
@@ -61,18 +62,19 @@ export function calcBiayaLangsung(billing: BillingGroup): number {
 export interface TarifIDRGConfig {
   baseRateInap: number;
   baseRateJalan: number;
-  adjRegional: number;
-  adjSwasta: number;
+  adjFactor: number;
   useFormula: boolean;
 }
 
 export const DEFAULT_TARIF_IDRG_CONFIG: TarifIDRGConfig = {
   baseRateInap: 8037060,
   baseRateJalan: 461474,
-  adjRegional: 1.0103,
-  adjSwasta: 1.03,
+  adjFactor: 1,
   useFormula: true,
 };
+export function upgradeTarifIDRGConfig(config:Partial<TarifIDRGConfig>={}):TarifIDRGConfig {
+  return {baseRateInap:config.baseRateInap??DEFAULT_TARIF_IDRG_CONFIG.baseRateInap,baseRateJalan:config.baseRateJalan??DEFAULT_TARIF_IDRG_CONFIG.baseRateJalan,adjFactor:config.adjFactor??1,useFormula:config.useFormula??true};
+}
 
 // ============================================================
 // Hitung hasil per pasien (dengan perbandingan iDRG)
@@ -142,14 +144,15 @@ export function runRVUAllocation(
 
     const tarifINACBG = r.total_tarif || r.tarif_inacbg || 0;
     
-    // Formula Tarif iDRG = Cost Weight x Base Rate x Adj Regional x Adj Swasta
+    // Tarif iDRG = Cost Weight x National Base Rate x Adjustment Factor.
     let tarifIDRG = r.idrg?.total_tarif || 0;
     if (tarifConfig.useFormula && r.idrg) {
       const cw = r.idrg.cost_weight || r.idrg.total_cost_weight || 0;
       if (cw > 0) {
         const isRawatInap = r.ptd === 1; // 1: Rawat Inap, 2: Rawat Jalan
         const br = isRawatInap ? tarifConfig.baseRateInap : tarifConfig.baseRateJalan;
-        tarifIDRG = cw * br * tarifConfig.adjRegional * tarifConfig.adjSwasta;
+        const calculated=calculateIDRGTariff(cw,br,neutralAdjustment(tarifConfig));
+        if(calculated!==null)tarifIDRG=Number(calculated);
       }
     }
     

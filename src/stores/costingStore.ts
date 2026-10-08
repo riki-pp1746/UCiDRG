@@ -4,6 +4,7 @@
 // ============================================================
 
 import React from 'react';
+import {upgradeTarifIDRGConfig} from '../lib/calculations/patientLevelCosting';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { RVUGlobalCosts } from '../types/costing.types';
@@ -206,6 +207,11 @@ export const useCostingStore = create<CostingState>()(
     }),
     {
       name: 'unitcost-costing-store',
+      merge:(persisted,current)=>{
+        const old=persisted as Partial<CostingState>|undefined;
+        const config=old?.tarifIDRGConfig;
+        return {...current,...old,tarifIDRGConfig:upgradeTarifIDRGConfig(config)};
+      },
       partialize: (state) => ({
         // Hanya persist config dan sessions, bukan data besar
         overheadConfig: state.overheadConfig,

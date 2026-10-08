@@ -1,3 +1,4 @@
+import {calculateIDRGTariff} from '../lib/calculations/idrgTariff';
 import { dec, sum, ratio } from './numbers';
 import { KEYS, EXPENSES, emptyBill } from './types';
 import type { Input, Claim, Center, Care, Method, Result, Issue, Reference, MethodResult, Pool, PatientResult, Status } from './types';
@@ -28,7 +29,7 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
   if(s.costType==='tahunan'&&!dec(s.costMonths).eq(12))issue('V22','Biaya tahunan harus memiliki penyebut durasi 12 bulan.','error');
   if(dec(s.outlierFactor).lt(0)||!Number.isInteger(s.sampleSize)||dec(s.weightMin).lt(0)||dec(s.weightMax).lte(s.weightMin))issue('V23','Batas weight, sampel atau faktor outlier tidak valid.','error');
   if(new Set(input.centers.map(c=>c.id)).size!==input.centers.length||new Set(input.claims.map(c=>c.id)).size!==input.claims.length)issue('V18','ID pusat biaya atau klaim tidak unik.','error');
-  for(const r of input.references)if(!validDate(r.from)||(r.until&&(!validDate(r.until)||r.until<r.from))||!r.version.trim()||!r.source.trim()||!dec(r.value).isFinite()||((r.kind==='weight'||r.kind==='base')&&!dec(r.value).gt(0))||((r.kind==='adjustment'||r.kind==='inflation')&&dec(r.value).lte(-100)))issue('V23',`Referensi ${r.version||r.id} tidak valid.`,'error');
+  for(const r of input.references)if(!validDate(r.from)||(r.until&&(!validDate(r.until)||r.until<r.from))||!r.version.trim()||!r.source.trim()||!dec(r.value).isFinite()||((r.kind==='weight'||r.kind==='base')&&!dec(r.value).gt(0))||(r.kind==='adjustment'&&(r.adjustmentUnit==='factor'?dec(r.value).lte(0):dec(r.value).lte(-100)))||(r.kind==='inflation'&&dec(r.value).lte(-100)))issue('V23',`Referensi ${r.version||r.id} tidak valid.`,'error');
   const claims:Claim[]=[]; const seps=new Set<string>();
   for(const [i,p] of input.claims.entries()) {
     if(p.sep && seps.has(p.sep)) {issue('V04','SEP ganda; baris pertama dipakai.','warning',undefined,p);continue;}
@@ -206,14 +207,14 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
         const base=pick(input.references,'base','',care,date)[0];const adjustments=pick(input.references,'adjustment','',care,date);
         // Pick the latest version of each distinct adjustment; do not multiply historical versions together.
         const unique=[...new Map(adjustments.map(r=>r.code).map(code=>[code,adjustments.find(r=>r.code===code)!])).values()];
-        const adj=unique.reduce((a,r)=>a.mul(dec(1).plus(dec(r.value).div(100))),dec(1));
+        const adj=unique.reduce((a,r)=>a.mul(r.adjustmentUnit==='factor'?dec(r.value):dec(1).plus(dec(r.value).div(100))),dec(1));
         unique.forEach(r=>used.add(r.id));
         if(p.weight&&baseRate) {
           p.simulation=dec(p.weight).mul(baseRate).mul(adj).toString();p.scenario=dec(p.simulation).mul(dec(1).plus(dec(s.markup).div(100))).toString();
         }
         const weight=weights.get(p.id);
-        const verified=base?.verified&&base.source.trim()&&weight?.ref.verified&&weight.ref.source.trim()&&unique.length>0&&unique.every(r=>r.verified&&r.source.trim()&&dec(r.value).gt(-100));
-        if(verified&&p.weight&&dec(base.value).gt(0)) {p.tariffIDRG=dec(p.weight).mul(base.value).mul(adj).toString();p.source=`Nasional ${base.version}`;used.add(base.id);pool.nationalBase=base.value;pool.baseRatio=baseRate?ratio(baseRate,base.value):null;}
+        const verified=base?.verified&&base.source.trim()&&weight?.ref.verified&&weight.ref.source.trim()&&unique.every(r=>r.verified&&r.source.trim()&&(r.adjustmentUnit==='factor'?dec(r.value).gt(0):dec(r.value).gt(-100)));
+        if(verified&&p.weight&&dec(base.value).gt(0)) {p.tariffIDRG=calculateIDRGTariff(p.weight,base.value,adj.toString());p.source=`Nasional ${base.version}`;used.add(base.id);pool.nationalBase=base.value;pool.baseRatio=baseRate?ratio(baseRate,base.value):null;}
         else if(dec(raw.tariffIDRG).gt(0)){p.tariffIDRG=raw.tariffIDRG;p.source='E-Klaim';}
         if(!verified)issue('V21',p.tariffIDRG?'Nasional belum terverifikasi; pembanding iDRG E-Klaim.':'Pembanding iDRG tidak tersedia; status tidak dihitung.','warning',method,raw);
         p.statusIDRG=classify(p.tariffIDRG,p.uc,s.toleranceMode,s.tolerance);p.crrIDRG=p.tariffIDRG?ratio(p.tariffIDRG,p.uc):null;p.difference=p.tariffIDRG?dec(p.tariffIDRG).minus(p.uc).toString():null;

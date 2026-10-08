@@ -110,6 +110,7 @@ export function importReferences(text:string):Reference[] {
   const rows=Papa.parse<Record<string,string>>(text,{header:true,skipEmptyLines:true});if(rows.errors.length)throw new Error('CSV referensi tidak valid.');
   return rows.data.map(r=>{
     if(!['weight','base','adjustment','inflation'].includes(r.kind)||!['inap','jalan','semua'].includes(r.care)||!validDate(r.from)||!r.version||!r.source)throw new Error('Referensi wajib memiliki kind, care, from, version, source dan value.');
-    return {id:crypto.randomUUID(),kind:r.kind as Reference['kind'],code:r.code||'',care:r.care as Reference['care'],value:num(r.value),from:r.from,until:r.until||'',version:r.version,source:r.source,verified:false};
+    if(r.adjustmentUnit&&!['factor','percent'].includes(r.adjustmentUnit))throw new Error('adjustmentUnit harus factor atau percent.');
+    return {id:crypto.randomUUID(),kind:r.kind as Reference['kind'],adjustmentUnit:r.kind==='adjustment'?(r.adjustmentUnit==='percent'?'percent':'factor'):undefined,code:r.code||'',care:r.care as Reference['care'],value:num(r.value),from:r.from,until:r.until||'',version:r.version,source:r.source,verified:false};
   });
 }
