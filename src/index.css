@@ -350,3 +350,25 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 .uc-login-field:focus-within { box-shadow:0 0 0 3px #087D7617; }
 .uc-login-submit { box-shadow:0 4px 10px #087D7617; }
 .uc-sidebar .uc-nav-link.active { background:#E7F1E9; color:#195C56; }
+
+/* Cost input: compact source actions, ordered tabs and a single form surface. */
+.uc-cost-editor { padding:0; overflow:hidden; }
+.uc-cost-editor-header { display:flex; justify-content:space-between; align-items:center; gap:20px; padding:24px 28px 20px; }
+.uc-cost-editor-header h2 { font-size:20px; margin:5px 0 6px; }
+.uc-cost-editor-header p:not(.uc-eyebrow) { font-size:13px; color:#7A746D; }
+.uc-cost-editor-header .uc-eyebrow { font-size:10px; font-weight:700; letter-spacing:1.5px; }
+.uc-cost-actions { display:flex; gap:8px; flex-wrap:wrap; }
+.uc-cost-actions .uc-secondary { font-size:12px; min-height:36px; padding:7px 12px; }
+.uc-cost-tabs { display:flex; overflow-x:auto; border-bottom:1px solid #EAE0D6; padding:0 28px; gap:20px; }
+.uc-cost-tab { display:flex; align-items:center; gap:8px; white-space:nowrap; padding:15px 0; border-bottom:3px solid transparent; color:#7A746D; font-size:13px; font-weight:600; }
+.uc-cost-tab[aria-selected="true"] { color:#195C56; border-bottom-color:#377F76; }
+.uc-cost-step { display:grid; place-items:center; width:22px; height:22px; border-radius:50%; background:#F3EFE9; font-size:11px; }
+.uc-cost-tab[aria-selected="true"] .uc-cost-step { background:#E7F1E9; color:#195C56; }
+.uc-cost-tab:focus-visible,.uc-cost-tools a:focus-visible,.uc-cost-tools button:focus-visible { outline:2px solid #377F76; outline-offset:3px; }
+.uc-cost-tools { display:flex; justify-content:space-between; gap:16px; padding:12px 28px; background:#FBF8F3; font-size:12px; color:#386F60; }
+.uc-cost-editor>fieldset { padding:24px 28px 28px; margin:0; }
+.uc-cost-editor>fieldset .uc-panel { border:0; padding:0; border-radius:0; box-shadow:none; background:transparent; }
+.uc-cost-editor>fieldset .uc-panel+.uc-panel { border-top:1px solid #EAE0D6; padding-top:24px; }
+.uc-cost-editor>fieldset h2 { font-size:16px; }
+.uc-cost-editor>fieldset label { font-size:13px; }
+@media(max-width:700px) { .uc-cost-editor-header { flex-direction:column; align-items:flex-start; padding:20px; }.uc-cost-tabs { padding:0 20px; gap:16px; }.uc-cost-tools { padding:12px 20px; flex-wrap:wrap; }.uc-cost-editor>fieldset { padding:20px; } }
