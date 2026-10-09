@@ -1,6 +1,7 @@
+import {shareSourceData} from '../lib/sharedSourceData';
 import PageIntro from '../components/ui/PageIntro';
 import { useCallback, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
@@ -21,9 +22,13 @@ interface ProcessResult {
   errors: string[];
 }
 
-export default function UploadPage() {
+export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
+  const integrated=useLocation().pathname.startsWith('/revisi4');
+  const [claimMode,setClaimMode]=useState<'append'|'replace'>('append');
   const [sessionQuery,setSessionQuery]=useState('');
   const navigate = useNavigate();
+  const sourceConfig=useHospitalCostStore(state=>state.config);
+  const sourceCost=sourceConfig.totalOverheadCost+sourceConfig.totalIntermediateCost+sourceConfig.totalFinalCost;
   const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization, sessions, activeSessionId, setActiveSession, deleteSession } = useCostingStore();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
@@ -32,6 +37,7 @@ export default function UploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
+    if(disabled)return;
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
 
@@ -106,6 +112,12 @@ export default function UploadPage() {
       clearInterval(progressInterval);
       setProgress(100);
 
+      // Keep the first SEP across uploads; Excel-only imports never touch claims.
+      if(combinedTxtRecords.length){
+        const seen=new Set<string>();let duplicates=0;
+        combinedTxtRecords=[...(claimMode==='append'?useCostingStore.getState().rawRecords:[]),...combinedTxtRecords].filter(record=>{const sep=String(record.sep||'').trim();if(!sep)return true;if(seen.has(sep)){duplicates++;return false;}seen.add(sep);return true;});
+        if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat: baris pertama dari urutan unggahan dipertahankan.`);
+      }
       // Save TXT to store if any
       if (combinedTxtRecords.length > 0) {
         const sessionName = processResult.txtFiles.length > 1 
@@ -144,6 +156,7 @@ export default function UploadPage() {
         processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
       }
 
+      try{await shareSourceData({claims:combinedTxtRecords.length>0,costs:processResult.excelFiles.length>0,excel:excelFiles.filter(f=>processResult.excelFiles.includes(f.name)).slice(-1)[0]});}catch(error){processResult.errors.push('Data sumber tersimpan; sinkronisasi analisis terintegrasi perlu dicoba lagi: '+String(error));}
       setResult(processResult);
       setUploadState('done');
 
@@ -151,7 +164,7 @@ export default function UploadPage() {
       setErrorMsg(String(e));
       setUploadState('error');
     }
-  }, [setPeriodNormalization, setRawRecords]);
+  }, [setPeriodNormalization, setRawRecords,disabled,claimMode]);
 
   const handlePeriodMonthsChange = (months: number) => {
     if (!periodNormalization || rawRecords.length === 0) return;
@@ -201,15 +214,18 @@ export default function UploadPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      <p className="uc-notice">Unggah sekali untuk kedua ruang analisis. Data TXT dan biaya RS menjadi sumber bersama; hasil alokasi tetap dihitung terpisah. Parameter khusus analisis terintegrasi yang belum tersedia perlu dilengkapi, tanpa upload ulang.</p>
+      {(rawRecords.length>0||sourceCost>0)&&<p className="uc-success" role="status">Data sumber sudah tersedia: {rawRecords.length.toLocaleString('id-ID')} klaim · biaya RS sumber Rp {Math.round(sourceCost).toLocaleString('id-ID')}. Tidak perlu upload ulang ketika berpindah ruang; lanjutkan memeriksa biaya dan parameter alokasi.</p>}
+      <label className="uc-label">Cara memasukkan TXT/CSV<select className="uc-input" value={claimMode} disabled={disabled||uploadState==='parsing'} onChange={e=>setClaimMode(e.target.value as 'append'|'replace')}><option value="append">Tambah ke sumber klaim bersama</option><option value="replace">Ganti seluruh sumber klaim bersama</option></select></label>
       <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Template biaya RS (.XLSX), opsional - biaya juga bisa diisi manual di langkah berikutnya']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Upload Center</h1>
+          <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Upload Excel Biaya RS dan TXT E-Klaim</h1>
           <p className="text-gray-500 mt-1">Unggah beberapa file TXT Klaim JKN (INA-CBG/iDRG) dan Excel Template sekaligus.</p>
         </div>
         {rawRecords.length > 0 && (
           <button
-            onClick={() => navigate('/comparison')}
+            onClick={() => navigate(integrated?'/revisi4/compare':'/comparison')}
             className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#17645D] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
           >
             Lihat Hasil Sebelumnya <ArrowRight className="w-4 h-4" />
@@ -312,7 +328,7 @@ export default function UploadPage() {
               </button>
               {result.txtFiles.length > 0 && (
                 <button
-                  onClick={() => navigate('/comparison')}
+                  onClick={() => navigate(integrated?'/revisi4/compare':'/comparison')}
                   className="px-6 py-3 bg-[#17645D] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
                 >
                   Lihat Hasil Kalkulasi <ArrowRight className="w-4 h-4" />
@@ -320,7 +336,7 @@ export default function UploadPage() {
               )}
               {result.excelFiles.length > 0 && (
                 <button
-                  onClick={() => navigate('/input-biaya')}
+                  onClick={() => navigate(integrated?'/revisi4/costing':'/input-biaya')}
                   className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-semibold transition-all shadow-md shadow-teal-500/20 text-sm flex items-center gap-2"
                 >
                   Cek Input Biaya RS <ArrowRight className="w-4 h-4" />
@@ -383,6 +399,7 @@ export default function UploadPage() {
           
           <input
             type="file"
+            disabled={disabled||uploadState==='parsing'}
             accept=".txt,.csv,.xlsx,.xls"
             onChange={handleInputChange}
             className="hidden"

@@ -97,7 +97,7 @@ function parseDate(val: string | null | undefined): string {
   // Format dari file: DD/MM/YYYY → convert ke YYYY-MM-DD
   const parts = String(val).trim().split('/');
   if (parts.length === 3) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
   }
   return String(val);
 }
@@ -185,6 +185,8 @@ function parseRow(cols: string[]): PatientRecord | null {
   const admissionDate = parseDate(get(COLUMN_MAP.ADMISSION_DATE));
   
   return {
+    pending:cols.slice(93).join(' ').toLowerCase().includes('pending'),
+    disputed:cols.slice(93).join(' ').toLowerCase().includes('dispute'),
     kode_rs: get(COLUMN_MAP.KODE_RS),
     kelas_rs: get(COLUMN_MAP.KELAS_RS),
     nama_pasien: get(COLUMN_MAP.NAMA_PASIEN),
@@ -228,7 +230,7 @@ export function parseINACBGFile(file: File): Promise<ParseResult> {
     let totalRows = 0;
 
     Papa.parse(file, {
-      delimiter: '\t',
+      delimiter: file.name.toLowerCase().endsWith('.csv')?'':'\t',
       skipEmptyLines: true,
       encoding: 'UTF-8',
       complete: (results) => {
@@ -249,7 +251,7 @@ export function parseINACBGFile(file: File): Promise<ParseResult> {
           try {
             const record = parseRow(row);
             if (record) {
-              records.push(record);
+              records.push({...record,sourceFile:file.name,sourceRow:i+1});
             }
           } catch (e) {
             errors.push(`Row ${i + 1}: ${String(e)}`);
@@ -293,7 +295,7 @@ export function parseINACBGText(text: string, filename = 'data.txt'): ParseResul
     const cols = lines[i].split('\t');
     try {
       const record = parseRow(cols);
-      if (record) records.push(record);
+      if (record) records.push({...record,sourceFile:filename,sourceRow:i+1});
     } catch (e) {
       errors.push(`Row ${i + 1}: ${String(e)}`);
     }

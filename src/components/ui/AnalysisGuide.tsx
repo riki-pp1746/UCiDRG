@@ -49,10 +49,10 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
     ]},
   ],
   integrated:[
-    {description:'Unggah biaya RS dan klaim ke ruang Analisis Biaya Terintegrasi.',items:[
+    {description:'Gunakan data sumber bersama pada Analisis Biaya Terintegrasi. TXT dan biaya RS yang sudah diunggah tidak perlu diunggah ulang.',items:[
       'Unggah Excel dan TXT bersama atau terpisah. Periksa hasil impor dan konflik tahun sebelum menerapkan pilihan tahun.',
       'Template biaya terintegrasi dapat diunduh pada Biaya & Alokasi; template lama dapat diimpor, lalu lengkapi input tambahan yang belum tersedia.',
-      'Untuk TXT, pilih Tambah atau Ganti klaim sesuai kebutuhan. Mengganti klaim tidak menghapus biaya RS.',
+      'Halaman upload kedua ruang memakai sumber yang sama. Parameter khusus metode dan hasil perhitungan tetap terpisah. Untuk TXT, pilih Tambah atau Ganti klaim sesuai kebutuhan. Mengganti klaim tidak menghapus biaya RS.',
       'SEP duplikat memakai baris pertama menurut urutan unggahan. Periksa daftar konflik dan baris billing negatif yang dikeluarkan.',
       'Pending/dispute dengan billing valid tetap dihitung dan ditandai. Periksa kualitas dan masalah validasi yang ditampilkan.',
     ]},

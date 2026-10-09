@@ -59,6 +59,10 @@ export interface IDRGInfo {
 // Data Pasien Lengkap (1 baris dari file TXT)
 // ============================================================
 export interface PatientRecord {
+  sourceFile?:string;
+  sourceRow?:number;
+  pending?:boolean;
+  disputed?:boolean;
   // Identitas RS
   kode_rs: string;
   kelas_rs: string;

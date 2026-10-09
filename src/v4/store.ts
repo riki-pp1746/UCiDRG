@@ -1,3 +1,6 @@
+import {useCostingStore} from '../stores/costingStore';
+import {useHospitalCostStore,runStepDownCalculation} from '../stores/hospitalCostStore';
+import {useTarifPasienStore} from '../stores/tarifPasienStore';
 import { create } from 'zustand';
 import type { Input, Workspace, Snapshot, Profile, Role } from './types';
 import { readWorkspace,writeWorkspace,listSnapshots,saveSnapshot,freshWorkspace,audit,backupPayload,restorePayload,clearAnalysisMemory } from './storage';
@@ -63,6 +66,8 @@ export const useV4Store=create<Store>((set,get)=>({
   importCosts:async(input,reason)=>get().update(current=>mergeCostInput(current,input),reason),
   clearInput:async(scope)=>{
     await get().update(i=>scope==='claims'?{...i,claims:[],importIssues:[],corrections:[]}:{...i,centers:[],corrections:[],mappingVersion:i.mappingVersion+1},scope==='claims'?'Hapus seluruh klaim aktif':'Hapus seluruh biaya RS aktif');
+    if(scope==='claims'){useCostingStore.getState().clearData();useTarifPasienStore.getState().clearPatients();}
+    else{const config=useHospitalCostStore.getState().config;useHospitalCostStore.setState({config:runStepDownCalculation({...config,overheadCenters:[],intermediateCenters:[],finalCenters:[],dataLayanan:[]})});useTarifPasienStore.setState({biayaRSMap:{},distribusi:[],localCosting:null});useCostingStore.setState({rvuGlobalCosts:undefined,patientResults:[],inacbgResults:[],idrgResults:[],summaryINACBG:null,summaryIDRG:null});}
     set({selected:null,importIssues:scope==='claims'?[]:get().importIssues});
   },
   upload:async(files,mode='append')=>{

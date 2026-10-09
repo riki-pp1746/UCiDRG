@@ -26,10 +26,11 @@ export async function resetApplicationData(scope:'active'|'total',integrated:boo
     useV4Store.setState({workspace,snapshots:[],selected:null,importIssues:[],error:''});
     return;
   }
-  if(integrated){
-    await useV4Store.getState().update(i=>({...i,claims:[],centers:[],corrections:[],importIssues:[],mappingVersion:i.mappingVersion+1}),'Reset seluruh data aktif');
+  if(useV4Store.getState().workspace){
+    await useV4Store.getState().update(i=>({...i,claims:[],centers:[],corrections:[],importIssues:[],mappingVersion:i.mappingVersion+1}),integrated?'Reset sumber bersama dari analisis terintegrasi':'Reset sumber bersama dari analisis 18 komponen');
     useV4Store.setState({selected:null,importIssues:[]});
-  }else{
+  }
+  {
     useCostingStore.getState().clearData();
     useCostingStore.setState({rvuGlobalCosts:undefined,isProcessing:false,processProgress:0});
     const config=useHospitalCostStore.getState().config;

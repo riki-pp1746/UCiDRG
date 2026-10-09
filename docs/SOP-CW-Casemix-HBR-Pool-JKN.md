@@ -8,7 +8,7 @@ Seluruh pool biaya JKN pada periode efektif dipertahankan dalam perhitungan HBR.
 
 ## Tahapan operasional
 
-1. Unggah TXT klaim dan biaya RS. Periksa angka, periode, duplikat, billing negatif, pemetaan komponen dan proporsi JKN. Terapkan proporsi setelah selesai mengisi.
+1. Unggah TXT klaim dan biaya RS sekali pada halaman sumber bersama. Kedua ruang memakai sumber unggahan yang sama; hasil tiap metode dihitung sendiri. Data lama dari Analisis 18 Komponen dibaca otomatis saat ruang terintegrasi belum memiliki sumber. Unggah Excel tidak menghapus klaim. Pilih Tambah/Ganti untuk TXT; SEP duplikat mempertahankan baris pertama. Parameter khusus driver antarunit, JKN, layanan campuran dan cakupan yang belum tersedia dilengkapi dalam formulir tanpa upload ulang. Penghapusan sumber/reset berlaku untuk kedua ruang, sementara snapshot lama tetap tersimpan. Periksa angka, periode, duplikat, billing negatif, pemetaan komponen dan proporsi JKN. Terapkan proporsi setelah selesai mengisi.
 2. Selesaikan alokasi. Rekonsiliasi pool JKN terhadap biaya pasien, cadangan cakupan, dan biaya belum teralokasi. Pastikan biaya bersama tidak dihitung dua kali.
 3. Pisahkan inap dan jalan menurut driver layanan yang tersedia. Pada Analisis 18 Komponen, sisa komponen yang belum berjenis rawat dibagi menurut proporsi UC pasien valid; bila seluruh UC nol, gunakan jumlah kasus valid. Aplikasi menandai pembagi cadangan. Jika tidak ada kasus valid, sisa belum dapat dibagi dan HBR tidak dihitung.
 4. Kelompokkan pasien dengan UC valid tidak negatif dan kode iDRG tersedia menurut rawat dan iDRG. Hitung mean dan SD sampel n−1 sebelum trimming. Tandai UC di luar mean ±2 SD sebagai outlier, satu kali. n kurang dari 2 atau SD nol tidak ditrim.

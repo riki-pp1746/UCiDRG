@@ -1,3 +1,4 @@
+import {shareSourceData} from '../lib/sharedSourceData';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadTemplateWorkbook} from '../lib/templateWorkbookExport';
@@ -447,6 +448,7 @@ export default function CostingInputPage() {
         return { config: newConfig };
       });
 
+      await shareSourceData({costs:true,excel:file});
       const importedSummary = [
         parsedData.overheadCenters?.length ? `${parsedData.overheadCenters.length} Overhead` : '',
         parsedData.intermediateCenters?.length ? `${parsedData.intermediateCenters.length} Penunjang` : '',
