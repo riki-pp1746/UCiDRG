@@ -40,3 +40,10 @@ Seluruh kasus A = 21 dan B = 20. Casemix = 21 × 0,5 + 20 × 1,5 = 40,5. Pool JK
 ## Jejak versi dan keterbatasan
 
 Hasil baru ditandai schema 3. Hasil schema 1/2 tidak diubah menjadi hasil baru dengan penggantian label. Hitung ulang untuk membuat versi baru. Kontrol profil, review, dan snapshot lokal merupakan alur kerja aplikasi, bukan audit server yang tahan manipulasi. SOP ini menjelaskan pilihan metodologi aplikasi yang disepakati pengguna, bukan klaim standar tarif nasional.
+
+
+## Perbandingan Tarif RS
+
+Tarif RS adalah biaya standar kelompok: CW RS × HBR × Adjustment (dasar 1). Nilai ini merupakan tarif hasil costing lokal, bukan tarif nasional resmi. Menu Perbandingan memakai Tarif RS sebagai dasar terhadap tarif INA-CBG atau iDRG yang tersedia. Unit cost pasien tetap ditampilkan terpisah pada rincian biaya.
+
+Selisih = tarif pembanding − Tarif RS. Perbandingan kelompok INA-CBG memakai rata-rata Tarif RS iDRG dari pasien yang masuk kelompok tersebut. Jenis rawat dipisahkan, kasus outlier tetap masuk, dan kasus tanpa Tarif RS tidak diberi nilai pengganti. Ekspor khusus Perbandingan memakai kelompok dan filter yang sama dengan tabel.

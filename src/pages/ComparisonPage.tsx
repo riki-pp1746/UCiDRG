@@ -1,11 +1,14 @@
+import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
+import {useTarifPasienStore} from '../stores/tarifPasienStore';
+import {hospitalTariffComparison} from '../lib/calculations/hospitalTariffComparison';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ComparisonPage.tsx
-// Tabel & grafik perbandingan Unit Cost vs INA-CBG
+// Tabel & grafik perbandingan Tarif RS vs INA-CBG
 // ============================================================
 
 import { useState, useMemo } from 'react';
-import { useCostingStore, useFilteredDRGResults } from '../stores/costingStore';
+import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCosting';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -55,9 +58,9 @@ function ComparisonTooltip({ active, payload, viewMode, relative }: any) {
       <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">{item.description}</p>
       <p className="mt-1 text-xs text-slate-400">{formatNumber(item.kasus)} kasus</p>
       <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs">
-        <div className="flex justify-between gap-6"><span className="text-slate-500">Unit Cost RS</span><strong className="text-blue-600">{formatRupiah(item.unitCost)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Tarif RS</span><strong className="text-blue-600">{formatRupiah(item.unitCost)}</strong></div>
         <div className="flex justify-between gap-6"><span className="text-slate-500">Tarif {viewMode}</span><strong className="text-violet-600">{formatRupiah(item.tarif)}</strong></div>
-        <div className="flex justify-between gap-6"><span className="text-slate-500">Selisih tarif − biaya</span><strong className={difference >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{difference >= 0 ? '+' : ''}{formatRupiah(difference)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Selisih tarif klaim − Tarif RS</span><strong className={difference >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{difference >= 0 ? '+' : ''}{formatRupiah(difference)}</strong></div>
       </div>
       {relative && <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Panjang batang dibandingkan terhadap nilai terbesar pada DRG ini.</p>}
     </div>
@@ -65,9 +68,12 @@ function ComparisonTooltip({ active, payload, viewMode, relative }: any) {
 }
 
 export default function ComparisonPage() {
-  const drgResults = useFilteredDRGResults();
+  const local = useTarifPasienStore(s=>s.localCosting);
+  const rows = useCostingStore(s=>s.patientResults);
   const viewMode = useCostingStore(s => s.viewMode);
   const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
+  const comparison=useMemo(()=>hospitalTariffComparison(rows,local,viewMode),[rows,local,viewMode]);
+  const drgResults=useMemo(()=>comparison.groups.filter(g=>(!filterPTD||String(g.ptd)===filterPTD)&&(!filterStatus||g.status===filterStatus)&&(!searchTerm||`${g.group_code} ${g.group_description} ${g.mdc_description||''}`.toLowerCase().includes(searchTerm.toLowerCase()))),[comparison,filterPTD,filterStatus,searchTerm]);
   const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
   const periodNormalization = useCostingStore(s => s.periodNormalization);
 
@@ -141,10 +147,12 @@ export default function ComparisonPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <PageIntro title="Langkah 4: Bandingkan unit cost dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara biaya riil RS (unit cost) dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI ditentukan dari selisih keduanya." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
+      <p className="text-sm text-gray-600">Tarif RS = CW RS × HBR × Adjustment (dasar 1). Unit cost pasien tetap tersedia pada Hasil Pasien. {comparison.unavailable > 0 ? `${comparison.unavailable} kasus belum memiliki Tarif RS dan tidak dibandingkan; lengkapi costing serta kode iDRG.` : ''}</p>
+      <button className="uc-secondary" onClick={async()=>{const XLSX=await import('xlsx');const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Rawat','Kode','Deskripsi','Kasus','Tarif RS','Tarif '+viewMode,'Selisih','Status'],...drgResults.map(g=>[g.ptd===2?'jalan':'inap',g.group_code,g.group_description,g.jumlahKasus,g.rataUnitCost,g.rataTarif,g.selisih,STATUS_LABEL[g.status]])]),'Perbandingan');formatCostingWorkbook(book);XLSX.writeFile(book,'Perbandingan-Tarif-RS.xlsx');}}>Unduh perbandingan Excel</button>
+      <PageIntro title="Langkah 4: Bandingkan Tarif RS dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara Tarif RS (CW RS × HBR × Adjustment) dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI ditentukan dari selisih keduanya." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit Cost vs {viewMode}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Tarif RS vs {viewMode}</h1>
           <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group{periodNormalization ? ` · ${periodNormalization.label} · faktor biaya ${periodNormalization.effectiveMonths}/12` : ''}</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
@@ -207,7 +215,7 @@ export default function ComparisonPage() {
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="font-semibold text-gray-800">10 DRG dengan Kasus Terbanyak</h3>
-              <p className="mt-1 text-xs text-gray-500">Perbandingan Unit Cost RS dengan Tarif {viewMode}. Arahkan kursor ke batang untuk melihat nominal lengkap.</p>
+              <p className="mt-1 text-xs text-gray-500">Perbandingan Tarif RS dengan Tarif {viewMode}. Arahkan kursor ke batang untuk melihat nominal lengkap.</p>
             </div>
             <div className="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
               <button onClick={() => setChartMode('relative')} className={clsx('rounded-lg px-3 py-1.5 transition', chartMode === 'relative' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>Relatif</button>
@@ -236,7 +244,7 @@ export default function ComparisonPage() {
               <YAxis type="category" dataKey="code" tick={{ fontSize: 11, fill: '#334155', fontWeight: 600 }} axisLine={false} tickLine={false} width={105} />
               <Tooltip cursor={{ fill: '#f8fafc' }} content={<ComparisonTooltip viewMode={viewMode} relative={chartMode === 'relative'} />} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-              <Bar name="Unit Cost RS" dataKey={chartMode === 'relative' ? 'unitIndex' : 'unitCost'} fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
+              <Bar name="Tarif RS" dataKey={chartMode === 'relative' ? 'unitIndex' : 'unitCost'} fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
               <Bar name={`Tarif ${viewMode}`} dataKey={chartMode === 'relative' ? 'tarifIndex' : 'tarif'} fill="#8b5cf6" radius={[0, 6, 6, 0]} maxBarSize={14} />
             </BarChart>
           </ResponsiveContainer>
@@ -253,7 +261,7 @@ export default function ComparisonPage() {
                       { key: 'group_code', label: `Kode ${viewMode}` },
                       { key: null, label: 'Deskripsi / MDC' },
                       { key: 'jumlahKasus', label: 'Kasus' },
-                      { key: 'rataUnitCost', label: 'Unit Cost RS' },
+                      { key: 'rataUnitCost', label: 'Tarif RS' },
                       { key: 'rataTarif', label: `Tarif ${viewMode}` },
                       { key: 'selisih', label: 'Selisih' },
                       { key: 'cov', label: 'CoV Variasi' },

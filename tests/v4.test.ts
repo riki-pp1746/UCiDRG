@@ -131,7 +131,7 @@ describe('Analisis tambahan setelah login',()=>{
     const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
     expect(html).toContain('CW, Casemix &amp; HBR RS');expect(html).not.toContain('National Base Rate');expect(html).not.toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
   });
-  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Siapkan costing rumah sakit'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Unit cost dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
+  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Siapkan costing rumah sakit'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Tarif RS dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
       const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
@@ -169,4 +169,5 @@ it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
  for(const path of ['dashboard','upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="/revisi4/${path}"`);
  expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).toContain('Data kedua ruang hanya berada di memori');
 });
+
 
