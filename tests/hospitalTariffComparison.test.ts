@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {hospitalTariffComparison} from '../src/lib/calculations/hospitalTariffComparison';
+import {hospitalTariffComparison,matchesComparisonStatus} from '../src/lib/calculations/hospitalTariffComparison';
 import type {PatientCostResult} from '../src/types/costing.types';
 import type {HospitalCostResult} from '../src/lib/calculations/hospitalBaseRate';
 it('compares RS group tariff rather than patient UC and keeps outlier cases',()=>{
@@ -11,4 +11,10 @@ it('compares RS group tariff rather than patient UC and keeps outlier cases',()=
  expect(result.groups[0].jumlahKasus).toBe(1);
  expect(hospitalTariffComparison(rows,null,'IDRG').unavailable).toBe(1);
  expect(hospitalTariffComparison(rows,local,'INACBG').groups[0].rataUnitCost).toBe(636507);
+});
+
+it('ALL status keeps every comparison group',()=>{
+ for(const status of ['UNTUNG','IMPAS','RUGI'])expect(matchesComparisonStatus(status,'ALL')).toBe(true);
+ expect(matchesComparisonStatus('RUGI','UNTUNG')).toBe(false);
+ expect(matchesComparisonStatus('RUGI','RUGI')).toBe(true);
 });

@@ -1,6 +1,6 @@
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {useTarifPasienStore} from '../stores/tarifPasienStore';
-import {hospitalTariffComparison} from '../lib/calculations/hospitalTariffComparison';
+import {hospitalTariffComparison,matchesComparisonStatus} from '../lib/calculations/hospitalTariffComparison';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ComparisonPage.tsx
@@ -73,7 +73,7 @@ export default function ComparisonPage() {
   const viewMode = useCostingStore(s => s.viewMode);
   const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
   const comparison=useMemo(()=>hospitalTariffComparison(rows,local,viewMode),[rows,local,viewMode]);
-  const drgResults=useMemo(()=>comparison.groups.filter(g=>(!filterPTD||String(g.ptd)===filterPTD)&&(!filterStatus||g.status===filterStatus)&&(!searchTerm||`${g.group_code} ${g.group_description} ${g.mdc_description||''}`.toLowerCase().includes(searchTerm.toLowerCase()))),[comparison,filterPTD,filterStatus,searchTerm]);
+  const drgResults=useMemo(()=>comparison.groups.filter(g=>(!filterPTD||String(g.ptd)===filterPTD)&&matchesComparisonStatus(g.status,filterStatus)&&(!searchTerm||`${g.group_code} ${g.group_description} ${g.mdc_description||''}`.toLowerCase().includes(searchTerm.toLowerCase()))),[comparison,filterPTD,filterStatus,searchTerm]);
   const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
   const periodNormalization = useCostingStore(s => s.periodNormalization);
 
@@ -107,7 +107,7 @@ export default function ComparisonPage() {
   }, [drgResults, sortKey, sortDir]);
 
   const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const totalPages = Math.max(1,Math.ceil(sorted.length / PAGE_SIZE));
 
   // Grafik diprioritaskan berdasarkan jumlah kasus agar stabil dan mudah dipahami,
   // terlepas dari urutan tabel yang sedang dipilih pengguna.
@@ -334,7 +334,7 @@ export default function ComparisonPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
               <p className="text-xs text-gray-500">
-                Menampilkan {((currentPage - 1) * PAGE_SIZE) + 1}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} dari {sorted.length} DRG
+                Menampilkan {sorted.length?((currentPage - 1) * PAGE_SIZE) + 1:0}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} dari {sorted.length} DRG
               </p>
               <div className="flex gap-1">
                 <button

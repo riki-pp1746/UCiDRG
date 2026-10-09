@@ -14,3 +14,7 @@ describe('Dashboard full JKN pool',()=>{
  });
 });
 
+it('ROV distinguishes care types sharing the same DRG code',()=>{
+ const rows=[{unitCostDihitung:100,tarifINACBG:200,tarifIDRG:200,patient:{ptd:1,inacbg:'A',idrg:{drg_code:'A',total_cost_weight:1}}},{unitCostDihitung:900,tarifINACBG:1000,tarifIDRG:1000,patient:{ptd:2,inacbg:'A',idrg:{drg_code:'A',total_cost_weight:1}}}] as PatientCostResult[];
+ expect(generateSummary(rows,[],'IDRG').riv).toBe(1);
+});

@@ -195,7 +195,7 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>
             <p className="text-3xl font-bold text-gray-900 truncate">{(summary.riv * 100).toFixed(1)}%</p>
-            <p className="text-xs text-gray-400 mt-1">Reduction of Variance</p>
+            <p className="text-xs text-gray-400 mt-1">Variasi biaya yang dijelaskan DRG</p>
           </div>
           
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
@@ -238,6 +238,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi biaya dalam kelompok ÷ variasi biaya seluruh pasien. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik menggunakan statistik inlier, sehingga basisnya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>
       {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',

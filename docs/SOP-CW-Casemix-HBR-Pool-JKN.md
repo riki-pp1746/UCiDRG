@@ -47,3 +47,8 @@ Hasil baru ditandai schema 3. Hasil schema 1/2 tidak diubah menjadi hasil baru d
 Tarif RS adalah biaya standar kelompok: CW RS × HBR × Adjustment (dasar 1). Nilai ini merupakan tarif hasil costing lokal, bukan tarif nasional resmi. Menu Perbandingan memakai Tarif RS sebagai dasar terhadap tarif INA-CBG atau iDRG yang tersedia. Unit cost pasien tetap ditampilkan terpisah pada rincian biaya.
 
 Selisih = tarif pembanding − Tarif RS. Perbandingan kelompok INA-CBG memakai rata-rata Tarif RS iDRG dari pasien yang masuk kelompok tersebut. Jenis rawat dipisahkan, kasus outlier tetap masuk, dan kasus tanpa Tarif RS tidak diberi nilai pengganti. Ekspor khusus Perbandingan memakai kelompok dan filter yang sama dengan tabel.
+
+
+## ROV
+
+ROV mengukur proporsi variasi unit cost pasien yang dijelaskan oleh pengelompokan DRG: 1 − jumlah kuadrat selisih dalam kelompok / jumlah kuadrat selisih seluruh pasien. Statistik dashboard mencakup outlier; kelompok dibedakan menurut rawat dan kode. CoV kelompok menggunakan inlier, sehingga basisnya berbeda. Filter rawat dapat dipakai untuk mengevaluasi inap/jalan secara terpisah. Nilai rendah belum membuktikan data klaim buruk atau tarif tidak adil. Tarif RS kelompok tidak boleh menggantikan unit cost dalam ROV karena akan membuat variasi dalam kelompok tampak nol secara buatan.

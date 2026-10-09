@@ -333,7 +333,8 @@ export function generateSummary(
   const rataBiaya = results.reduce((s,r)=>s+r.unitCostDihitung,0) / results.length;
   const groupMap = new Map<string, PatientCostResult[]>();
   results.forEach(result => {
-    const key = type === 'INACBG' ? result.patient.inacbg : result.patient.idrg?.drg_code;
+    const code = type === 'INACBG' ? result.patient.inacbg : result.patient.idrg?.drg_code;
+    const key = `${result.patient.ptd}|${code || 'UNKNOWN'}`;
     const grouped = groupMap.get(key || 'UNKNOWN') || [];
     grouped.push(result);
     groupMap.set(key || 'UNKNOWN', grouped);

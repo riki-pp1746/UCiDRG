@@ -14,3 +14,5 @@ export function hospitalTariffComparison(rows:PatientCostResult[],local:Hospital
  const result=aggregateByDRG(eligible);
  return {groups:mode==='IDRG'?result.idrg:result.inacbg,unavailable};
 }
+
+export function matchesComparisonStatus(actual:string,selected:string){return !selected||selected==='ALL'||actual===selected;}
