@@ -106,8 +106,9 @@ export default function ComparisonPage() {
     });
   }, [drgResults, sortKey, sortDir]);
 
-  const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const totalPages = Math.max(1,Math.ceil(sorted.length / PAGE_SIZE));
+  const visiblePage=Math.min(currentPage,totalPages);
+  const paginated = sorted.slice((visiblePage - 1) * PAGE_SIZE, visiblePage * PAGE_SIZE);
 
   // Grafik diprioritaskan berdasarkan jumlah kasus agar stabil dan mudah dipahami,
   // terlepas dari urutan tabel yang sedang dipilih pengguna.
@@ -148,7 +149,7 @@ export default function ComparisonPage() {
     <div className="space-y-5">
       {/* Header */}
       <p className="text-sm text-gray-600">Tarif RS = CW RS × HBR × Adjustment (dasar 1). Unit cost pasien tetap tersedia pada Hasil Pasien. {comparison.unavailable > 0 ? `${comparison.unavailable} kasus belum memiliki Tarif RS dan tidak dibandingkan; lengkapi costing serta kode iDRG.` : ''}</p>
-      <button className="uc-secondary" onClick={async()=>{const XLSX=await import('xlsx');const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Rawat','Kode','Deskripsi','Kasus','Tarif RS','Tarif '+viewMode,'Selisih','Status'],...drgResults.map(g=>[g.ptd===2?'jalan':'inap',g.group_code,g.group_description,g.jumlahKasus,g.rataUnitCost,g.rataTarif,g.selisih,STATUS_LABEL[g.status]])]),'Perbandingan');formatCostingWorkbook(book);XLSX.writeFile(book,'Perbandingan-Tarif-RS.xlsx');}}>Unduh perbandingan Excel</button>
+      <button className="uc-secondary" disabled={!drgResults.length||isProcessing} onClick={async()=>{const XLSX=await import('xlsx');const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Rawat','Kode','Deskripsi','Kasus','Tarif RS','Tarif '+viewMode,'Selisih','Status'],...drgResults.map(g=>[g.ptd===2?'jalan':'inap',g.group_code,g.group_description,g.jumlahKasus,g.rataUnitCost,g.rataTarif,g.selisih,STATUS_LABEL[g.status]])]),'Perbandingan');formatCostingWorkbook(book);XLSX.writeFile(book,'Perbandingan-Tarif-RS.xlsx');}}>Unduh perbandingan Excel</button>
       <PageIntro title="Langkah 4: Bandingkan Tarif RS dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara Tarif RS (CW RS × HBR × Adjustment) dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI ditentukan dari selisih keduanya." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
@@ -323,7 +324,8 @@ export default function ComparisonPage() {
                   {paginated.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
-                        Tidak ada data yang sesuai filter
+                        <p>{!local?'Tarif RS belum dihitung. Buka Hasil Pasien dan hitung CW, Casemix & HBR RS.':!comparison.groups.length?'Tidak ada kasus dengan Tarif RS valid. Periksa kode iDRG dan hasil costing.':'Tidak ada kelompok yang cocok dengan filter.'}</p>
+                        {comparison.groups.length>0&&<button className="uc-secondary mt-3" onClick={()=>{setFilter('filterStatus','ALL');setFilter('filterPTD','');setFilter('searchTerm','');setCurrentPage(1);}}>Tampilkan semua kelompok</button>}
                       </td>
                     </tr>
                   )}
@@ -334,22 +336,22 @@ export default function ComparisonPage() {
             {/* Pagination */}
             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50">
               <p className="text-xs text-gray-500">
-                Menampilkan {sorted.length?((currentPage - 1) * PAGE_SIZE) + 1:0}–{Math.min(currentPage * PAGE_SIZE, sorted.length)} dari {sorted.length} DRG
+                Menampilkan {sorted.length?((visiblePage - 1) * PAGE_SIZE) + 1:0}–{Math.min(visiblePage * PAGE_SIZE, sorted.length)} dari {sorted.length} DRG
               </p>
               <div className="flex gap-1">
                 <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(Math.max(1, visiblePage - 1))}
+                  disabled={visiblePage === 1}
                   className="px-3 py-1 border border-gray-200 rounded-lg text-xs disabled:opacity-40 hover:bg-white transition"
                 >
                   ‹ Prev
                 </button>
                 <span className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs">
-                  {currentPage}
+                  {visiblePage}
                 </span>
                 <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(Math.min(totalPages, visiblePage + 1))}
+                  disabled={visiblePage === totalPages}
                   className="px-3 py-1 border border-gray-200 rounded-lg text-xs disabled:opacity-40 hover:bg-white transition"
                 >
                   Next ›

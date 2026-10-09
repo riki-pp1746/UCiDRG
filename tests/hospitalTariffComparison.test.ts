@@ -18,3 +18,10 @@ it('ALL status keeps every comparison group',()=>{
  expect(matchesComparisonStatus('RUGI','UNTUNG')).toBe(false);
  expect(matchesComparisonStatus('RUGI','RUGI')).toBe(true);
 });
+it('CoV remains based on patient costs, not uniform RS group tariffs',()=>{
+ const rows=[100,300].map(cost=>({unitCostDihitung:cost,tarifINACBG:400,tarifIDRG:400,outlier:false,patient:{ptd:2,inacbg:'A',idrg:{drg_code:'A',total_cost_weight:1}}})) as PatientCostResult[];
+ const local={groups:[{care:'jalan',code:'A',standardCost:'250'}]} as HospitalCostResult;
+ const group=hospitalTariffComparison(rows,local,'IDRG').groups[0];
+ expect(group.rataUnitCost).toBe(250);
+ expect(group.cov).toBeCloseTo(Math.sqrt(20000)/200);
+});

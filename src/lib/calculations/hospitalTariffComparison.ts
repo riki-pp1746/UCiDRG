@@ -12,7 +12,10 @@ export function hospitalTariffComparison(rows:PatientCostResult[],local:Hospital
   eligible.push({...row,unitCostDihitung:dec(tariff).toNumber(),outlier:false});
  }
  const result=aggregateByDRG(eligible);
- return {groups:mode==='IDRG'?result.idrg:result.inacbg,unavailable};
+ const costs=aggregateByDRG(rows);
+ const stats=new Map((mode==='IDRG'?costs.idrg:costs.inacbg).map(g=>[`${g.ptd}|${g.group_code}`,g]));
+ const comparisonGroups=(mode==='IDRG'?result.idrg:result.inacbg).map(g=>({...g,cov:stats.get(`${g.ptd}|${g.group_code}`)?.cov??0}));
+ return {groups:comparisonGroups,unavailable};
 }
 
 export function matchesComparisonStatus(actual:string,selected:string){return !selected||selected==='ALL'||actual===selected;}
