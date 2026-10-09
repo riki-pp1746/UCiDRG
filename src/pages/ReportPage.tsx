@@ -61,7 +61,7 @@ export default function ReportPage() {
   const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
   const filteredResults=useFilteredPatientResults();
   const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
-  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal):null,[filteredResults,drgResults,viewMode,originalSummary]);
+  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal,originalSummary.totalBiayaRS):null,[filteredResults,drgResults,viewMode,originalSummary]);
   const patientResults = filteredResults;
   const periodNormalization = useCostingStore(s => s.periodNormalization);
   const config = useHospitalCostStore(s => s.config);

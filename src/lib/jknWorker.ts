@@ -19,6 +19,6 @@ ctx.onmessage=e=>{
   const total=Object.values(rvuGlobalCosts).reduce((sum,value)=>sum+value,0);
   const annual=session?.annualCostTotal??total/(costing.periodNormalization?.factor||1);
   const adjusted=session?.adjustedCostTotal??total;
-  ctx.postMessage({result:{tarif:{patients:tarif.patients,distribusi:tarif.distribusi,localCosting:tarif.localCosting,biayaRSMap:mapped},costing:{rvuGlobalCosts,patientResults:results,inacbgResults:inacbg,idrgResults:idrg,summaryINACBG:generateSummary(results,inacbg,'INACBG',costing.periodNormalization,annual,adjusted),summaryIDRG:generateSummary(results,idrg,'IDRG',costing.periodNormalization,annual,adjusted)}}});
+  ctx.postMessage({result:{tarif:{patients:tarif.patients,distribusi:tarif.distribusi,localCosting:tarif.localCosting,biayaRSMap:mapped},costing:{rvuGlobalCosts,patientResults:results,inacbgResults:inacbg,idrgResults:idrg,summaryINACBG:generateSummary(results,inacbg,'INACBG',costing.periodNormalization,annual,adjusted,total),summaryIDRG:generateSummary(results,idrg,'IDRG',costing.periodNormalization,annual,adjusted,total)}}});
  }catch(error){ctx.postMessage({error:error instanceof Error?error.message:String(error)});}
 };

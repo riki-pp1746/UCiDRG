@@ -62,7 +62,7 @@ export default function DashboardPage() {
   const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
   const filteredResults=useFilteredPatientResults();
   const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
-  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal):null,[filteredResults,drgResults,viewMode,originalSummary]);
+  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal,originalSummary.totalBiayaRS):null,[filteredResults,drgResults,viewMode,originalSummary]);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
   const periodNormalization = useCostingStore(s => s.periodNormalization);
@@ -214,10 +214,11 @@ export default function DashboardPage() {
             <p className="text-sm font-medium text-gray-500">Unit Cost vs Tarif {viewMode}</p>
             <FileBarChart2 className="w-5 h-5 text-gray-400" />
           </div>
+          <p className="text-xs text-gray-500 mb-3">Pool JKN periode setelah proporsi, termasuk outlier dan sisa alokasi. Filter berlaku pada rincian kasus dan tarif.</p>
           <div className="space-y-4">
             <div>
               <div className="flex justify-between text-xs mb-1">
-                <span className="text-rose-600 font-semibold">Total Biaya RS</span>
+                <span className="text-rose-600 font-semibold">Pool Biaya JKN</span>
                 <span className="font-mono text-gray-900">{formatRupiah(summary.totalBiayaRS)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">

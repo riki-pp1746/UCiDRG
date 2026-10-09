@@ -145,8 +145,8 @@ export const useCostingStore = create<CostingState>()(
           const rvuCostTotal = rvuGlobalCosts ? Object.values(rvuGlobalCosts).reduce((sum, value) => sum + value, 0) : 0;
           const annualCostTotal = activeSession?.annualCostTotal ?? (rvuCostTotal / (periodNormalization?.factor || 1));
           const adjustedCostTotal = activeSession?.adjustedCostTotal ?? rvuCostTotal;
-          const summaryINACBG = generateSummary(results, inacbg, 'INACBG', periodNormalization, annualCostTotal, adjustedCostTotal);
-          const summaryIDRG = generateSummary(results, idrg, 'IDRG', periodNormalization, annualCostTotal, adjustedCostTotal);
+          const summaryINACBG = generateSummary(results, inacbg, 'INACBG', periodNormalization, annualCostTotal, adjustedCostTotal, rvuGlobalCosts ? rvuCostTotal : undefined);
+          const summaryIDRG = generateSummary(results, idrg, 'IDRG', periodNormalization, annualCostTotal, adjustedCostTotal, rvuGlobalCosts ? rvuCostTotal : undefined);
           
           set({
             patientResults: results,

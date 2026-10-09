@@ -297,8 +297,8 @@ export function generateSummary(
   periodNormalization?: import('../../types/costing.types').PeriodNormalization | null,
   annualCostTotal = 0,
   adjustedCostTotal = 0,
+  jknPoolTotal?: number,
 ): CostingSummary {
-  results=results.filter(r=>!r.outlier);
   if (results.length === 0) {
     return {
       periodeData: '-',
@@ -323,14 +323,14 @@ export function generateSummary(
     };
   }
 
-  const totalBiayaRS = results.reduce((s, r) => s + r.unitCostDihitung, 0);
+  const totalBiayaRS = jknPoolTotal ?? sum(results.map(r => String(r.unitCostDihitung))).toNumber();
   const totalTarif = results.reduce((s, r) => s + (type === 'INACBG' ? r.tarifINACBG : r.tarifIDRG), 0);
   
   const totalSelisih = totalTarif - totalBiayaRS;
   
   const cmi = calcCMI(results.map(r => r.patient));
   // RIV = proporsi variasi biaya yang dapat dijelaskan oleh pengelompokan DRG.
-  const rataBiaya = totalBiayaRS / results.length;
+  const rataBiaya = results.reduce((s,r)=>s+r.unitCostDihitung,0) / results.length;
   const groupMap = new Map<string, PatientCostResult[]>();
   results.forEach(result => {
     const key = type === 'INACBG' ? result.patient.inacbg : result.patient.idrg?.drg_code;
