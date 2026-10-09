@@ -35,6 +35,11 @@ export function buildBiayaRSMap(
     return acc;
   }, {} as Record<keyof KomponenTarif18, number>);
   const grandTotalEKlaim = Object.values(totalsEKlaim).reduce((sum, value) => sum + value, 0);
+  const outpatientPatients = patients.filter(p => p.kelasRawat === 'rawat_jalan' || p.kelasRawat === 'igd');
+  const outpatientTotals = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
+    acc[key] = sum(outpatientPatients.map(p => p[key])).toNumber();
+    return acc;
+  }, {} as Record<keyof KomponenTarif18, number>);
   const mapped = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
     acc[key] = 0;
     return acc;
@@ -45,12 +50,26 @@ export function buildBiayaRSMap(
     const name = center.nama.toLowerCase();
     if (center.kategori === 'icu' || ['icu', 'iccu', 'picu', 'nicu', 'hcu', 'intensif'].some(keyword => name.includes(keyword))) {
       mapped.intensive_amt += cost;
-    } else if (center.kategori === 'bedah' || ['bedah', 'ibs', 'operasi'].some(keyword => name.includes(keyword))) {
+    } else if (center.kategori === 'bedah' || (center.kategori !== 'rawat_jalan' && ['bedah', 'ibs', 'operasi'].some(keyword => name.includes(keyword)))) {
       mapped.surgical_amt += cost;
     } else if (center.kategori === 'rawat_inap' || center.kategori === 'perinatologi') {
       mapped.room_amt += cost;
     } else {
-      mapped.procedure_amt += cost;
+      // A general visit is not evidence of a non-surgical procedure. Spread
+      // its service pool over the observed billing mix rather than charging
+      // the entire pool to the few episodes with procedure_amt > 0.
+      const outpatient = center.kategori === 'rawat_jalan' || center.kategori === 'igd';
+      const keys = ALL_KOMPONEN_KEYS.filter(k =>
+        !(outpatient && ['room_amt', 'intensive_amt'].includes(k)));
+      const mix = keys.map(key => dec((outpatient ? outpatientTotals : totalsEKlaim)[key]));
+      const total = sum(mix);
+      if (total.gt(0)) {
+        keys.forEach((key, i) => { mapped[key] += dec(cost).mul(mix[i]).div(total).toNumber(); });
+      } else {
+        // With no observed mix, retain the pool for the missing-recipient
+        // diagnostic. Do not invent billing or silently drop hospital cost.
+        mapped.procedure_amt += cost;
+      }
     }
   });
 
@@ -226,14 +245,25 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         });
 
         const period=useCostingStore.getState().periodNormalization?.label||'Periode klaim belum dikonfirmasi';
-        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
+        // A positive claim receiving no hospital cost is an incomplete costing
+        // result, not a free episode that should depress the group's CW.
+        const hasPositivePool = sum(Object.values(biayaRSMap)).gt(0);
+        const zeroAllocation = new Set(updatedPatients.filter(p =>
+          hasPositivePool && ALL_KOMPONEN_KEYS.some(k => p[k] > 0) && p.totalCostPerPatient === 0).map(p => p.id));
+        const allocationIssues: ValidationIssue[] = Object.keys(biayaRSMap).length ? updatedPatients.filter(p => zeroAllocation.has(p.id)).map(p => ({
+          id: 'uc-zero-' + p.id, severity: 'error', label: 'UC belum teralokasi · iDRG ' + p.drg,
+          expected: sum(ALL_KOMPONEN_KEYS.map(k => p[k])).toNumber(), actual: 0,
+          message: 'Tagihan positif tetapi tidak menerima alokasi biaya RS. Periksa jenis rawat, komponen billing, dan pemetaan biaya. Kasus ini tidak membentuk CW.'
+        })) : [];
+        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length&&!zeroAllocation.has(p.id)?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
+        set({validationIssues:[...get().validationIssues.filter(i=>!i.id.startsWith('uc-zero-')),...allocationIssues]});
         set({ distribusi, patients: updatedPatients.map((p,i)=>({...p,outlier:localCosting.patients[i].outlier})),localCosting,calculationVersion:get().calculationVersion+1 });
       },
 
       validateAgainstHospital: (config, periodFactor = 1) => {
         const { patients, biayaRSMap,distribusi } = get();
         const basic = config.dataDasar;
-        const issues: ValidationIssue[] = [];
+        const issues: ValidationIssue[] = get().validationIssues.filter(i=>i.id.startsWith('uc-zero-'));
         const addMismatch = (
           id: string,
           label: string,

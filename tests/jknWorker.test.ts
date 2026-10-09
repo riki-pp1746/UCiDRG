@@ -22,6 +22,7 @@ it('worker finishes zero and positive JKN without recursive updates',async()=>{
   expect(result.tarif.patients[0].totalCostPerPatient).toBe(10000*proportion/100);
   expect(result.costing.patientResults[0].unitCostDihitung).toBe(10000*proportion/100);
   if(proportion===0)expect(Object.values(result.tarif.biayaRSMap).every(v=>v===0)).toBe(true);
+  expect(result.tarif.validationIssues).toEqual([]);
  }
  vi.unstubAllGlobals();
 });

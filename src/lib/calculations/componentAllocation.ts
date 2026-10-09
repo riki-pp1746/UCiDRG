@@ -21,10 +21,8 @@ export function allocateComponents(patients:AllocationPatient[],costs:Record<str
    const complete=patients.every((p,i)=>!recipients[i]||(Number.isFinite(p.icuDays)&&p.icuDays!>0&&p.icuDays!<=p.los));
    weights=patients.map((p,i)=>recipients[i]?(complete?p.icuDays!:1):0);basis=complete?'Hari ICU':'Cadangan: episode dengan layanan ICU';unit=complete?'hari ICU':'episode ICU';
    if(!complete)warning='Hari ICU tidak lengkap/valid. Cadangan jumlah episode ICU digunakan; LOS umum tidak dianggap sebagai hari ICU.';
-  }else if(outlier){
-   weights=patients.map((p,i)=>eligible[i]&&(p.billing[key]||0)>0?1:0);basis='Cadangan: jumlah episode penerima komponen';unit='episode';warning='Rasio biaya/tagihan di luar 0,2–5. Cadangan membagi rata hanya kepada pasien dengan tagihan komponen positif; wajib ditinjau.';
   }
-  if(outlier&& !warning)warning='Rasio biaya/tagihan di luar 0,2–5. Pembagi volume dipakai; periksa pemetaan biaya dan data layanan.';
+  if(outlier&& !warning)warning='Rasio biaya/tagihan di luar 0,2–5. Bobot alokasi tetap mengikuti dasar komponen; periksa pemetaan biaya dan data layanan.';
   const denominator=sum(weights);let allocated=dec(0);
   patients.forEach((_,i)=>{const allocation=denominator.gt(0)&&cost.gte(0)?cost.mul(weights[i]).div(denominator):dec(0);values[i][key]=allocation.toString();allocated=allocated.plus(allocation);});
   if(cost.gt(0)&&!denominator.gt(0))warning+=' Tidak ada penerima/pembagi valid; biaya menjadi sisa belum teralokasi.';

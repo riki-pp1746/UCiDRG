@@ -1370,7 +1370,7 @@ export default function CostingInputPage() {
               <p className="flex items-start gap-2">
                 <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
                 <span>
-                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya langsung Pusat Biaya Utama dipetakan ke komponen layanan. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim, tanpa melalui alokasi ke unit layanan final.
+                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya layanan umum/rawat jalan dibagi mengikuti komposisi tagihan layanan, bukan seluruhnya ke non-bedah. Kamar, ICU, dan bedah tetap memakai pemetaan layanan khusus. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim. Rasio di luar 0,2–5 menjadi peringatan dan tidak mengubah bobot tagihan menjadi pembagian rata. Untuk mapping lama, jalankan Auto-map lalu sinkronkan hasil ke perhitungan pasien.
                 </span>
               </p>
             </div>
