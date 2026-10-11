@@ -8,6 +8,7 @@ import PageIntro from '../components/ui/PageIntro';
 import { useSearchParams } from 'react-router-dom';
 import IDRGTariffPage from './IDRGTariffPage';
 import React, { useState, useEffect } from 'react';
+import {buildBiayaRSMap,biayaRSMapToRVU} from '../stores/tarifPasienStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
@@ -104,6 +105,7 @@ export default function TarifPasienPage() {
   const resultPatients = filteredPatients.slice((Math.min(resultPage,resultTotalPages) - 1) * pageSize, resultPage * pageSize);
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
   const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
+  const rebuildMapping=()=>{const mapped=buildBiayaRSMap(config,patients,periodFactor,useCostingStore.getState().jknProportion);useTarifPasienStore.setState({biayaRSMap:mapped});calculateDistribution();useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));validateAgainstHospital(config,periodFactor);};
   const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
   const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(formatCostingWorkbook(wb),'Costing-Pasien-CW-HBR-RS.xlsx');};
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
@@ -348,6 +350,7 @@ export default function TarifPasienPage() {
                   <p className="text-sm text-gray-600 border-b border-gray-100 pb-4">
                     Ditemukan <strong className={hasValidationErrors ? 'text-red-600' : 'text-amber-600'}>{validationIssues.length} catatan validasi</strong>. Peringatan dapat ditinjau tanpa menghentikan perhitungan; kesalahan perlu diperbaiki agar tidak ada biaya yang hilang.
                   </p>
+                  <div className="uc-inset"><p>Pulihkan pemetaan dari biaya RS dan billing aktif jika hasil masih memakai mapping lama.</p><button className="uc-primary" onClick={rebuildMapping}>Petakan ulang biaya &amp; hitung UC</button></div>
                   <div className="space-y-4">
                     {validationIssues.map((issue) => {
                       const isWarning = issue.severity === 'warning';
@@ -364,7 +367,7 @@ export default function TarifPasienPage() {
                             <span className="font-semibold font-mono text-gray-900">{formatRupiah(issue.actual)}</span>
                           </div>
                           <div>
-                            <span className="text-gray-500 text-xs block mb-0.5">Nilai Acuan</span>
+                            <span className="text-gray-500 text-xs block mb-0.5">{issue.id.startsWith('uc-zero-')?'Tagihan sumber (bobot)':'Nilai Acuan'}</span>
                             <span className={`font-semibold font-mono ${isWarning ? 'text-amber-600' : 'text-red-600'}`}>{formatRupiah(issue.expected)}</span>
                           </div>
                         </div>
@@ -374,7 +377,9 @@ export default function TarifPasienPage() {
                             <Info className="w-3.5 h-3.5" /> {isWarning ? 'Catatan Peninjauan' : 'Cara Memperbaiki'}
                           </strong>
                           <p className="text-blue-900 text-xs leading-relaxed">
-                            {isMissingWeight
+                            {issue.id.startsWith('uc-zero-')
+                              ? <>Petakan ulang biaya dari input RS terlebih dahulu. Jika tetap nol, periksa komponen billing pasien dan jenis rawatnya. Billing kamar/ICU pada rawat jalan perlu dikonfirmasi di sumber. Tagihan adalah dasar bobot, bukan nilai UC yang harus disamakan. Jangan mengubah Data Dasar RS agar mengikuti tagihan pasien.</>
+                              : isMissingWeight
                               ? <>Total tagihan E-Klaim untuk <strong>{issue.label}</strong> bernilai Rp 0 sehingga biaya tidak dapat dibagi proporsional. Periksa sumber TXT atau petakan biaya ke komponen yang memiliki tagihan.</>
                               : issue.id === 'lhr-jkn'
                                 ? <>Perbedaan dapat terjadi karena pola layanan musiman. Pastikan periode hasil deteksi dan koreksi bulan efektif sudah sesuai; tidak perlu memaksa nilainya sama dengan prorata tahunan.</>

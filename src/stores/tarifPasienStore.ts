@@ -253,7 +253,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         const allocationIssues: ValidationIssue[] = Object.keys(biayaRSMap).length ? updatedPatients.filter(p => zeroAllocation.has(p.id)).map(p => ({
           id: 'uc-zero-' + p.id, severity: 'error', label: 'UC belum teralokasi · iDRG ' + p.drg,
           expected: sum(ALL_KOMPONEN_KEYS.map(k => p[k])).toNumber(), actual: 0,
-          message: 'Tagihan positif tetapi tidak menerima alokasi biaya RS. Periksa jenis rawat, komponen billing, dan pemetaan biaya. Kasus ini tidak membentuk CW.'
+          message: `Tagihan positif tetapi tidak menerima alokasi biaya RS. Jenis rawat: ${p.kelasRawat === 'rawat_jalan' || p.kelasRawat === 'igd' ? 'jalan' : 'inap'}. Komponen terisi: ${ALL_KOMPONEN_KEYS.filter(k=>p[k]>0).map(k=>KOMPONEN_LABELS[k]).join(', ')}. ${ALL_KOMPONEN_KEYS.filter(k=>p[k]>0).every(k=>!(biayaRSMap[k]||0))?'Pool biaya komponen tersebut masih nol; petakan ulang dari biaya RS aktif.':'Periksa kesesuaian jenis rawat dengan dasar alokasi kamar/ICU.'} Kasus ini tidak membentuk CW.`
         })) : [];
         const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length&&!zeroAllocation.has(p.id)?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
         set({validationIssues:[...get().validationIssues.filter(i=>!i.id.startsWith('uc-zero-')),...allocationIssues]});

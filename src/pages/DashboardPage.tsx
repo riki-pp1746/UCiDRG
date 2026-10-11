@@ -1,3 +1,6 @@
+import {rankFinancialImpact} from '../lib/calculations/financialImpact';
+import {useTarifPasienStore} from '../stores/tarifPasienStore';
+import {hospitalTariffComparison} from '../lib/calculations/hospitalTariffComparison';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
 import {useFilteredPatientResults} from '../stores/costingStore';
 import {aggregateByDRG,generateSummary} from '../lib/calculations/patientLevelCosting';
@@ -63,6 +66,9 @@ export default function DashboardPage() {
   const filteredResults=useFilteredPatientResults();
   const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
   const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal,originalSummary.totalBiayaRS):null,[filteredResults,drgResults,viewMode,originalSummary]);
+  const localCosting=useTarifPasienStore(s=>s.localCosting);
+  const financialGroups=useMemo(()=>hospitalTariffComparison(filteredResults,localCosting,viewMode).groups,[filteredResults,localCosting,viewMode]);
+  const ranked=useMemo(()=>rankFinancialImpact(financialGroups),[financialGroups]);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
   const periodNormalization = useCostingStore(s => s.periodNormalization);
@@ -307,58 +313,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Top Defisit & Profit Tables */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Rugi */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-red-500" />
-            Top 5 DRG Defisit Tertinggi
-          </h3>
-          <div className="space-y-2">
-            {summary.top10Rugi.slice(0, 5).map((drg, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 bg-red-50 rounded-lg">
-                <span className="text-xs font-bold text-red-400 w-5">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
-                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
-                </div>
-                <span className="text-xs font-bold text-red-600 whitespace-nowrap">
-                  {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
-                </span>
-              </div>
-            ))}
-            {summary.top10Rugi.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-4">Tidak ada DRG yang rugi 🎉</p>
-            )}
-          </div>
-        </div>
-
-        {/* Top Profit */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-green-500" />
-            Top 5 DRG Paling Menguntungkan
-          </h3>
-          <div className="space-y-2">
-            {summary.top10Untung.slice(0, 5).map((drg, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 bg-green-50 rounded-lg">
-                <span className="text-xs font-bold text-green-400 w-5">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800 truncate">{drg.group_description}</p>
-                  <p className="text-xs text-gray-500">{drg.group_code} · {drg.jumlahKasus} kasus</p>
-                </div>
-                <span className="text-xs font-bold text-green-600 whitespace-nowrap">
-                  {drg.selisih > 0 ? "+" : ""}{formatRupiah(drg.selisih)}
-                </span>
-              </div>
-            ))}
-            {summary.top10Untung.length === 0 && (
-              <p className="text-gray-400 text-sm text-center py-4">Tidak ada DRG yang menguntungkan</p>
-            )}
-          </div>
-        </div>
-      </div>
+      <p className="text-sm text-gray-600">Fokus meninjau DRG yang dampak finansialnya paling besar. Urutan berdasarkan total selisih seluruh kasus. Profit = kasus × (tarif klaim − Tarif RS); defisit = kasus × (Tarif RS − tarif klaim).</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">{[{title:'Top 5 DRG Defisit Tertinggi',rows:ranked.deficit},{title:'Top 5 DRG Paling Menguntungkan',rows:ranked.profit}].map(section=><section key={section.title} className="uc-panel"><h3 className="font-semibold mb-4">{section.title}</h3><div className="uc-table-scroll"><table className="uc-table"><thead><tr>{['DRG','Kasus','Tarif RS',`Tarif ${viewMode==='IDRG'?'iDRG':'INA-CBG'}`,'Selisih Biaya (total)'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{section.rows.map(g=><tr key={`${g.ptd}|${g.group_code}`}><td>{g.group_description}<p className="text-xs">{g.group_code} · {g.ptd===2?'Jalan':'Inap'}</p></td><td>{g.jumlahKasus}</td><td>{formatRupiah(g.rataUnitCost)}</td><td>{formatRupiah(g.rataTarif)}</td><td className={g.impact<0?'text-red-600':'text-green-700'}>{formatRupiah(Math.abs(g.impact))}</td></tr>)}</tbody></table></div>{!section.rows.length&&<p>Belum ada kelompok dengan tarif RS yang tersedia pada kategori ini.</p>}</section>)}</div>
     </div>
   );
 }
