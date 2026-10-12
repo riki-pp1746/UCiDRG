@@ -59,6 +59,8 @@ export interface IDRGInfo {
 // Data Pasien Lengkap (1 baris dari file TXT)
 // ============================================================
 export interface PatientRecord {
+  internalId?:string;
+  sepToken?:string;
   sourceFile?:string;
   sourceRow?:number;
   pending?:boolean;
@@ -178,6 +180,11 @@ export interface PatientCostResult {
 // Agregat per DRG Group
 // ============================================================
 export interface DRGGroupResult {
+  decisionEligible?:boolean;
+  decisionStatus?:'UNTUNG'|'IMPAS'|'RUGI'|'DATA_TIDAK_CUKUP'|'TIDAK_TERSEDIA';
+  ci?:{mean:number;low:number;high:number}|null;
+  statisticalLabel?:string;
+  crrAvailable?:boolean;
   group_code: string;
   group_description: string;
   
@@ -217,6 +224,11 @@ export interface DRGGroupResult {
 // Summary / Dashboard KPI
 // ============================================================
 export interface CostingSummary {
+  financialStatus?:'UNTUNG'|'IMPAS'|'RUGI'|'TIDAK_TERSEDIA';
+  cmiAvailable?:boolean;
+  crrAvailable?:boolean;
+  rov?:ReturnType<typeof import('../lib/calculations/revisionMath').rovMetrics>;
+  populationLabel?:string;
   periodeData: string;
   periodNormalization?: PeriodNormalization;
   annualCostTotal?: number;
@@ -259,6 +271,9 @@ export interface UploadSession {
 }
 
 export interface PeriodNormalization {
+  monthCounts?:Record<string,number>;
+  dateOutliers?:string[];
+  confirmed?:boolean;
   mode: 'auto' | 'manual';
   detectedMonths: string[];
   effectiveMonths: number;

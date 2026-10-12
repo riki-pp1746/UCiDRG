@@ -1,9 +1,7 @@
+import {financialLabel,summaryMetricText} from '../lib/analysisSnapshot';
+import {useAnalysisView} from '../hooks/useAnalysisView';
 import {rankFinancialImpact} from '../lib/calculations/financialImpact';
-import {useTarifPasienStore} from '../stores/tarifPasienStore';
-import {hospitalTariffComparison} from '../lib/calculations/hospitalTariffComparison';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
-import {useFilteredPatientResults} from '../stores/costingStore';
-import {aggregateByDRG,generateSummary} from '../lib/calculations/patientLevelCosting';
 import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
@@ -19,8 +17,8 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer, ReferenceLine, ScatterChart, Scatter, ZAxis
 } from 'recharts';
 import {
-  Users, TrendingUp, TrendingDown, AlertTriangle,
-  Upload, Activity, DollarSign, FileBarChart2
+  Users, AlertTriangle,
+  Upload, Activity, FileBarChart2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
@@ -31,43 +29,13 @@ const COLORS = {
   RUGI: '#ef4444',
 };
 
-function KPICard({
-  title, value, sub, icon: Icon, color, trend
-}: {
-  title: string;
-  value: string;
-  sub?: string;
-  icon: React.ElementType;
-  color: string;
-  trend?: 'up' | 'down' | 'neutral';
-}) {
-  return (
-    <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex items-start gap-4">
-      <div className={clsx('p-3 rounded-xl flex-shrink-0', color)}>
-        <Icon className="w-6 h-6 text-white" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-500 font-medium">{title}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-0.5 truncate">{value}</p>
-        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
-      </div>
-      {trend && (
-        <div className={clsx('flex-shrink-0', trend === 'up' ? 'text-red-500' : trend === 'down' ? 'text-green-500' : 'text-gray-400')}>
-          {trend === 'up' ? <TrendingUp className="w-5 h-5" /> : trend === 'down' ? <TrendingDown className="w-5 h-5" /> : null}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function DashboardPage() {
   const viewMode = useCostingStore(s => s.viewMode);
-  const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
-  const filteredResults=useFilteredPatientResults();
-  const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
-  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal,originalSummary.totalBiayaRS):null,[filteredResults,drgResults,viewMode,originalSummary]);
-  const localCosting=useTarifPasienStore(s=>s.localCosting);
-  const financialGroups=useMemo(()=>hospitalTariffComparison(filteredResults,localCosting,viewMode).groups,[filteredResults,localCosting,viewMode]);
+  const view=useAnalysisView();
+
+  const drgResults=view.groups;
+  const summary=view.summary;
+  const financialGroups=drgResults;
   const ranked=useMemo(()=>rankFinancialImpact(financialGroups),[financialGroups]);
   const isProcessing = useCostingStore(s => s.isProcessing);
   const processProgress = useCostingStore(s => s.processProgress);
@@ -79,8 +47,8 @@ export default function DashboardPage() {
     { name: 'BEP', value: summary.jumlahDRGImpas, color: COLORS.IMPAS },
     { name: 'Defisit', value: summary.jumlahDRGRugi, color: COLORS.RUGI },
   ].filter(d => d.value > 0) : [], [summary]);
-  const top10DRG = React.useMemo(() => drgResults.slice(0, 10).map(d => ({
-    name: d.group_code,
+  const top10DRG = React.useMemo(() => [...drgResults].filter(d=>d.decisionEligible&&d.decisionStatus!=='TIDAK_TERSEDIA').sort((a,b)=>Math.abs(b.totalTarif-b.totalBiayaRS)-Math.abs(a.totalTarif-a.totalBiayaRS)).slice(0, 10).map(d => ({
+    name: (d.ptd===1?'Inap ':'Jalan ')+d.group_code,
     label: d.group_description.slice(0, 30) + '...',
     'Unit Cost RS': Math.round(d.rataUnitCost / 1000),
     'Tarif': Math.round(d.rataTarif / 1000),
@@ -136,7 +104,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <AnalysisFilters/>
-      <PageIntro title="Ringkasan hasil analisis" what="Halaman ini menampilkan gambaran umum: total kasus, unit cost rata-rata, serta berapa kasus yang untung, impas, dan rugi." result="Gunakan stepper di atas untuk melanjutkan ke langkah berikutnya." />
+      <PageIntro title="Ringkasan hasil analisis" what="Halaman ini menampilkan total biaya, tarif dan kasus pada populasi ringkasan, serta jumlah kelompok DRG menurut status finansial. Kepastian statistik ditampilkan terpisah." result="Gunakan stepper di atas untuk melanjutkan ke langkah berikutnya." />
       <div>
         <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
@@ -144,7 +112,7 @@ export default function DashboardPage() {
 
       {periodNormalization && (
         <div className={clsx('rounded-xl border px-4 py-3 text-sm', (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800')}>
-          <strong>Periode klaim:</strong> {periodNormalization.label} · biaya disesuaikan {periodNormalization.effectiveMonths}/12 ({(periodNormalization.factor * 100).toFixed(1)}%).
+          <strong>Periode klaim:</strong> {periodNormalization.label} · faktor kalender dasar {periodNormalization.effectiveMonths}/12 ({formatNumber(periodNormalization.factor * 100,1)}%).
           {periodNormalization.yearMismatch && ` Tahun biaya ${periodNormalization.costYear} digunakan sebagai baseline/proksi.`}
           {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
           {periodNormalization.invalidDateCount > 0 && ` ${periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki tanggal valid.`}
@@ -152,14 +120,14 @@ export default function DashboardPage() {
       )}
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">ROV total</p><p className="text-xl font-bold text-violet-700">{(summary.riv * 100).toFixed(1)}%</p></div></div>
+        <div className="flex items-start justify-between gap-4 mb-3"><div><h3 className="font-semibold text-gray-800">Scatter Plot CoV per DRG</h3><p className="text-xs text-gray-500 mt-1">Sumbu X: jumlah kasus. Sumbu Y: CoV biaya. Garis batas 100% menandai CoV = 1.</p></div><div className="text-right"><p className="text-xs text-gray-500">ROV total</p><p className="text-xl font-bold text-violet-700">{summaryMetricText(summary,'rov')}</p></div></div>
         <ResponsiveContainer width="99%" height={280}>
           <ScatterChart margin={{ top: 12, right: 30, bottom: 16, left: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis type="number" dataKey="cases" name="Kasus" tick={{ fontSize: 11 }} label={{ value: 'Jumlah kasus', position: 'bottom', fontSize: 11 }} />
             <YAxis type="number" dataKey="cov" name="CoV" tick={{ fontSize: 11 }} tickFormatter={value => `${value}%`} label={{ value: 'CoV biaya', angle: -90, position: 'insideLeft', fontSize: 11 }} />
             <ZAxis type="number" dataKey="cost" range={[55, 260]} />
-            <Tooltip formatter={(value, name) => [name === 'CoV' ? `${Number(value).toFixed(1)}%` : value, name]} labelFormatter={(_, payload) => payload?.[0]?.payload?.code || 'DRG'} />
+            <Tooltip formatter={(value, name) => [name === 'CoV' ? `${formatNumber(Number(value),1)}%` : value, name]} labelFormatter={(_, payload) => payload?.[0]?.payload?.code || 'DRG'} />
             <ReferenceLine y={100} stroke="#ef4444" strokeDasharray="5 5" label={{ value: 'CoV = 1', fill: '#ef4444', fontSize: 11 }} />
             <Scatter data={covScatter} fill="#568D7E" />
           </ScatterChart>
@@ -175,14 +143,14 @@ export default function DashboardPage() {
             <div className="bg-teal-50 p-2.5 rounded-xl">
               <Activity className="w-6 h-6 text-teal-600" />
             </div>
-            <span className={clsx("px-2.5 py-1 text-xs font-bold rounded-full", summary.crr >= 100 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-              {summary.crr >= 100 ? "SURPLUS" : "DEFISIT"}
+            <span className={clsx("px-2.5 py-1 text-xs font-bold rounded-full", summary.financialStatus==='UNTUNG' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
+              {financialLabel(summary.financialStatus)}
             </span>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500 mb-1">Cost Recovery Rate (CRR)</p>
-            <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.crr >= 100 ? "text-green-600" : "text-red-600")}>
-              {summary.crr.toFixed(1)}%
+            <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.financialStatus==='UNTUNG' ? "text-green-600" : "text-red-600")}>
+              {summaryMetricText(summary,'crr')}
             </p>
             <p className="text-xs text-gray-400 mt-2">Tarif {viewMode} / Unit Cost RS</p>
           </div>
@@ -195,12 +163,12 @@ export default function DashboardPage() {
               <Activity className="w-5 h-5 text-amber-500" />
               <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
             </div>
-            <p className="text-3xl font-bold text-gray-900 truncate">{summary.cmi.toFixed(3)}</p>
+            <p className="text-3xl font-bold text-gray-900 truncate">{summaryMetricText(summary,'cmi')}</p>
             <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>
-            <p className="text-3xl font-bold text-gray-900 truncate">{(summary.riv * 100).toFixed(1)}%</p>
+            <p className="text-3xl font-bold text-gray-900 truncate">{summaryMetricText(summary,'rov')}</p>
             <p className="text-xs text-gray-400 mt-1">Variasi biaya yang dijelaskan DRG</p>
           </div>
           
@@ -228,7 +196,7 @@ export default function DashboardPage() {
                 <span className="font-mono text-gray-900">{formatRupiah(summary.totalBiayaRS)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-rose-500 h-2 rounded-full" style={{ width: summary.totalBiayaRS > summary.totalTarif ? '100%' : `${(summary.totalBiayaRS / summary.totalTarif) * 100}%` }}></div>
+                <div className="bg-rose-500 h-2 rounded-full" style={{ width: summary.totalBiayaRS > summary.totalTarif ? '100%' : `${summary.totalTarif>0?(summary.totalBiayaRS / summary.totalTarif) * 100:0}%` }}></div>
               </div>
             </div>
             <div>
@@ -237,14 +205,14 @@ export default function DashboardPage() {
                 <span className="font-mono text-gray-900">{formatRupiah(summary.totalTarif)}</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: summary.totalTarif > summary.totalBiayaRS ? '100%' : `${(summary.totalTarif / summary.totalBiayaRS) * 100}%` }}></div>
+                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: summary.totalTarif > summary.totalBiayaRS ? '100%' : `${summary.totalBiayaRS>0?(summary.totalTarif / summary.totalBiayaRS) * 100:0}%` }}></div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi biaya dalam kelompok ÷ variasi biaya seluruh pasien. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik menggunakan statistik inlier, sehingga basisnya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>
+      <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi ln(UC) dalam kelompok ÷ variasi ln(UC) seluruh kasus positif. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik memakai UC seluruh kasus valid pada skala rupiah, sehingga skalanya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>
       {/* Selisih Alert */}
       <div className={clsx(
         'rounded-2xl p-4 flex items-center gap-4',
@@ -259,7 +227,7 @@ export default function DashboardPage() {
           </p>
           <p className={clsx('text-sm', summary.totalSelisih < 0 ? 'text-red-600' : 'text-green-600')}>
             Selisih: {formatRupiah(Math.abs(summary.totalSelisih))} 
-            {summary.totalSelisih < 0 ? ' (RS merugi)' : ' (RS untung)'}
+            {' (status: '+financialLabel(summary.financialStatus)+')'}
           </p>
         </div>
       </div>
@@ -292,7 +260,7 @@ export default function DashboardPage() {
 
         {/* Top DRG Bar Chart */}
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Top 10 DRG — Unit Cost vs Tarif {viewMode} (Rp Ribu)</h3>
+          <h3 className="font-semibold text-gray-800 mb-4">Top 10 dampak finansial — rata-rata UC vs Tarif {viewMode} (Rp Ribu)</h3>
           <ResponsiveContainer width="99%" height={220}>
             <BarChart data={top10DRG} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -313,8 +281,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-600">Fokus meninjau DRG yang dampak finansialnya paling besar. Urutan berdasarkan total selisih seluruh kasus. Profit = kasus × (tarif klaim − Tarif RS); defisit = kasus × (Tarif RS − tarif klaim).</p>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">{[{title:'Top 5 DRG Defisit Tertinggi',rows:ranked.deficit},{title:'Top 5 DRG Paling Menguntungkan',rows:ranked.profit}].map(section=><section key={section.title} className="uc-panel"><h3 className="font-semibold mb-4">{section.title}</h3><div className="uc-table-scroll"><table className="uc-table"><thead><tr>{['DRG','Kasus','Tarif RS',`Tarif ${viewMode==='IDRG'?'iDRG':'INA-CBG'}`,'Selisih Biaya (total)'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{section.rows.map(g=><tr key={`${g.ptd}|${g.group_code}`}><td>{g.group_description}<p className="text-xs">{g.group_code} · {g.ptd===2?'Jalan':'Inap'}</p></td><td>{g.jumlahKasus}</td><td>{formatRupiah(g.rataUnitCost)}</td><td>{formatRupiah(g.rataTarif)}</td><td className={g.impact<0?'text-red-600':'text-green-700'}>{formatRupiah(Math.abs(g.impact))}</td></tr>)}</tbody></table></div>{!section.rows.length&&<p>Belum ada kelompok dengan tarif RS yang tersedia pada kategori ini.</p>}</section>)}</div>
+      <p className="text-sm text-gray-600">Fokus meninjau DRG yang dampak finansialnya paling besar. Urutan berdasarkan total selisih seluruh kasus. Dampak = total tarif klaim − total unit cost. Kelompok kecil dan hasil statistik belum pasti tidak menjadi prioritas Top 5.</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">{[{title:'Top 5 DRG Defisit Tertinggi',rows:ranked.deficit},{title:'Top 5 DRG Paling Menguntungkan',rows:ranked.profit}].map(section=><section key={section.title} className="uc-panel"><h3 className="font-semibold mb-4">{section.title}</h3><div className="uc-table-scroll"><table className="uc-table"><thead><tr>{['DRG','Kasus','Rata-rata UC',`Tarif ${viewMode==='IDRG'?'iDRG':'INA-CBG'}`,'Selisih Biaya (total)'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{section.rows.map(g=><tr key={`${g.ptd}|${g.group_code}`}><td>{g.group_description}<p className="text-xs">{g.group_code} · {g.ptd===2?'Jalan':'Inap'}</p></td><td>{g.jumlahKasus}</td><td>{formatRupiah(g.rataUnitCost)}</td><td>{formatRupiah(g.rataTarif)}</td><td className={g.impact<0?'text-red-600':'text-green-700'}>{formatRupiah(Math.abs(g.impact))}</td></tr>)}</tbody></table></div>{!section.rows.length&&<p>Belum ada kelompok yang memenuhi jumlah kasus minimum dan kepastian interval pada kategori ini.</p>}</section>)}</div>
     </div>
   );
 }
+
+
+

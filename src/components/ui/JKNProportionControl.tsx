@@ -1,7 +1,9 @@
+import {registerSnapshotSources} from '../../lib/analysisSources';
 import {useEffect,useRef,useState} from 'react';
 import {useCostingStore} from '../../stores/costingStore';
 import {useTarifPasienStore} from '../../stores/tarifPasienStore';
 import {useHospitalCostStore} from '../../stores/hospitalCostStore';
+import {useMethodologyStore} from '../../stores/methodologyStore';
 export default function JKNProportionControl(){
  const proportion=useCostingStore(s=>s.jknProportion);
  const [edit,setEdit]=useState({base:proportion,value:String(proportion)});
@@ -15,7 +17,8 @@ export default function JKNProportionControl(){
  const apply=()=>{
   const p=Number(draft);
   if(!draft.trim()||!Number.isFinite(p)||p<0||p>100)return;
-  const source=useCostingStore.getState(),tarif=useTarifPasienStore.getState(),config=useHospitalCostStore.getState().config;
+  const source=useCostingStore.getState(),tarif=useTarifPasienStore.getState(),config=useHospitalCostStore.getState().config,policy=useMethodologyStore.getState();
+  if(policy.role==='Pembaca'){setMessage('Pembaca tidak dapat mengubah porsi.');return;}
   setMessage('');setProgress(0);
   try{
    const job=new Worker(new URL('../../lib/jknWorker.ts',import.meta.url),{type:'module'});worker.current=job;
@@ -25,12 +28,14 @@ export default function JKNProportionControl(){
     if(e.data.error){fail(e.data.error);return;}
     if(e.data.progress!==undefined){setProgress(e.data.progress);return;}
     const current=useCostingStore.getState();
+    if(useMethodologyStore.getState().revision!==policy.revision){fail('Parameter berubah selama perhitungan. Terapkan kembali.');return;}
     if(current.rawRecords!==source.rawRecords||current.periodNormalization!==source.periodNormalization||current.overheadConfig!==source.overheadConfig||current.tarifIDRGConfig!==source.tarifIDRGConfig||current.mergeCarePool!==source.mergeCarePool||current.jknProportion!==source.jknProportion||useTarifPasienStore.getState().patients!==tarif.patients||useTarifPasienStore.getState().biayaRSMap!==tarif.biayaRSMap||useHospitalCostStore.getState().config!==config){fail('Data berubah selama perhitungan. Terapkan kembali proporsinya.');return;}
     useCostingStore.setState({...e.data.result.costing,jknProportion:p,rawRecords:[...source.rawRecords],isProcessing:false,processProgress:100});
+    registerSnapshotSources(e.data.result.tarif.snapshot,useCostingStore.getState().rawRecords,e.data.result.tarif.biayaRSMap,config,policy.revision,p,source.mergeCarePool,source.periodNormalization);
     useTarifPasienStore.setState({...e.data.result.tarif,calculationVersion:tarif.calculationVersion+1});
     fail('Proporsi diterapkan. Hasil pasien dan laporan sudah dihitung ulang.');
    };
-   job.postMessage({config,patients:tarif.patients,proportion:p,costing:{rawRecords:source.rawRecords,periodNormalization:source.periodNormalization,overheadConfig:source.overheadConfig,tarifIDRGConfig:source.tarifIDRGConfig,mergeCarePool:source.mergeCarePool,sessions:source.sessions,activeSessionId:source.activeSessionId}});
+   job.postMessage({settings:policy.settings,revision:policy.revision,config,patients:tarif.patients,proportion:p,costing:{rawRecords:source.rawRecords,periodNormalization:source.periodNormalization,overheadConfig:source.overheadConfig,tarifIDRGConfig:source.tarifIDRGConfig,mergeCarePool:source.mergeCarePool,sessions:source.sessions,activeSessionId:source.activeSessionId}});
   }catch{worker.current?.terminate();worker.current=null;setProgress(null);setMessage('Proses latar belakang tidak tersedia. Silakan coba lagi.');}
  };
  const valid=draft.trim()!==''&&Number.isFinite(Number(draft))&&Number(draft)>=0&&Number(draft)<=100;

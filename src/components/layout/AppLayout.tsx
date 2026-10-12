@@ -1,3 +1,5 @@
+import {AnalysisReviewPanel} from '../ui/AnalysisControls';
+import {useMethodologyStore} from '../../stores/methodologyStore';
 // ============================================================
 // LAYOUT: AppLayout.tsx
 // Tema: Warm ivory, peach, terracotta and sage
@@ -40,6 +42,7 @@ const navItems = [
 ];
 
 export default function AppLayout() {
+  const localRole=useMethodologyStore(s=>s.role);
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024);
   const { user, logout } = useAuthStore();
   const legacyMode = useCostingStore(s => s.viewMode);
@@ -195,7 +198,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block leading-tight">
               <p className="text-sm font-semibold text-[#17645D]">{user?.username}</p>
-              <p className="text-[10px] uppercase tracking-[0.16em] text-[#965238] font-semibold">Administrator</p>
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#965238] font-semibold">{revision?'Profil ruang terintegrasi':localRole}</p>
             </div>
             <div className="w-9 h-9 bg-[#17645D] rounded-full flex items-center justify-center ring-2 ring-[#568D7E]/50 text-[#F7DCC6] text-sm font-semibold font-serif">
               {user?.username?.charAt(0).toUpperCase()}
@@ -209,11 +212,12 @@ export default function AppLayout() {
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-10">
           <div className="max-w-7xl mx-auto">
             <div className="mb-5 rounded-xl border border-[#EAE0D6] bg-white px-4 py-3"><p className="text-sm font-semibold text-[#17645D]">{analysisName} · Sesi sementara</p><p className="text-xs text-[#796E64] mt-1">Data kedua ruang hanya berada di memori. Logout, refresh atau menutup tab menghapus data. Ekspor atau unduh cadangan sebelum keluar.</p></div>
-            {!revision && <WorkflowStepper />}
-            <Outlet />
+            {!revision && <><AnalysisReviewPanel/><WorkflowStepper /></>}
+            <fieldset disabled={!revision&&localRole==='Pembaca'&&['/upload','/costing','/input-biaya','/tarif-pasien','/reset'].includes(location.pathname)} className="min-w-0"><Outlet /></fieldset>
           </div>
         </main>
       </div>
     </div>
   );
 }
+

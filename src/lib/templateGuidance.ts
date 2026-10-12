@@ -98,6 +98,7 @@ export function getTemplateGuideRows(mode:TemplateMode):string[][]{
  return [['PANDUAN PENGISIAN UNITCOST PRO',mode==='integrated'?'Analisis Biaya Terintegrasi':'Analisis 18 Komponen'],['Contoh','Seluruh contoh adalah data sintetis. Gunakan data RS sebenarnya.'],['Sesi aplikasi','Data hanya berada di memori. Ekspor atau unduh cadangan sebelum logout, refresh atau menutup tab.'],['Urutan',mode==='integrated'?'Data Dasar RS, Costing Template, Periode, Pemicu JKN, Aset, Driver Antarunit (M1), Matriks 18, Cakupan Klaim, Pengecualian.':'Data Dasar RS, Data Operasional, Costing Template.'],...templateRules.map((v,i)=>[`Aturan ${i+1}`,v]),...getSheetGuides(mode).flatMap(s=>[[s.name,s.purpose],['Sumber',s.source],['Perhatian',s.note]]),['PEMERIKSAAN SEBELUM UNGGAH','Tandai setelah Anda memeriksa sumbernya.'],...templateChecklist.map((v,i)=>[`Cek ${i+1}`,v]),['Setelah unggah','Periksa jumlah pasien, pusat biaya, periode, dan peringatan. Biaya unit menjadi unit cost melalui alokasi; billing mentah bukan unit cost.'],['Masalah umum','Pusat biaya tidak terbaca: periksa judul A/B/C dan kolom No/Nama. TXT kosong: periksa ekspor E-Klaim. Hasil nol: periksa biaya, periode, pemetaan, dan billing penerima.']];
 }
 export function appendTemplateHelp(book:XLSX.WorkBook,mode:TemplateMode){
+ if(mode==='components'){const metadata=XLSX.utils.aoa_to_sheet([['Parameter','Nilai'],['templateVersion','unitcost-costing-1'],['analysisMode',mode],['Costing column count',18]]);book.Sheets['Metadata UnitCOSt']=metadata;if(!book.SheetNames.includes('Metadata UnitCOSt'))book.SheetNames.push('Metadata UnitCOSt');}
  const guides=getSheetGuides(mode);
  const sheets:{name:string;rows:string[][];widths:number[]}[]=[
   {name:'Panduan Pengisian',rows:getTemplateGuideRows(mode),widths:[32,100]},
@@ -106,3 +107,5 @@ export function appendTemplateHelp(book:XLSX.WorkBook,mode:TemplateMode){
  ];
  for(const {name,rows,widths} of sheets){const sheet=XLSX.utils.aoa_to_sheet(rows);sheet['!cols']=widths.map(wch=>({wch}));sheet['!rows']=rows.map(row=>({hpt:row.some(v=>v.length>110)?54:row.some(v=>v.length>65)?40:26}));for(const key of Object.keys(sheet))if(!key.startsWith('!')){sheet[key].s={alignment:{wrapText:true,vertical:'top'},font:{name:'Arial',sz:11}};}if(book.Sheets[name])book.Sheets[name]=sheet;else XLSX.utils.book_append_sheet(book,sheet,name);}
 }
+
+

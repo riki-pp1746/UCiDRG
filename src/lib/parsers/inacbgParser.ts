@@ -180,7 +180,7 @@ function parseRow(cols: string[]): PatientRecord | null {
   }
 
   // Jika tidak ada iDRG data sama sekali, skip row
-  if (!idrg.drg_code && !get(COLUMN_MAP.INACBG)) return null;
+  if (!idrg.drg_code && !get(COLUMN_MAP.INACBG)&&!get(COLUMN_MAP.SEP)&&!['1','2'].includes(get(COLUMN_MAP.PTD))) return null;
 
   const admissionDate = parseDate(get(COLUMN_MAP.ADMISSION_DATE));
   

@@ -9,9 +9,9 @@ export function formatCostingWorkbook(book:WorkBook){
    if(typeof value==='string'&&!/^-?\d+(\.\d+)?$/.test(value)){if(!headers.has(column)||(address.endsWith('2')&&!/Tidak dapat|Tidak tersedia/.test(value)))headers.set(column,value);continue;}
    const header=headers.get(column)||'';
    const money=/biaya|cost|tarif|selisih|hbr|rupiah|^uc$|mean uc|median uc|base rate|base nasional|pool jkn|alokasi pasien|simulasi rs|skenario kelompok|target pasien|_amt$|\(rp\)|cadangan|teralokasi|batas bawah|batas atas|mean sebelum|sd sampel|nilai tahunan|nilai periode/i.test(header)&&!/kode|deskripsi|penanda/i.test(header);
-   const ratio=/cw|casemix|rasio|persen|adjustment/i.test(header);
+   const ratio=/cw|casemix|rasio|persen|adjustment|crr|cmi|cov|%|bobot/i.test(header)&&!/^kasus|^jumlah|^baris/i.test(header);
    if((money||ratio)&&value!==undefined&&value!==null&&value!==''){
-    try{const d=dec(String(value));if(!d.isFinite())continue;cell.t='n';cell.v=money?d.toDecimalPlaces(0,4).toNumber():d.toNumber();cell.z=money?'#,##0;[Red](#,##0)':'#,##0.00';}catch{/* Leave descriptive values unchanged. */}
+    try{const d=dec(String(value));if(!d.isFinite())continue;const integerMoney=money&&!/persen|%|rasio|crr|cov/i.test(header);cell.t='n';cell.v=integerMoney?d.toDecimalPlaces(0,4).toNumber():d.toNumber();cell.z=integerMoney?'#,##0;[Red](#,##0)':'#,##0.00';}catch{/* Leave descriptive values unchanged. */}
    }
   }
  }

@@ -14,8 +14,8 @@ export function parseNumber(value: unknown): string {
   if(!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(s)) throw new Error(`Angka tidak valid: ${String(value)}`);
   return dec(s).toString();
 }
-export const money = (value: string|null|undefined) => value==null?'Tidak dapat dihitung':`Rp ${rounded(value).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}`;
+export const money = (value: string|null|undefined) => {if(value==null)return 'Tidak dapat dihitung';try{const v=dec(value);if(!v.isFinite())return 'Tidak tersedia';return `Rp ${rounded(v.abs().lt(.5)?0:v).replace(/\B(?=(\d{3})+(?!\d))/g,'.')}`;}catch{return 'Tidak tersedia';}};
 export const ratio = (a: string,b: string) => dec(b).gt(0)?dec(a).div(b).toString():null;
 export const maskSEP = (sep:string) => sep ? `${'*'.repeat(Math.max(4,sep.length-4))}${sep.slice(-4)}` : 'Tidak ada SEP';
 
-export const displayDecimal = (value: string|null|undefined,places=2) => value==null?'Tidak dapat dihitung':dec(value).toDecimalPlaces(places).toNumber().toLocaleString('id-ID',{maximumFractionDigits:places});
+export const displayDecimal = (value: string|null|undefined,places=2) => {if(value==null)return 'Tidak dapat dihitung';try{const v=dec(value);if(!v.isFinite())return 'Tidak tersedia';return v.toDecimalPlaces(places).toNumber().toLocaleString('id-ID',{maximumFractionDigits:places});}catch{return 'Tidak tersedia';}};

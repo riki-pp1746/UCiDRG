@@ -1,3 +1,4 @@
+﻿import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
 import { useCostingStore } from '../../stores/costingStore';
@@ -57,7 +58,7 @@ export function RVUInputForm() {
 
   const handleSave = () => {
     setRVUGlobalCosts(localCosts as any);
-    alert('Alokasi E-Klaim berhasil disimpan! Sistem akan menghitung ulang Patient Level Costing.');
+    toast('Alokasi E-Klaim berhasil disimpan! Sistem akan menghitung ulang Patient Level Costing.');
   };
 
   const formatRupiah = (val: number) => val.toLocaleString('id-ID');
@@ -164,3 +165,4 @@ export function RVUInputForm() {
     </div>
   );
 }
+

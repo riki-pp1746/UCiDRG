@@ -15,7 +15,7 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
     {description:'Unggah Excel biaya RS dan TXT E-Klaim, lalu periksa ringkasan hasil impor.',items:[
       'Siapkan sheet Data Dasar RS dan Costing Template. Template dapat diunduh pada Biaya & Alokasi.',
       'Unggah satu atau beberapa TXT. Periksa jumlah pasien, file, dan peringatan impor sebelum melanjutkan.',
-      'Periode klaim memakai bulan unik tanggal pulang; tanggal masuk menjadi cadangan jika tanggal pulang tidak valid.',
+      'Periode dideteksi dari tanggal pulang. Bulan dengan kasus di bawah ambang ditandai; konfirmasikan bulan efektif dan tahun biaya.',
       'Periksa Bulan Efektif dan tahun biaya. Untuk biaya tahunan, faktor durasi = bulan efektif ÷ 12.',
     ]},
     {description:'Periksa biaya Overhead, Intermediate, dan layanan sebelum distribusi 18 komponen.',items:[
@@ -28,15 +28,15 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
       'Tab 1. Input Data Pasien: periksa klaim dan 18 komponen tagihan; koreksi data yang diperlukan.',
       'Tab 2. Rincian biaya dan unit cost: periksa hasil distribusi setiap komponen ke pasien.',
       'Tab 3. CW, Casemix & HBR RS: lihat unit cost pasien, rata-rata biaya kelompok, jumlah kasus, CW RS, casemix, dan HBR inap/jalan.',
-      'CW RS = rata-rata UC inlier kelompok iDRG ÷ rata-rata UC seluruh inlier pada jenis rawat yang sama. Rata-rata tertimbang jumlah kasus inlier.',
-      'Casemix kelompok = CW RS × seluruh kasus kelompok berkode valid, termasuk outlier. HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode. Biaya standar kelompok = CW RS × HBR × 1; adjustment dasar bawaan 1.',
+      'CW mentah memakai mean UC inlier positif. CW aktif dapat distabilkan dengan bobot n/(n+k); kelompok kecil diberi peringatan.',
+      'Casemix kelompok = CW RS × seluruh kasus kelompok berkode valid, termasuk outlier. HBR = pool HBR aktif ÷ casemix positif. Pool JKN penuh adalah bawaan; kebijakan pengecualian ditampilkan terpisah. Tarif RS = CW aktif × HBR × Adjustment.',
       'NBR, CW nasional, dan tarif E-Klaim tidak dipakai untuk hasil lokal ini. Tanpa alokasi, UC belum tersedia; billing tidak menggantikan unit cost.',
-      'Pasien tanpa kode iDRG tetap memiliki UC; biayanya masuk pool JKN, tetapi kasusnya belum membentuk casemix. Cadangan dan sisa alokasi tetap masuk pool dan ditelusuri. CW tertimbang 1 hanya pada inlier; casemix seluruh kasus tidak harus sama dengan jumlah kasus. HBR bukan NBR.',
+      'Pasien tanpa kode iDRG tetap memiliki UC; biayanya masuk pool JKN, tetapi kasusnya belum membentuk casemix. Cadangan dan sisa alokasi tetap masuk pool dan ditelusuri. CW mentah tertimbang 1 hanya pada inlier tanpa stabilisasi; casemix seluruh kasus tidak harus sama dengan jumlah kasus. HBR bukan NBR.',
       'Ekspor CW & HBR RS memakai hasil yang sama dengan tampilan, disertai sumber, metode, periode, populasi pembentuk, dan SEP masking.',
     ]},
     {description:'Lihat ringkasan kelompok kasus dan bandingkan unit cost dengan tarif.',items:[
       'Pilih mode INA-CBG atau iDRG, lalu gunakan filter yang tersedia untuk menelusuri kelompok.',
-      'Selisih = tarif − unit cost. Status ditampilkan sebagai PROFIT, DEFISIT, atau BEP.',
+      'Selisih = tarif − unit cost. Status finansial memakai CRR dan toleransi impas. Kepastian statistik memakai interval selisih; kelompok di bawah minimum dinyatakan Data tidak cukup.',
       'Perbandingan tarif tetap berada pada menu ini; Hasil Pasien hanya menampilkan costing RS.',
       'Referensi NBR dan tarif nasional/eksisting tidak mengubah CW RS serta HBR lokal. Perbandingan HBR terhadap NBR memerlukan basis CW yang sama dan belum diterapkan.',
       'Dashboard merangkum hasil dan bukan tahap input tambahan. Kode kelompok berasal dari klaim; aplikasi tidak menggantikan grouper E-Klaim.',
@@ -45,7 +45,7 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
       'Menu Laporan menyediakan Excel, PowerPoint, dan cetak / simpan PDF.',
       'Periksa ringkasan biaya, faktor periode, sumber tarif, dan peringatan sebelum membagikan hasil.',
       'Rincian lokal memiliki ekspor Excel tersendiri pada tab CW, Casemix & HBR RS.',
-      'Analisis 18 Komponen belum memakai alur snapshot Draft–Review–Final milik Analisis Biaya Terintegrasi.',
+      'Simpan versi Draft–Review–Final melalui panel kualitas. Profil pemeriksa lokal dapat mengesahkan Final setelah validasi, referensi, dan hitungan terkini tersedia. Cadangan lengkap wajib terenkripsi.',
     ]},
   ],
   integrated:[
@@ -104,3 +104,4 @@ export default function AnalysisGuide({mode}:{mode:AnalysisGuideMode}){
     <section className="uc-panel space-y-3"><h2>Sesi sementara dan cadangan</h2><p className="text-sm text-slate-600">Data, konfigurasi dan snapshot hanya berada di memori selama sesi. Logout, refresh, atau menutup tab mengosongkan data kedua ruang analisis. Aplikasi tidak menyimpan data analisis ke localStorage, sessionStorage atau IndexedDB. Ekspor hasil dan unduh cadangan sebelum keluar jika ingin melanjutkan nanti.</p><p className="text-sm text-slate-600">Cadangan yang Anda unduh tetap berupa berkas di komputer. Pemulihan memuatnya ke sesi berjalan. Cache berkas aplikasi tetap digunakan untuk mempercepat pembukaan halaman.</p></section>
   </div>;
 }
+

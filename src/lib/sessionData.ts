@@ -1,3 +1,6 @@
+import {useMethodologyStore} from '../stores/methodologyStore';
+import {useAnalysisHistoryStore} from '../stores/analysisHistoryStore';
+import {clearIdentityKey} from './analysisIdentity';
 import {useCostingStore} from '../stores/costingStore';
 import {useHospitalCostStore} from '../stores/hospitalCostStore';
 import {useTarifPasienStore} from '../stores/tarifPasienStore';
@@ -9,6 +12,9 @@ import {clearSessionMemory} from './sessionMemory';
 
 export function clearAnalysisSession(){
   endIntegratedSession();
+  clearIdentityKey();
+  useMethodologyStore.setState(useMethodologyStore.getInitialState(),true);
+  useAnalysisHistoryStore.setState({entries:[]});
   useCostingStore.setState(useCostingStore.getInitialState(),true);
   useHospitalCostStore.setState(useHospitalCostStore.getInitialState(),true);
   useTarifPasienStore.setState(useTarifPasienStore.getInitialState(),true);

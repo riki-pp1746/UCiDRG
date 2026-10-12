@@ -156,7 +156,7 @@ it('panduan kedua ruang menjelaskan lima tahap dan hanya menautkan data ruang ak
    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[prefix||'/']},createElement(AppRoutes)));
    for(const title of ['1. Data','2. Biaya &amp; Alokasi','3. Hasil Pasien','4. Perbandingan','5. Laporan'])expect(html).toContain(title);
    for(const path of ['upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="${prefix}/${path}"`);
-   expect(html).toContain('HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode');expect(html).toContain('bawaan 1');expect(html).toContain('Data kedua ruang');expect(html).toContain('hanya berada di memori');
+   expect(html).toContain(prefix?'HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode':'HBR = pool HBR aktif ÷ casemix positif');expect(html).toContain('Data kedua ruang');expect(html).toContain('hanya berada di memori');
    if(prefix){expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. CW, Casemix &amp; HBR RS');}
    else {expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('Logout, refresh, atau menutup tab mengosongkan data');expect(html).not.toContain('LANGKAH 06');expect(html).not.toContain('sesuai standar penghitungan tarif iDRG Nasional');}
  }
@@ -169,5 +169,6 @@ it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
  for(const path of ['dashboard','upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="/revisi4/${path}"`);
  expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).toContain('Data kedua ruang hanya berada di memori');
 });
+
 
 

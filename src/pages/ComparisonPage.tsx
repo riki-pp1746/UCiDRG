@@ -1,10 +1,11 @@
+import {useAnalysisView} from '../hooks/useAnalysisView';
+import {statusLabel} from '../lib/analysisSnapshot';
+import {ensureAnalysisExport,appendAnalysisSheets} from '../lib/analysisExport';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
-import {useTarifPasienStore} from '../stores/tarifPasienStore';
-import {hospitalTariffComparison,matchesComparisonStatus} from '../lib/calculations/hospitalTariffComparison';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ComparisonPage.tsx
-// Tabel & grafik perbandingan Tarif RS vs INA-CBG
+// Tabel & grafik perbandingan Unit cost pasien vs INA-CBG
 // ============================================================
 
 import { useState, useMemo } from 'react';
@@ -23,11 +24,7 @@ const STATUS_BADGE = {
   RUGI: 'bg-red-100 text-red-700 border-red-200',
 };
 
-const STATUS_LABEL = {
-  UNTUNG: 'Profit',
-  IMPAS: 'Break Even Point (BEP)',
-  RUGI: 'Defisit',
-};
+
 
 type SortKey = 'group_code' | 'jumlahKasus' | 'rataUnitCost' | 'rataTarif' | 'selisih' | 'selisihPersen' | 'cov';
 
@@ -58,9 +55,9 @@ function ComparisonTooltip({ active, payload, viewMode, relative }: any) {
       <p className="mt-1 text-sm font-semibold leading-snug text-slate-800">{item.description}</p>
       <p className="mt-1 text-xs text-slate-400">{formatNumber(item.kasus)} kasus</p>
       <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs">
-        <div className="flex justify-between gap-6"><span className="text-slate-500">Tarif RS</span><strong className="text-blue-600">{formatRupiah(item.unitCost)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Unit cost pasien</span><strong className="text-blue-600">{formatRupiah(item.unitCost)}</strong></div>
         <div className="flex justify-between gap-6"><span className="text-slate-500">Tarif {viewMode}</span><strong className="text-violet-600">{formatRupiah(item.tarif)}</strong></div>
-        <div className="flex justify-between gap-6"><span className="text-slate-500">Selisih tarif klaim − Tarif RS</span><strong className={difference >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{difference >= 0 ? '+' : ''}{formatRupiah(difference)}</strong></div>
+        <div className="flex justify-between gap-6"><span className="text-slate-500">Selisih tarif klaim − Unit cost pasien</span><strong className={difference >= 0 ? 'text-emerald-600' : 'text-rose-600'}>{difference >= 0 ? '+' : ''}{formatRupiah(difference)}</strong></div>
       </div>
       {relative && <p className="mt-3 text-[11px] leading-relaxed text-slate-400">Panjang batang dibandingkan terhadap nilai terbesar pada DRG ini.</p>}
     </div>
@@ -68,13 +65,12 @@ function ComparisonTooltip({ active, payload, viewMode, relative }: any) {
 }
 
 export default function ComparisonPage() {
-  const local = useTarifPasienStore(s=>s.localCosting);
-  const rows = useCostingStore(s=>s.patientResults);
   const viewMode = useCostingStore(s => s.viewMode);
-  const { setFilter, filterStatus, filterPTD, searchTerm, isProcessing } = useCostingStore();
-  const comparison=useMemo(()=>hospitalTariffComparison(rows,local,viewMode),[rows,local,viewMode]);
-  const drgResults=useMemo(()=>comparison.groups.filter(g=>(!filterPTD||String(g.ptd)===filterPTD)&&matchesComparisonStatus(g.status,filterStatus)&&(!searchTerm||`${g.group_code} ${g.group_description} ${g.mdc_description||''}`.toLowerCase().includes(searchTerm.toLowerCase()))),[comparison,filterPTD,filterStatus,searchTerm]);
-  const summary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
+  const {setFilter,filterStatus,filterPTD,searchTerm,isProcessing}=useCostingStore();
+  const view=useAnalysisView();
+  const comparison={groups:view.groups,unavailable:view.unavailable};
+  const drgResults=view.groups;
+  const summary=view.summary;
   const periodNormalization = useCostingStore(s => s.periodNormalization);
 
   const [sortKey, setSortKey] = useState<SortKey>('jumlahKasus');
@@ -82,7 +78,7 @@ export default function ComparisonPage() {
   const [activeTab, setActiveTab] = useState<'table' | 'chart'>('table');
   const [chartMode, setChartMode] = useState<'relative' | 'nominal'>('relative');
   const [currentPage, setCurrentPage] = useState(1);
-  const PAGE_SIZE = 20;
+  const [PAGE_SIZE,setPageSize]=useState(25);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -113,14 +109,14 @@ export default function ComparisonPage() {
   // Grafik diprioritaskan berdasarkan jumlah kasus agar stabil dan mudah dipahami,
   // terlepas dari urutan tabel yang sedang dipilih pengguna.
   const chartData = useMemo<ChartDatum[]>(() => [...drgResults]
-    .sort((a, b) => b.jumlahKasus - a.jumlahKasus)
+    .sort((a, b) => Math.abs(b.totalTarif-b.totalBiayaRS)-Math.abs(a.totalTarif-a.totalBiayaRS))
     .slice(0, 10)
     .map(d => {
       const unitCost = Math.max(0, d.rataUnitCost);
       const tarif = Math.max(0, d.rataTarif);
       const rowMax = Math.max(unitCost, tarif, 1);
       return {
-        code: d.group_code,
+        code: (d.ptd===1?'Inap ':'Jalan ')+d.group_code,
         description: d.group_description,
         unitCost,
         tarif,
@@ -148,12 +144,12 @@ export default function ComparisonPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <p className="text-sm text-gray-600">Tarif RS = CW RS × HBR × Adjustment (dasar 1). Unit cost pasien tetap tersedia pada Hasil Pasien. {comparison.unavailable > 0 ? `${comparison.unavailable} kasus belum memiliki Tarif RS dan tidak dibandingkan; lengkapi costing serta kode iDRG.` : ''}</p>
-      <button className="uc-secondary" disabled={!drgResults.length||isProcessing} onClick={async()=>{const XLSX=await import('xlsx');const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Rawat','Kode','Deskripsi','Kasus','Tarif RS','Tarif '+viewMode,'Selisih','Status'],...drgResults.map(g=>[g.ptd===2?'jalan':'inap',g.group_code,g.group_description,g.jumlahKasus,g.rataUnitCost,g.rataTarif,g.selisih,STATUS_LABEL[g.status]])]),'Perbandingan');formatCostingWorkbook(book);XLSX.writeFile(book,'Perbandingan-Tarif-RS.xlsx');}}>Unduh perbandingan Excel</button>
-      <PageIntro title="Langkah 4: Bandingkan Tarif RS dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara Tarif RS (CW RS × HBR × Adjustment) dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI ditentukan dari selisih keduanya." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
+      <p className="text-sm text-gray-600">Unit cost pasien berasal dari alokasi 18 komponen biaya RS. Tarif RS standar kelompok = CW aktif × HBR × Adjustment dan tersedia terpisah pada Hasil Pasien. {comparison.unavailable > 0 ? `${comparison.unavailable} kasus belum memiliki Unit cost pasien dan tidak dibandingkan; lengkapi costing serta kode iDRG.` : ''}</p>
+      <button className="uc-secondary" disabled={!drgResults.length||isProcessing} onClick={async()=>{if(!ensureAnalysisExport())return;const XLSX=await import('xlsx');const book=XLSX.utils.book_new();XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet([['Rawat','Kode','Deskripsi','Kasus','Unit cost pasien','Tarif '+viewMode,'Selisih','Status','CRR (%)','Kepastian statistik','CI bawah','CI atas'],...drgResults.map(g=>[g.ptd===2?'jalan':'inap',g.group_code,g.group_description,g.jumlahKasus,g.rataUnitCost,g.rataTarif,g.selisih,statusLabel(g),g.crrAvailable?g.crr:null,g.statisticalLabel,g.ci?.low??null,g.ci?.high??null])]),'Perbandingan');appendAnalysisSheets(book);formatCostingWorkbook(book);XLSX.writeFile(book,'Perbandingan-Tarif-RS.xlsx');}}>Unduh perbandingan Excel</button>
+      <label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={PAGE_SIZE} onChange={e=>{setPageSize(Number(e.target.value));setCurrentPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label><PageIntro title="Langkah 4: Bandingkan Unit cost pasien dengan tarif klaim" what="Setiap kelompok kasus dibandingkan antara unit cost pasien hasil alokasi biaya RS dan tarif klaim JKN. Status UNTUNG, IMPAS, atau RUGI mengikuti CRR terhadap unit cost dan toleransi impas. Kepastian statistik ditampilkan terpisah." result="Daftar kelompok kasus yang untung dan rugi beserta CRR-nya." />
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Tarif RS vs {viewMode}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Perbandingan Unit cost pasien vs {viewMode}</h1>
           <p className="text-gray-500 text-sm mt-1">{formatNumber(drgResults.length)} DRG Group{periodNormalization ? ` · ${periodNormalization.label} · faktor biaya ${periodNormalization.effectiveMonths}/12` : ''}</p>
         </div>
         <div className="sm:ml-auto flex gap-2">
@@ -205,7 +201,7 @@ export default function ComparisonPage() {
           >
             <option value="ALL">Semua Status</option>
             <option value="UNTUNG">Profit</option>
-            <option value="IMPAS">Break Even Point (BEP)</option>
+            <option value="IMPAS">Impas</option><option value="DATA_TIDAK_CUKUP">Data tidak cukup</option><option value="TIDAK_TERSEDIA">Tidak tersedia</option>
             <option value="RUGI">Defisit</option>
           </select>
         </div>
@@ -216,7 +212,7 @@ export default function ComparisonPage() {
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h3 className="font-semibold text-gray-800">10 DRG dengan Kasus Terbanyak</h3>
-              <p className="mt-1 text-xs text-gray-500">Perbandingan Tarif RS dengan Tarif {viewMode}. Arahkan kursor ke batang untuk melihat nominal lengkap.</p>
+              <p className="mt-1 text-xs text-gray-500">Perbandingan Unit cost pasien dengan Tarif {viewMode}. Arahkan kursor ke batang untuk melihat nominal lengkap.</p>
             </div>
             <div className="inline-flex w-fit rounded-xl border border-slate-200 bg-slate-50 p-1 text-xs font-semibold">
               <button onClick={() => setChartMode('relative')} className={clsx('rounded-lg px-3 py-1.5 transition', chartMode === 'relative' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700')}>Relatif</button>
@@ -245,7 +241,7 @@ export default function ComparisonPage() {
               <YAxis type="category" dataKey="code" tick={{ fontSize: 11, fill: '#334155', fontWeight: 600 }} axisLine={false} tickLine={false} width={105} />
               <Tooltip cursor={{ fill: '#f8fafc' }} content={<ComparisonTooltip viewMode={viewMode} relative={chartMode === 'relative'} />} />
               <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 12 }} />
-              <Bar name="Tarif RS" dataKey={chartMode === 'relative' ? 'unitIndex' : 'unitCost'} fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
+              <Bar name="Unit cost pasien" dataKey={chartMode === 'relative' ? 'unitIndex' : 'unitCost'} fill="#2563eb" radius={[0, 6, 6, 0]} maxBarSize={14} />
               <Bar name={`Tarif ${viewMode}`} dataKey={chartMode === 'relative' ? 'tarifIndex' : 'tarif'} fill="#8b5cf6" radius={[0, 6, 6, 0]} maxBarSize={14} />
             </BarChart>
           </ResponsiveContainer>
@@ -262,11 +258,11 @@ export default function ComparisonPage() {
                       { key: 'group_code', label: `Kode ${viewMode}` },
                       { key: null, label: 'Deskripsi / MDC' },
                       { key: 'jumlahKasus', label: 'Kasus' },
-                      { key: 'rataUnitCost', label: 'Tarif RS' },
+                      { key: 'rataUnitCost', label: 'Unit cost pasien' },
                       { key: 'rataTarif', label: `Tarif ${viewMode}` },
                       { key: 'selisih', label: 'Selisih' },
                       { key: 'cov', label: 'CoV Variasi' },
-                      { key: null, label: 'Status' },
+                      { key: null, label: 'Status' },{key:null,label:'CRR terhadap UC'},{key:null,label:'Kepastian statistik'},
                     ].map(col => (
                       <th
                         key={col.label}
@@ -309,22 +305,22 @@ export default function ComparisonPage() {
                         {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                       </td>
                       <td className={clsx('px-4 py-3 text-right font-mono text-xs font-semibold whitespace-nowrap', drg.cov < 1 ? 'text-blue-600' : 'text-red-600')} title={drg.cov < 1 ? 'Variasi biaya masih homogen (CoV < 1)' : 'Variasi biaya tinggi (CoV ≥ 1)'}>
-                        {(drg.cov * 100).toFixed(1)}%{drg.cov < 1 ? ' · Homogen' : ' · Tinggi'}
+                        {formatNumber(drg.cov * 100,1)}%{drg.cov < 1 ? ' · Homogen' : ' · Tinggi'}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span className={clsx(
                           'inline-block px-2 py-0.5 rounded-full text-xs font-semibold border',
                           STATUS_BADGE[drg.status]
                         )}>
-                          {STATUS_LABEL[drg.status]}
+                          {statusLabel(drg)}
                         </span>
-                      </td>
+                      </td><td className="px-3 py-2">{drg.crrAvailable?formatNumber(drg.crr,1)+'%':'Tidak tersedia'}</td><td className="px-3 py-2 text-xs">{drg.statisticalLabel}{drg.ci&&<p>CI selisih: {formatRupiah(drg.ci.low)} s.d. {formatRupiah(drg.ci.high)}</p>}</td>
                     </tr>
                   ))}
                   {paginated.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
-                        <p>{!local?'Tarif RS belum dihitung. Buka Hasil Pasien dan hitung CW, Casemix & HBR RS.':!comparison.groups.length?'Tidak ada kasus dengan Tarif RS valid. Periksa kode iDRG dan hasil costing.':'Tidak ada kelompok yang cocok dengan filter.'}</p>
+                      <td colSpan={10} className="px-4 py-12 text-center text-gray-400">
+                        <p>{!summary?'Unit cost pasien belum dihitung. Buka Hasil Pasien dan hitung CW, Casemix & HBR RS.':!comparison.groups.length?'Tidak ada kasus dengan Unit cost pasien valid. Periksa kode iDRG dan hasil costing.':'Tidak ada kelompok yang cocok dengan filter.'}</p>
                         {comparison.groups.length>0&&<button className="uc-secondary mt-3" onClick={()=>{setFilter('filterStatus','ALL');setFilter('filterPTD','');setFilter('searchTerm','');setCurrentPage(1);}}>Tampilkan semua kelompok</button>}
                       </td>
                     </tr>
@@ -364,3 +360,4 @@ export default function ComparisonPage() {
     </div>
   );
 }
+

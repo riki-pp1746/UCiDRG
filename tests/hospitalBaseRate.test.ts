@@ -58,8 +58,8 @@ it('preserves old immutable snapshots and stores local HBR in a new version',asy
  const stored=await listSnapshots();expect(stored.find(s=>s.id===old.id)?.result.methods[0].localCosting).toBeUndefined();expect(stored.find(s=>s.id===next.id)?.result.methods[0].localCosting?.pools[0].hbr).toBe('250000');await expect(saveSnapshot({...old,result})).rejects.toThrow();
 });
 it('18-component page source uses exactly its distribution and invalidates local results after edits',()=>{
- const store=useTarifPasienStore;store.setState({patients:[{...makeEmptyPatient(),id:'1',drg:'A',procedure_amt:1},{...makeEmptyPatient(),id:'2',drg:'B',procedure_amt:2}],biayaRSMap:{procedure_amt:1,laboratory_amt:10},localCosting:null});store.getState().calculateDistribution();
- const state=store.getState();expect(state.localCosting).not.toBe(null);for(const p of state.patients)expect(state.localCosting!.patients.find(r=>r.id===p.id)?.uc).toBe(p.totalCostPerPatientDecimal);expect(state.localCosting!.unassignedUnallocated).toBe('10');near(state.localCosting!.pools[0].hbr!,'5.5');
+ const store=useTarifPasienStore;store.setState({patients:[{...makeEmptyPatient(),id:'1',drg:'A',procedure_amt:1},{...makeEmptyPatient(),id:'2',drg:'B',procedure_amt:2}],biayaRSMap:{procedure_amt:3,laboratory_amt:10},localCosting:null});store.getState().calculateDistribution();
+ const state=store.getState();expect(state.localCosting).not.toBe(null);for(const p of state.patients)expect(state.localCosting!.patients.find(r=>r.id===p.id)?.uc).toBe(p.totalCostPerPatientDecimal);expect(state.localCosting!.unassignedUnallocated).toBe('10');near(state.localCosting!.pools[0].hbr!,'6.5');
  const version=state.calculationVersion;state.updatePatient('1',{procedure_amt:3});expect(store.getState().localCosting).toBe(null);store.getState().calculateDistribution();expect(store.getState().calculationVersion).toBe(version+1);store.getState().setBiayaRS('procedure_amt',0);expect(store.getState().localCosting).toBe(null);
 });
 

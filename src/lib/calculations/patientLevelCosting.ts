@@ -2,6 +2,8 @@ import {twoSDFlags} from './trimming';
 import {allocateComponents} from './componentAllocation';
 import {sum} from '../../v4/numbers';
 import {calculateIDRGTariff,neutralAdjustment} from './idrgTariff';
+import type {Methodology} from '../../stores/methodologyStore';
+import {financialStatus,meanCI} from './revisionMath';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
 // Metode: Patient Level Costing + Step-Down
@@ -191,8 +193,8 @@ export function runRVUAllocation(
 // ============================================================
 // Agregasi per DRG Group
 // ============================================================
-export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroupResult[], idrg: DRGGroupResult[] } {
-  results=results.filter(r=>!r.outlier);
+export function aggregateByDRG(results: PatientCostResult[],options?:Methodology): { inacbg: DRGGroupResult[], idrg: DRGGroupResult[] } {
+  if(!options)results=results.filter(r=>!r.outlier);
   const inacbgMap = new Map<string, PatientCostResult[]>();
   const idrgMap = new Map<string, PatientCostResult[]>();
 
@@ -217,7 +219,7 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       const totalUnitCost = groupResults.reduce((s, r) => s + r.unitCostDihitung, 0);
       const totalINACBG = groupResults.reduce((s, r) => s + r.tarifINACBG, 0);
       const totalIDRG = groupResults.reduce((s, r) => s + r.tarifIDRG, 0);
-      const totalCostWeight = groupResults.reduce((s, r) => s + r.patient.idrg?.total_cost_weight || 0, 0);
+      const totalCostWeight = groupResults.reduce((s, r) => s + (r.patient.idrg?.total_cost_weight || 0), 0);
 
       const rataUnitCost = totalUnitCost / n;
       const rataINACBG = totalINACBG / n;
@@ -239,6 +241,8 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
       let statusIDRG: 'UNTUNG' | 'IMPAS' | 'RUGI' = 'IMPAS';
       if (selisihIDRG > 50000) statusIDRG = 'UNTUNG';
       if (selisihIDRG < -50000) statusIDRG = 'RUGI';
+      if(options){statusINACBG=financialStatus(totalUnitCost,totalINACBG,options.bep);statusIDRG=financialStatus(totalUnitCost,totalIDRG,options.bep);}
+      const ci=options?meanCI(groupResults.map(r=>(type==='INACBG'?r.tarifINACBG:r.tarifIDRG)-r.unitCostDihitung)):null;
 
       groups.push({
         group_code: groupCode.slice(groupCode.indexOf('|')+1),
@@ -262,7 +266,8 @@ export function aggregateByDRG(results: PatientCostResult[]): { inacbg: DRGGroup
         cov: rataUnitCost > 0 && n > 1
           ? Math.sqrt(groupResults.reduce((sum, item) => sum + Math.pow(item.unitCostDihitung - rataUnitCost, 2), 0) / (n - 1)) / rataUnitCost
           : 0,
-        status: type === 'INACBG' ? statusINACBG : statusIDRG
+        status: type === 'INACBG' ? statusINACBG : statusIDRG,
+        ...(options?{decisionEligible:n>=options.decisionMinimum&&totalUnitCost>0,decisionStatus:totalUnitCost<=0?'TIDAK_TERSEDIA' as const:type==='INACBG'?statusINACBG:statusIDRG,ci,statisticalLabel:n<options.decisionMinimum?'Data tidak cukup':ci?(ci.low>0?'Selisih positif':ci.high<0?'Selisih negatif':'Belum dapat disimpulkan'):'Data tidak cukup',crrAvailable:totalUnitCost>0}:{})
       });
     });
     return groups.sort((a, b) => b.jumlahKasus - a.jumlahKasus);
@@ -380,8 +385,8 @@ export function generateSummary(
     jumlahDRGRugi: drgRugi.length,
     persenRugi: (drgRugi.length / (drgResults.length || 1)) * 100,
     persenUntung: (drgUntung.length / (drgResults.length || 1)) * 100,
-    top10Rugi: drgRugi.sort((a, b) => a.selisih - b.selisih).slice(0, 10),
-    top10Untung: drgUntung.sort((a, b) => b.selisih - a.selisih).slice(0, 10),
+    top10Rugi: drgRugi.sort((a, b) => (a.totalTarif-a.totalBiayaRS)-(b.totalTarif-b.totalBiayaRS)).slice(0, 10),
+    top10Untung: drgUntung.sort((a, b) => (b.totalTarif-b.totalBiayaRS)-(a.totalTarif-a.totalBiayaRS)).slice(0, 10),
   };
 }
 
@@ -389,7 +394,8 @@ export function generateSummary(
 // Format Rupiah
 // ============================================================
 export function formatRupiah(value: number): string {
-  if (isNaN(value) || value === null || value === undefined) return 'Rp 0';
+  if (!Number.isFinite(value)) return 'Tidak tersedia';
+  if(Math.abs(value)<0.5)value=0;
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
     currency: 'IDR',
@@ -399,6 +405,8 @@ export function formatRupiah(value: number): string {
 }
 
 export function formatNumber(value: number, decimals = 0): string {
+  if(!Number.isFinite(value))return 'Tidak tersedia';
+  if(Math.abs(value)<0.5*10**(-decimals))value=0;
   return new Intl.NumberFormat('id-ID', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,

@@ -1,32 +1,65 @@
 import TrimmingImpact from './TrimmingImpact';
+
 import {formatCostingWorkbook} from '../../lib/costingWorkbookFormat';
+
 import {displayDecimal} from '../../v4/numbers';
+
 import {useMemo,useState} from 'react';
+
 import * as XLSX from 'xlsx';
+
 import {Download} from 'lucide-react';
+
 import type {HospitalCostResult} from '../../lib/calculations/hospitalBaseRate';
+
 import {hospitalBaseRateSheets} from '../../lib/calculations/hospitalBaseRate';
+
 import {dec,money} from '../../v4/numbers';
 
+import {ensureAnalysisExport,appendAnalysisSheets} from '../../lib/analysisExport';
+
+
+
 export default function HospitalBaseRateResults({result,exportAllowed=true}:{result:HospitalCostResult;exportAllowed?:boolean}){
+
   const [care,setCare]=useState('semua');const [query,setQuery]=useState('');const [page,setPage]=useState(0);const [flag,setFlag]=useState('semua');
+
   const patients=useMemo(()=>result.patients.filter(p=>(flag==='semua'||(flag==='outlier'?p.outlier:!p.outlier))&&(care==='semua'||p.care===care)&&`${p.code} ${p.description||''} ${p.sep}`.toLowerCase().includes(query.toLowerCase())),[result,care,query,flag]);
+
   const safePage=Math.min(page,Math.max(0,Math.ceil(patients.length/50)-1));
+
   const groups=result.groups.filter(g=>(care==='semua'||g.care===care)&&`${g.code} ${g.description||''}`.toLowerCase().includes(query.toLowerCase()));
+
   const [groupPage,setGroupPage]=useState(0);const safeGroupPage=Math.min(groupPage,Math.max(0,Math.ceil(groups.length/50)-1));
+
   const number=(v:string|null)=>v===null?'Tidak dapat dihitung':displayDecimal(v);
+
   const weight=(v:string|null)=>v===null?'Tidak dapat dihitung':dec(v).toNumber().toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const exportData=()=>{const book=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(result)))XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),name);XLSX.writeFile(formatCostingWorkbook(book),'CW-Casemix-HBR-RS.xlsx');};
+
+  const exportData=()=>{if(result.schema===4&&!ensureAnalysisExport())return;const book=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(result)))XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),name);if(result.schema===4)appendAnalysisSheets(book);XLSX.writeFile(formatCostingWorkbook(book),'CW-Casemix-HBR-RS.xlsx');};
+
   return <div className="space-y-5">
-    <section className="uc-panel space-y-4">{Number(result.schema)<3&&<p className="uc-notice">Snapshot lama memakai rumus HBR sebelumnya. Hitung versi baru untuk memakai pool JKN penuh; snapshot lama tetap tersimpan.</p>}<h2 className="font-semibold">CW, Casemix &amp; HBR RS</h2><p className="text-sm text-slate-600">Sumber: hasil alokasi {result.source} · Metode {result.method} · Periode {result.period}. Adjustment dasar 1.</p>
-      <div className="grid md:grid-cols-2 gap-4">{result.pools.map(p=><div className="uc-inset space-y-2" key={p.care}><h3 className="font-semibold">HBR {p.care==='inap'?'Inap':'Jalan'}</h3><p className="text-2xl font-bold">{money(p.hbr)}</p><p className="text-sm">{p.count} kasus · {Number(result.schema)>=3?'pool JKN penuh':'biaya populasi rumus lama'} {money(p.total)} · total casemix {number(p.casemix)}</p><p className="text-xs text-slate-500">Outlier: {p.outlierCount??0} kasus / {money(p.outlierCost??'0')} · Tanpa kode: {p.excludedCount} kasus / {money(p.excludedCost)} · UC belum valid: {p.invalidCount} kasus</p><p className="text-xs text-slate-500">Teralokasi {money(p.allocated)} · cadangan {money(p.reserve)} · belum teralokasi {money(p.unallocated)}</p><TrimmingImpact pool={p}/></div>)}</div>
+
+    <section className="uc-panel space-y-4">{Number(result.schema)<3&&<p className="uc-notice">Snapshot lama memakai rumus HBR sebelumnya. Hitung versi baru untuk memakai pool JKN penuh; snapshot lama tetap tersimpan.</p>}<h2 className="font-semibold">CW, Casemix &amp; HBR RS</h2><p className="text-sm text-slate-600">Sumber: hasil alokasi {result.source} · Metode {result.method} · Periode {result.period}. Adjustment {result.adjustment}.</p>
+
+      <div className="grid md:grid-cols-2 gap-4">{result.pools.map(p=><div className="uc-inset space-y-2" key={p.care}><h3 className="font-semibold">HBR {p.care==='inap'?'Inap':'Jalan'}</h3><p className="text-2xl font-bold">{money(p.hbr)}</p><p className="text-sm">{p.count} kasus · {Number(result.schema)>=3?'pool JKN penuh':'biaya populasi rumus lama'} {money(p.total)} · total casemix {number(p.casemix)}</p><p className="text-xs text-slate-500">Outlier: {p.outlierCount??0} kasus / {money(p.outlierCost??'0')} · Tanpa kode: {p.excludedCount} kasus / {money(p.excludedCost)} · UC belum valid: {p.invalidCount} kasus</p><p className="text-xs text-slate-500">Teralokasi {money(p.allocated)} · cadangan {money(p.reserve)} · belum teralokasi {money(p.unallocated)}</p><p className="text-xs">Pool HBR aktif {money(p.hbrPool??p.total)} · Dikecualikan {money(p.policyExcluded??'0')}</p><TrimmingImpact pool={p}/></div>)}</div>
+
       {result.method==='18 Komponen'&&<p className="uc-notice">Sisa bersama sumber sebelum pembagian cadangan inap/jalan: {money(result.unassignedUnallocated)}. Periksa porsi sisa pada masing-masing pool. Cadangan cakupan tidak tersedia pada alur 18 komponen; angka nol pada ringkasan bukan hasil pengukuran cakupan klaim.</p>}
-      <details><summary className="cursor-pointer font-semibold">Rumus dan populasi pembentuk</summary><div className="mt-3 space-y-2 text-sm"><p>CW RS = rata-rata UC inlier kelompok ÷ rata-rata UC seluruh inlier, tertimbang kasus.</p><p>Casemix = Σ(CW kelompok × seluruh kasus berkode valid, termasuk outlier). HBR = pool JKN penuh ÷ total casemix.</p><p>Trimming satu kali ±2 SD sampel per iDRG/rawat hanya memengaruhi pembentuk CW. Biaya dan kasus outlier tetap masuk HBR/casemix.</p><p>Biaya tanpa kode, cadangan cakupan dan biaya belum teralokasi tetap berada dalam pool JKN. Tanpa kode tidak diberi CW buatan: kelengkapan casemix harus ditinjau. Non-JKN tidak masuk pool.</p><p>Inap/jalan, periode dan metode dipisah. Sisa bersama 18 komponen dibagi dengan proporsi biaya pasien; bila biaya nol gunakan jumlah kasus, dengan penanda cadangan.</p><p>Biaya standar = CW × HBR × 1. Jumlah biaya standar × kasus merekonsiliasi pool JKN penuh. Total casemix tidak harus sama dengan jumlah kasus. HBR bukan NBR.</p><p>CW ditampilkan dua desimal. Tarif memakai CW presisi penuh; perkalian angka tampilan dapat berbeda karena pembulatan. Arahkan penunjuk ke CW untuk melihat nilai lengkap. Mesin memakai presisi 40 digit; rupiah ekspor dibulatkan half-up tanpa desimal.</p></div></details>
+
+      <details><summary className="cursor-pointer font-semibold">Rumus dan populasi pembentuk</summary><div className="mt-3 space-y-2 text-sm"><p>CW mentah = mean UC inlier positif kelompok ÷ mean UC inlier positif jenis rawat. CW aktif mengikuti stabilisasi yang dipilih.</p><p>Casemix = Σ(CW kelompok × seluruh kasus berkode valid, termasuk outlier). HBR = pool HBR aktif sesuai kebijakan ÷ total casemix positif.</p><p>Metode trimming aktif: {result.trimming}. Trimming memengaruhi pembentuk CW. Biaya dan kasus outlier tetap masuk HBR/casemix.</p><p>Biaya tanpa kode, cadangan cakupan dan biaya belum teralokasi tetap berada dalam pool JKN. Pada kebijakan pengecualian, biaya dikecualikan dari pool HBR dan ditampilkan terpisah. Tanpa kode tidak diberi CW buatan: kelengkapan casemix harus ditinjau. Non-JKN tidak masuk pool.</p><p>Inap/jalan, periode dan metode dipisah. Sisa bersama 18 komponen dibagi dengan proporsi biaya pasien; bila biaya nol gunakan jumlah kasus, dengan penanda cadangan.</p><p>Biaya standar = CW aktif × HBR × Adjustment. Sebelum Adjustment, jumlah CW aktif × HBR × kasus merekonsiliasi pool HBR aktif. Total casemix tidak harus sama dengan jumlah kasus. HBR bukan NBR.</p><p>CW ditampilkan dua desimal. Tarif memakai CW presisi penuh; perkalian angka tampilan dapat berbeda karena pembulatan. Arahkan penunjuk ke CW untuk melihat nilai lengkap. Mesin memakai presisi 40 digit; rupiah ekspor dibulatkan half-up tanpa desimal.</p></div></details>
+
     </section>
-    <section className="uc-panel space-y-4"><div className="flex flex-wrap gap-3 items-end"><label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={e=>{setCare(e.target.value);setPage(0);setGroupPage(0);}}><option value="semua">Semua</option><option value="inap">Rawat inap</option><option value="jalan">Rawat jalan</option></select></label><label className="uc-label">Trimming<select className="uc-input" value={flag} onChange={e=>{setFlag(e.target.value);setPage(0);}}><option value="semua">Semua pasien</option><option value="inlier">Inlier</option><option value="outlier">Outlier ±2 SD</option></select></label><label className="uc-label flex-1">Cari kode, deskripsi iDRG atau SEP masking<input className="uc-input" value={query} onChange={e=>{setQuery(e.target.value);setPage(0);setGroupPage(0);}}/></label><button className="uc-secondary" disabled={!exportAllowed||!result.patients.length} onClick={exportData}><Download size={16}/>Ekspor CW &amp; HBR RS</button></div>
-      <h3 className="font-semibold">Rincian kelompok iDRG</h3><div className="uc-table-scroll" tabIndex={0} role="region" aria-label="Kelompok CW RS"><table className="uc-table"><thead><tr>{['Rawat','iDRG','Deskripsi iDRG','Kasus','Biaya kelompok','Rata-rata UC inlier','CW RS','Casemix kelompok','HBR','Tarif RS (standar kelompok)'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{groups.slice(safeGroupPage*50,safeGroupPage*50+50).map(g=><tr key={g.care+'|'+g.code}><td>{g.care}</td><td>{g.code}</td><td>{g.description||'Tidak tersedia'}</td><td>{g.count}</td><td>{money(g.total)}</td><td>{money(g.mean)}</td><td><span title={`CW presisi penuh: ${g.cw}`}>{weight(g.cw)}</span></td><td>{number(g.casemix)}</td><td>{money(g.hbr)}</td><td>{money(g.standardCost)}</td></tr>)}</tbody></table></div><div className="flex gap-3 items-center"><button className="uc-secondary" disabled={!safeGroupPage} onClick={()=>setGroupPage(safeGroupPage-1)}>Kelompok sebelumnya</button><span>{safeGroupPage+1} / {Math.max(1,Math.ceil(groups.length/50))}</span><button className="uc-secondary" disabled={(safeGroupPage+1)*50>=groups.length} onClick={()=>setGroupPage(safeGroupPage+1)}>Kelompok berikutnya</button></div>
+
+    <section className="uc-panel space-y-4"><div className="flex flex-wrap gap-3 items-end"><label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={e=>{setCare(e.target.value);setPage(0);setGroupPage(0);}}><option value="semua">Semua</option><option value="inap">Rawat inap</option><option value="jalan">Rawat jalan</option></select></label><label className="uc-label">Trimming<select className="uc-input" value={flag} onChange={e=>{setFlag(e.target.value);setPage(0);}}><option value="semua">Semua pasien</option><option value="inlier">Inlier</option><option value="outlier">Outlier metode aktif</option></select></label><label className="uc-label flex-1">Cari kode, deskripsi iDRG atau SEP masking<input className="uc-input" value={query} onChange={e=>{setQuery(e.target.value);setPage(0);setGroupPage(0);}}/></label><button className="uc-secondary" disabled={!exportAllowed||!result.patients.length} onClick={exportData}><Download size={16}/>Ekspor CW &amp; HBR RS</button></div>
+
+      <h3 className="font-semibold">Rincian kelompok iDRG</h3><div className="uc-table-scroll" tabIndex={0} role="region" aria-label="Kelompok CW RS"><table className="uc-table"><thead><tr>{['Rawat','iDRG','Deskripsi iDRG','Kasus','Biaya kelompok','Rata-rata UC inlier','CW RS','Casemix kelompok','HBR','Tarif RS (standar kelompok)'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{groups.slice(safeGroupPage*50,safeGroupPage*50+50).map(g=><tr key={g.care+'|'+g.code}><td>{g.care}</td><td>{g.code}</td><td>{g.description||'Tidak tersedia'}</td><td>{g.count}</td><td>{money(g.total)}</td><td>{money(g.mean)}</td><td><span title={`CW aktif: ${g.cw}; mentah: ${g.rawCW??g.cw}; bobot: ${g.shrinkWeight??'1'}; inlier: ${g.cwCount??g.count}`}>{weight(g.cw)}</span>{result.schema===4&&<p className="text-xs">Mentah {weight(g.rawCW??null)} · w={number(g.shrinkWeight??'1')} · n={g.cwCount??0}<br/>{g.confidence}</p>}</td><td>{number(g.casemix)}</td><td>{money(g.hbr)}</td><td>{money(g.standardCost)}</td></tr>)}</tbody></table></div><div className="flex gap-3 items-center"><button className="uc-secondary" disabled={!safeGroupPage} onClick={()=>setGroupPage(safeGroupPage-1)}>Kelompok sebelumnya</button><span>{safeGroupPage+1} / {Math.max(1,Math.ceil(groups.length/50))}</span><button className="uc-secondary" disabled={(safeGroupPage+1)*50>=groups.length} onClick={()=>setGroupPage(safeGroupPage+1)}>Kelompok berikutnya</button></div>
+
       <h3 className="font-semibold">Rincian pasien — {patients.length.toLocaleString('id-ID')} kasus</h3><div className="uc-table-scroll" tabIndex={0} role="region" aria-label="Pasien CW dan HBR RS"><table className="uc-table"><thead><tr>{['SEP masking','Rawat','iDRG','Deskripsi iDRG','Unit cost pasien','Kasus kelompok','Rata-rata UC inlier kelompok','CW RS','Casemix kelompok','HBR','Tarif RS (standar kelompok)','Penanda'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{patients.slice(safePage*50,safePage*50+50).map((p,i)=><tr key={p.id+'|'+i}><td>{p.sep}</td><td>{p.care}</td><td>{p.code||'Tidak tersedia'}</td><td>{p.description||'Tidak tersedia'}</td><td>{money(p.uc)}</td><td>{p.groupCount}</td><td>{money(p.groupMean)}</td><td><span title={`CW presisi penuh: ${p.cw}`}>{weight(p.cw)}</span></td><td>{number(p.casemix)}</td><td>{money(p.hbr)}</td><td>{money(p.standardCost)}</td><td>{p.reason||'—'}</td></tr>)}</tbody></table></div>
+
       {!patients.length&&<p role="status">Belum ada pasien pada hasil atau filter ini.</p>}<div className="flex gap-3 items-center"><button className="uc-secondary" disabled={!safePage} onClick={()=>setPage(safePage-1)}>Sebelumnya</button><span>{safePage+1} / {Math.max(1,Math.ceil(patients.length/50))}</span><button className="uc-secondary" disabled={(safePage+1)*50>=patients.length} onClick={()=>setPage(safePage+1)}>Berikutnya</button></div>
+
     </section>
+
   </div>;
+
 }

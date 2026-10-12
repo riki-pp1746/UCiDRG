@@ -17,7 +17,7 @@ export default function WorkflowStepper() {
     <nav aria-label="Langkah kerja" className="mb-6 rounded-2xl bg-white border border-[#EAE0D6] shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#965238]">
-          Langkah kerja · {doneCount} dari {total} selesai
+          Langkah kerja · {doneCount} dari {total} siap
         </p>
         <div className="hidden sm:block w-40 h-1.5 rounded-full bg-[#F5EFE8] overflow-hidden" aria-hidden>
           <div className="h-full bg-[#568D7E] transition-all" style={{ width: `${(doneCount / total) * 100}%` }} />
@@ -49,7 +49,7 @@ export default function WorkflowStepper() {
                 )}>
                   {s.status === 'done' && !active ? <Check className="w-3 h-3" /> : i + 1}
                 </span>
-                <span className="font-semibold leading-tight">{s.label}</span>
+                <span className="font-semibold leading-tight">{s.label}<span className="block text-[10px]">{s.status==='done'?'Siap':s.status==='error'?'Perlu perbaikan':'Belum'}</span></span>
               </Link>
             </li>
           );

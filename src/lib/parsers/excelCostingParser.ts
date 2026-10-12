@@ -83,6 +83,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
+        if(workbook.Sheets['Metadata UnitCOSt']){const metadata=XLSX.utils.sheet_to_json(workbook.Sheets['Metadata UnitCOSt'],{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
 
         // Data dasar disimpan pada sheet tersendiri agar template tetap mudah dibaca.
         const dataDasarSheetName = workbook.SheetNames.find(s => /data\s*dasar/i.test(s));
@@ -174,6 +175,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         const overheadCenters: OverheadCenter[] = [];
         const intermediateCenters: IntermediateCenter[] = [];
         const finalCenters: FinalCenter[] = [];
+        const importIssues:NonNullable<HospitalCostConfig['importIssues']>=[];
 
         // State mesin parser
         type Section = 'overhead' | 'intermediate' | 'final' | null;
@@ -183,6 +185,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           if (!row) continue;
+          if(isNumericRow(row[0])&&row[1]&&row.length<18)throw new Error(`Struktur ${sheetName} baris ${i+1} belum lengkap: diperlukan 18 kolom. Periksa urutan kolom sebelum mengimpor.`);
 
           // Gabungkan seluruh baris jadi satu string untuk mendeteksi section header
           const rowStr = row.map(c => clean(c)).join(' ');
@@ -249,6 +252,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           //        6=Kunjungan, 7=ALOS, 8=TT, 9=Gaji, 10=JasaMedis, 11=JasaLain
           //        12=Operasional, 13=Alat(5th), 14=Gedung(40th), 15=DepAlat, 16=DepGedung, 17=LuasLantai
           const dasarAlokasiRaw = String(row[2] ?? '').trim();
+          for(const column of [9,10,11,12,15,16])if(row[column]===null||row[column]===undefined||String(row[column]).trim()==='')importIssues.push({id:`${sheetName}-${i}-${column}`,sheet:sheetName,cell:XLSX.utils.encode_cell({r:i,c:column}),message:'Nilai biaya kosong; belum dinyatakan nol.'});
           const staf        = safeFloat(row[3]);
           const hariRawat   = safeFloat(row[4]);
           const pasienPulang= safeFloat(row[5]);
@@ -262,8 +266,8 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           // Penyusutan bisa sudah dihitung di col 15/16, atau perlu hitung dari col 13/14
           const alat5th     = safeFloat(row[13]);
           const gedung40th  = safeFloat(row[14]);
-          const depAlat     = safeFloat(row[15]) || Math.round(alat5th / 5);
-          const depGedung   = safeFloat(row[16]) || Math.round(gedung40th / 40);
+          const depAlat     = row[15]==null||row[15]===''?Math.round(alat5th / 5):safeFloat(row[15]);
+          const depGedung   = row[16]==null||row[16]===''?Math.round(gedung40th / 40):safeFloat(row[16]);
           const luas        = safeFloat(row[17]);
 
           const dasarAlokasi = mapDasarAlokasi(dasarAlokasiRaw);
@@ -283,7 +287,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
               biayaOperasional: op,
               hargaPeralatan5Tahun: alat5th,
               biayaInvestasiGedung: gedung40th,
-              depresiasiPeralatan: depAlat,
+              bookDepreciationEquipment:safeFloat(row[15]),bookDepreciationBuilding:safeFloat(row[16]),depresiasiPeralatan: depAlat,
               depresiasiGedung: depGedung,
               totalCost: 0,
             });
@@ -304,7 +308,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
               biayaOperasional: op,
               hargaPeralatan5Tahun: alat5th,
               biayaInvestasiGedung: gedung40th,
-              depresiasiPeralatan: depAlat,
+              bookDepreciationEquipment:safeFloat(row[15]),bookDepreciationBuilding:safeFloat(row[16]),depresiasiPeralatan: depAlat,
               depresiasiGedung: depGedung,
               totalCostDirect: 0,
               totalCostAfterOverhead: 0,
@@ -336,7 +340,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
               biayaOperasional: op,
               hargaPeralatan5Tahun: alat5th,
               biayaInvestasiGedung: gedung40th,
-              depresiasiPeralatan: depAlat,
+              bookDepreciationEquipment:safeFloat(row[15]),bookDepreciationBuilding:safeFloat(row[16]),depresiasiPeralatan: depAlat,
               depresiasiGedung: depGedung,
               totalCostDirect: 0,
               totalCostAfterOverhead: 0,
@@ -359,7 +363,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ ...parsedInfo, ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
+        resolve({ ...parsedInfo,importIssues,sourceOrigin:'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);
@@ -371,3 +375,5 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
     reader.readAsBinaryString(file);
   });
 }
+
+

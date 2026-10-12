@@ -1,3 +1,6 @@
+import {analysisStale} from '../lib/analysisController';
+import {useMethodologyStore,effectiveMethodology} from '../stores/methodologyStore';
+import {ensureAnalysisExport,appendAnalysisSheets} from '../lib/analysisExport';
 import TrimmingImpact from '../components/costing/TrimmingImpact';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {displayDecimal} from '../v4/numbers';
@@ -12,7 +15,7 @@ import {buildBiayaRSMap,biayaRSMapToRVU} from '../stores/tarifPasienStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
-import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import { formatRupiah,formatNumber } from '../lib/calculations/patientLevelCosting';
 import { 
   Calculator, Users, Download, Trash2, Plus, Info,
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
@@ -32,14 +35,15 @@ export default function TarifPasienPage() {
 
   const [query,setQuery]=useState('');
   const [careFilter,setCareFilter]=useState('all');
-  const pageSize = 10;
+  const [pageSize,setPageSize]=useState(25);
 
   const {
-    patients, biayaRSMap, localCosting,
+    patients, biayaRSMap, localCosting:storedLocalCosting,
     addPatient, updatePatient, removePatient, clearPatients,
     calculateDistribution, validationIssues, validateAgainstHospital
   } = useTarifPasienStore();
 
+  const localCosting=analysisStale()?null:storedLocalCosting;
   const { config } = useHospitalCostStore();
   const { rawRecords, periodNormalization } = useCostingStore();
   const periodFactor = periodNormalization?.factor || 1;
@@ -50,7 +54,7 @@ export default function TarifPasienPage() {
     if (rawRecords.length > 0 && patients.length === 0) {
       const mapped = rawRecords.map((r, i) => ({
         ...makeEmptyPatient(),
-        id: `sep-${r.sep || i}-${Date.now()}`,
+        id: r.internalId||r.sepToken||r.sep||`row-${i}`,
         noSEP: r.sep || '',
         inaCBGs: r.inacbg || '',
         drg: r.idrg?.drg_code || '',
@@ -96,7 +100,7 @@ export default function TarifPasienPage() {
 
   useEffect(() => {
     validateAgainstHospital(config, periodFactor);
-  }, [patients, biayaRSMap, localCosting, config, periodFactor, validateAgainstHospital]);
+  }, [patients, biayaRSMap, storedLocalCosting, config, periodFactor, validateAgainstHospital]);
 
   const filteredPatients=patients.filter(p=>(careFilter==='all'||(careFilter==='jalan'?p.kelasRawat==='rawat_jalan':p.kelasRawat!=='rawat_jalan'))&&`${maskSEP(p.noSEP)} ${p.drg} ${p.idrgDescription||''} ${p.diagnosis}`.toLowerCase().includes(query.toLowerCase()));
   const inputTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
@@ -105,9 +109,9 @@ export default function TarifPasienPage() {
   const resultPatients = filteredPatients.slice((Math.min(resultPage,resultTotalPages) - 1) * pageSize, resultPage * pageSize);
   const hasIssue = (id: string) => validationIssues.some(issue => issue.id === id);
   const getIssueSeverity = (id: string) => validationIssues.find(issue => issue.id === id)?.severity;
-  const rebuildMapping=()=>{const mapped=buildBiayaRSMap(config,patients,periodFactor,useCostingStore.getState().jknProportion);useTarifPasienStore.setState({biayaRSMap:mapped});calculateDistribution();useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));validateAgainstHospital(config,periodFactor);};
+  const rebuildMapping=()=>{const mapped=buildBiayaRSMap(config,patients,periodFactor,useCostingStore.getState().jknProportion,effectiveMethodology(useMethodologyStore.getState().settings));useTarifPasienStore.setState({biayaRSMap:mapped});calculateDistribution();useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));validateAgainstHospital(config,periodFactor);};
   const hasValidationErrors = validationIssues.some(issue => issue.severity === 'error');
-  const exportCosting=()=>{if(!localCosting)return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');XLSX.writeFile(formatCostingWorkbook(wb),'Costing-Pasien-CW-HBR-RS.xlsx');};
+  const exportCosting=()=>{if(!localCosting||!ensureAnalysisExport())return;const wb=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(localCosting)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['SEP masking','iDRG',...ALL_KOMPONEN_KEYS,'Unit cost'],...patients.map(p=>[maskSEP(p.noSEP),p.drg,...ALL_KOMPONEN_KEYS.map(k=>p.distributedCostsDecimal?.[k]??String(p.distributedCosts[k]||0)),p.totalCostPerPatientDecimal??String(p.totalCostPerPatient)])]),'Alokasi18');appendAnalysisSheets(wb);XLSX.writeFile(formatCostingWorkbook(wb),'Costing-Pasien-CW-HBR-RS.xlsx');};
   const Pagination = ({ page, pages, setPage }: { page: number; pages: number; setPage: (value: number) => void }) => (
     <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-600">
       <span>Menampilkan {(page - 1) * pageSize + (filteredPatients.length ? 1 : 0)}-{Math.min(page * pageSize, filteredPatients.length)} dari {filteredPatients.length} pasien</span>
@@ -119,7 +123,7 @@ export default function TarifPasienPage() {
 
       {periodNormalization && (
         <div className={`rounded-xl border px-4 py-3 text-sm ${(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
-          <strong>Periode klaim:</strong> {periodNormalization.label} · faktor biaya {periodNormalization.effectiveMonths}/12 ({(periodFactor * 100).toFixed(1)}%).
+          <strong>Periode klaim:</strong> {periodNormalization.label} · faktor biaya {periodNormalization.effectiveMonths}/12 ({formatNumber(periodFactor * 100,1)}%).
           {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
         </div>
       )}
@@ -130,7 +134,7 @@ export default function TarifPasienPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
-      {activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · pool JKN penuh {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode.</p></section>}
+      <label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setInputPage(1);setResultPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label>{activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · pool JKN penuh {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = pool HBR aktif sesuai kebijakan ÷ total casemix positif. Biaya dikecualikan ditampilkan pada tab CW, Casemix & HBR RS.</p></section>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -235,7 +239,7 @@ export default function TarifPasienPage() {
                         <button onClick={() => removePatient(p.id)} className="text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                       </td>
                       <td className="px-3 py-1.5 sticky left-12 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100">
-                        <input type="text" value={p.noSEP} onChange={e => updatePatient(p.id, { noSEP: e.target.value })} placeholder="0001" className="w-24 px-2 py-1 border border-gray-200 rounded text-xs focus:ring-teal-500" />
+                        <span className="text-xs">{maskSEP(p.noSEP)||'Identitas internal'}</span>
                       </td>
                       <td className="px-3 py-1.5">
                         <input type="text" value={p.drg} onChange={e => updatePatient(p.id, { drg: e.target.value })} placeholder="DRG Code" className="w-20 px-2 py-1 border border-gray-200 rounded text-xs" />
@@ -286,7 +290,7 @@ export default function TarifPasienPage() {
                   <th className="px-3 py-2 sticky left-0 bg-gray-50 z-10 border-r border-gray-200">No. SEP</th>
                   <th className="px-3 py-2">DRG</th>
                   <th className="px-3 py-2">Kelas</th>
-                  <th className="px-3 py-2 text-right">LHR</th><th className="px-3 py-2">Trimming ±2 SD</th>
+                  <th className="px-3 py-2 text-right">LHR</th><th className="px-3 py-2">Trimming aktif</th>
                   <th className="px-3 py-2 text-right text-blue-700 bg-blue-50">Akomodasi (Stp.2)</th>
                   {ALL_KOMPONEN_KEYS.filter(k => k !== 'room_amt').map(k => (
                     <th key={k} className="px-3 py-2 text-right border-l border-gray-200">{KOMPONEN_SHORT[k]}</th>
@@ -307,7 +311,7 @@ export default function TarifPasienPage() {
                       <td className="px-3 py-2 sticky left-0 bg-white group-hover:bg-gray-50 z-10 border-r border-gray-100 font-medium">{maskSEP(p.noSEP)}</td>
                       <td className="px-3 py-2">{p.drg || '-'}</td>
                       <td className="px-3 py-2">{KELAS_RAWAT_LABELS[p.kelasRawat]}</td>
-                      <td className="px-3 py-2 text-right">{p.lhr}</td><td className={p.outlier?'text-red-700':'text-emerald-700'}>{p.outlier?'Outlier; di luar CW/HBR':'Inlier'}</td>
+                      <td className="px-3 py-2 text-right">{p.lhr}</td><td className={p.outlier?'text-red-700':'text-emerald-700'}>{p.outlier?'Outlier; tidak membentuk CW, tetap dalam pool HBR':'Inlier'}</td>
                       <td className="px-3 py-2 text-right font-medium text-blue-700 bg-blue-50/30">{formatRupiah(p.accommodationCost)}</td>
                       {ALL_KOMPONEN_KEYS.filter(k => k !== 'room_amt').map(k => (
                         <td key={k} className="px-3 py-2 text-right border-l border-gray-100 text-gray-500 font-mono">
@@ -406,3 +410,5 @@ export default function TarifPasienPage() {
     </div>
   );
 }
+
+

@@ -28,6 +28,8 @@ export interface OverheadCenter {
   biayaOperasional: number;
   hargaPeralatan5Tahun: number;
   biayaInvestasiGedung: number;
+  bookDepreciationEquipment?:number;
+  bookDepreciationBuilding?:number;
   depresiasiPeralatan: number;
   depresiasiGedung: number;
   totalCost: number;
@@ -67,6 +69,8 @@ export interface IntermediateCenter {
   biayaOperasional: number;
   hargaPeralatan5Tahun: number;
   biayaInvestasiGedung: number;
+  bookDepreciationEquipment?:number;
+  bookDepreciationBuilding?:number;
   depresiasiPeralatan: number;
   depresiasiGedung: number;
   totalCostDirect: number;
@@ -107,6 +111,8 @@ export interface FinalCenter {
   biayaOperasional: number;
   hargaPeralatan5Tahun: number;
   biayaInvestasiGedung: number;
+  bookDepreciationEquipment?:number;
+  bookDepreciationBuilding?:number;
   depresiasiPeralatan: number;
   depresiasiGedung: number;
   totalCostDirect: number;
@@ -169,6 +175,10 @@ export interface AllocationTrace {
 // HOSPITAL COST CONFIG (Konfigurasi Lengkap)
 // ============================================================
 export interface HospitalCostConfig {
+  sourceOrigin?:'contoh'|'diunggah'|'diketik'|'dipulihkan';
+  sourceFilename?:string;
+  sourceAt?:string;
+  importIssues?:{id:string;sheet:string;cell:string;message:string}[];
   // Info RS
   namaRS: string;
   tipeRS: 'A' | 'B' | 'C' | 'D';
@@ -314,3 +324,4 @@ export const DEFAULT_FINAL_CENTERS: FinalCenter[] = [
   mkFinal('fn-25', 25, 'Day Care',                                 'lainnya',     'jumlah_kunjungan', 0,0,0,0, 0,0,0, 0,0,0,0,0),
   mkFinal('fn-26', 26, 'Home Care',                                'lainnya',     'jumlah_kunjungan', 0,0,0,0, 0,0,0, 0,0,0,0,0),
 ];
+

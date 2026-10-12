@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import AppLayout from './components/layout/AppLayout';
@@ -61,4 +62,12 @@ export function AppRoutes() {
   );
 }
 
-export default function App() { return <BrowserRouter><SessionGuard /><AppRoutes /></BrowserRouter>; }
+export default function App() { 
+  return (
+    <BrowserRouter>
+      <Toaster position="top-right" />
+      <SessionGuard />
+      <AppRoutes />
+    </BrowserRouter>
+  ); 
+}

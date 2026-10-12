@@ -4,6 +4,8 @@ import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadTemplateWorkbook} from '../lib/templateWorkbookExport';
 import TemplateGuide from '../components/ui/TemplateGuide';
 import {appendTemplateHelp} from '../lib/templateGuidance';
+import toast from 'react-hot-toast';
+import HelpTip from '../components/ui/HelpTip';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: CostingInputPage.tsx
@@ -373,7 +375,7 @@ export default function CostingInputPage() {
     useTarifPasienStore.setState({ biayaRSMap: mapped });
     useTarifPasienStore.getState().calculateDistribution();
     useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
-    alert(
+    toast(
       grandTotalEKlaim > 0
         ? 'Auto-map berhasil. Biaya langsung Pusat Biaya Utama dipetakan ke 18 variabel, lalu total Overhead + Intermediate dibagi mengikuti proporsi tagihan TXT E-Klaim.'
         : 'Data tagihan TXT E-Klaim belum tersedia. Biaya langsung Pusat Biaya Utama sudah dipetakan, tetapi Overhead + Intermediate belum dapat dibagi ke 18 variabel.'
@@ -416,7 +418,7 @@ export default function CostingInputPage() {
     useCostingStore.getState().setRVUGlobalCosts(rvu);
     setOverheadConfig({ overheadFactor: 0, administrasiFactor: 0, depresiasiFactor: 0, jaminanMutuFactor: 0, useActualBilling: false });
 
-    alert('✅ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
+    toast('✅ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -457,10 +459,10 @@ export default function CostingInputPage() {
         parsedData.dataLayanan ? 'Data Operasional' : '',
       ].filter(Boolean).join(', ');
 
-      alert(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
+      toast(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
     } catch (err: any) {
       console.error(err);
-      alert(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
+      toast(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
     } finally {
       if (e.target) {
         e.target.value = ''; // Reset input agar bisa upload file yang sama lagi
@@ -1329,16 +1331,18 @@ export default function CostingInputPage() {
           {/* Ringkasan sesuai Excel laporan biaya RS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {[
-              { step: 'A', label: 'Pusat Biaya Penunjang Umum (Overhead)', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Biaya langsung kelompok Overhead' },
-              { step: 'B', label: 'Pusat Biaya Penunjang Medis (Intermediate)', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Biaya langsung kelompok Intermediate' },
-              { step: 'C', label: 'Pusat Biaya Utama (Layanan Pasien)', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Biaya langsung layanan pasien' },
-              { step: 'TOTAL', label: 'Total Biaya RS', value: totalBiayaTahunan, color: 'bg-teal-50 border-teal-200 text-teal-800', desc: 'A + B + C, sesuai laporan keuangan' },
+              { step: 'A', label: 'Biaya Penunjang Umum', term: 'overhead', value: config.totalOverheadCost, color: 'bg-blue-50 border-blue-200 text-blue-700', desc: 'Total gaji dan operasional kelompok Overhead' },
+              { step: 'B', label: 'Biaya Penunjang Medis', term: 'intermediate', value: config.totalIntermediateCost, color: 'bg-violet-50 border-violet-200 text-violet-700', desc: 'Total gaji dan operasional kelompok Intermediate' },
+              { step: 'C', label: 'Pusat Biaya Utama', term: 'final', value: config.totalFinalCost, color: 'bg-green-50 border-green-200 text-green-700', desc: 'Biaya unit layanan pasien langsung' },
+              { step: 'TOTAL', label: 'Total Biaya RS', term: null, value: totalBiayaTahunan, color: 'bg-teal-50 border-teal-200 text-teal-800', desc: 'A + B + C, belum disesuaikan dengan periode data klaim' },
             ].map(c => (
-              <div key={c.label} className={clsx('rounded-xl p-4 border', c.color)}>
+              <div key={c.label} className={clsx('rounded-xl p-4 border relative', c.color)}>
                 <p className="text-xs font-bold opacity-60">{c.step}</p>
-                <p className="text-xs font-medium opacity-70 mt-0.5">{c.label}</p>
+                <p className="text-xs font-medium opacity-80 mt-0.5 flex items-center gap-1">
+                  {c.label} {c.term && <HelpTip term={c.term as any} />}
+                </p>
                 <p className="text-xl font-bold mt-1">{formatRupiah(c.value)}</p>
-                <p className="text-xs opacity-60 mt-1">{c.desc}</p>
+                <p className="text-[10px] opacity-70 mt-1">{c.desc}</p>
               </div>
             ))}
           </div>
@@ -1542,3 +1546,7 @@ export default function CostingInputPage() {
 
 // ── Export types untuk dipakai di helper eksternal ──
 import type {} from '../types/hospitalCost.types';
+
+
+
+

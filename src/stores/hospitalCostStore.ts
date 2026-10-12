@@ -112,6 +112,7 @@ interface HospitalCostState {
 }
 
 const makeDefaultConfig = (): HospitalCostConfig => ({
+  sourceOrigin:'contoh',importIssues:[],
   namaRS: '',
   tipeRS: 'B',
   kepemilikan: 'Pemerintah Daerah',

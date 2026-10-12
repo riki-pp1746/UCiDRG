@@ -17,6 +17,14 @@ import {calculateHospitalBaseRate} from '../lib/calculations/hospitalBaseRate';
 import type {HospitalCostResult} from '../lib/calculations/hospitalBaseRate';
 import {dec,sum} from '../v4/numbers';
 import {useCostingStore} from './costingStore';
+import {useHospitalCostStore} from './hospitalCostStore';
+import {useMethodologyStore,effectiveMethodology} from './methodologyStore';
+import type {Methodology} from './methodologyStore';
+import {componentMapping,mappingPlan} from '../lib/calculations/componentMapping';
+import {buildAnalysisSnapshot} from '../lib/analysisSnapshot';
+import type {AnalysisSnapshot} from '../lib/analysisSnapshot';
+import {inputQuality} from '../lib/analysisQuality';
+import {registerSnapshotSources} from '../lib/analysisSources';
 
 /**
  * Membentuk nilai biaya RS untuk 18 variabel setelah data Excel dan TXT tersedia.
@@ -28,7 +36,9 @@ export function buildBiayaRSMap(
   patients: PatientRecord[],
   periodFactor = 1,
   jknProportion = 100,
+  options?:Methodology,
 ): Record<keyof KomponenTarif18, number> {
+  if(options&&!options.compatibility)return componentMapping(config,patients,periodFactor,jknProportion,options,useCostingStore.getState().periodNormalization?.claimYears[0]||config.tahunData).costs;
   patients=patients.filter(p=>ALL_KOMPONEN_KEYS.every(k=>Number.isFinite(p[k])&&p[k]>=0)&&ALL_KOMPONEN_KEYS.some(k=>p[k]>0));
   const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
     acc[key] = patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
@@ -118,6 +128,7 @@ export function biayaRSMapToRVU(
 }
 
 interface TarifPasienState {
+  snapshot:AnalysisSnapshot|null;
   patients: PatientRecord[];
   biayaRSMap: Partial<Record<keyof KomponenTarif18, number>>; // Total biaya RS inputan per komponen
   distribusi: KomponenDistribusi[]; // Ringkasan distribusi
@@ -147,25 +158,26 @@ export const useTarifPasienStore = create<TarifPasienState>()(
       distribusi: [],
       validationIssues: [],
       localCosting: null,
+      snapshot:null,
       calculationVersion: 0,
 
-      setPatients: (patients) => set({ patients,localCosting:null }),
-      addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }],localCosting:null })),
+      setPatients: (patients) => set({ patients,localCosting:null,snapshot:null }),
+      addPatient: (data) => set((s) => ({ patients: [...s.patients, { ...makeEmptyPatient(), ...data }],localCosting:null,snapshot:null })),
       updatePatient: (id, data) => {
         const patient=get().patients.find(p=>p.id===id);
-        set(s=>({patients:s.patients.map(p=>p.id===id?{...p,...data}:p),localCosting:null}));
+        set(s=>({patients:s.patients.map(p=>p.id===id?{...p,...data}:p),localCosting:null,snapshot:null}));
         if(patient&&('icuDays' in data||'lhr' in data)){
           useCostingStore.setState(s=>({rawRecords:s.rawRecords.map(r=>r.sep===patient.noSEP?{...r,...('icuDays' in data?{icuDays:data.icuDays}:{}),...('lhr' in data?{los:data.lhr!}:{})}:r)}));
           useCostingStore.getState().processData();
         }
       },
-      removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id),localCosting:null })),
-      clearPatients: () => set({ patients: [],localCosting:null }),
+      removePatient: (id) => set((s) => ({ patients: s.patients.filter(p => p.id !== id),localCosting:null,snapshot:null })),
+      clearPatients: () => set({ patients: [],localCosting:null,snapshot:null }),
       syncFromCosting: (rawRecords: any[]) => {
         if (!rawRecords || rawRecords.length === 0) return;
         const mapped = rawRecords.map((r, i) => ({
           ...makeEmptyPatient(),
-          id: `sep-${r.sep || i}-${Date.now()}`,
+          id: r.internalId||r.sepToken||r.sep||`row-${i}`,
           noSEP: r.sep || '',
           inaCBGs: r.inacbg || '',
           drg: r.idrg?.drg_code || '',
@@ -193,17 +205,19 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           consumable_amt: r.billing?.consumable_amt || 0,
           device_rent_amt: r.billing?.device_rent_amt || 0,
         }));
-        set({ patients: mapped,localCosting:null });
+        set({ patients: mapped,localCosting:null,snapshot:null });
       },
       
       setBiayaRS: (key, amount) => set((s) => ({
-        biayaRSMap: { ...s.biayaRSMap, [key]: amount },localCosting:null
+        biayaRSMap: { ...s.biayaRSMap, [key]: amount },localCosting:null,snapshot:null
       })),
 
       calculateDistribution: () => {
+        try {
         const { patients, biayaRSMap } = get();
 
-        const allocation=allocateComponents(patients.map(p=>({inpatient:p.kelasRawat!=='rawat_jalan'&&p.kelasRawat!=='igd',los:p.lhr,icuDays:p.icuDays,billing:Object.fromEntries(ALL_KOMPONEN_KEYS.map(k=>[k,p[k]]))})),biayaRSMap as Record<string,number>,useCostingStore.getState().mergeCarePool);
+        const policy=useMethodologyStore.getState();const options=effectiveMethodology(policy.settings);const sourceRaw=useCostingStore.getState().rawRecords;const sourceById=new Map(sourceRaw.map(r=>[r.internalId||r.sepToken||r.sep,r]));options.parentGroups={...Object.fromEntries(sourceRaw.filter(r=>r.idrg?.mdc_number>0).map(r=>[r.idrg.drg_code,String(r.idrg.mdc_number)])),...options.parentGroups};
+        const allocation=allocateComponents(patients.map(p=>({id:p.id,inpatient:p.kelasRawat!=='rawat_jalan'&&p.kelasRawat!=='igd',los:p.lhr,icuDays:p.icuDays,billing:Object.fromEntries(ALL_KOMPONEN_KEYS.map(k=>[k,p[k]]))})),biayaRSMap as Record<string,number>,useCostingStore.getState().mergeCarePool,options);
         // 1. Hitung total klaim per komponen dari semua pasien
         const totalEKlaim: Record<keyof KomponenTarif18, number> = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
           acc[key] = patients.reduce((sum, p) => sum + (p[key] || 0), 0);
@@ -214,7 +228,7 @@ export const useTarifPasienStore = create<TarifPasienState>()(
 
         // Jika tidak ada pasien, cukup update distribusi saja
         if (patients.length === 0) {
-          set({ distribusi,localCosting:null });
+          set({ distribusi,localCosting:null,snapshot:null });
           return;
         }
 
@@ -249,15 +263,27 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         // result, not a free episode that should depress the group's CW.
         const hasPositivePool = sum(Object.values(biayaRSMap)).gt(0);
         const zeroAllocation = new Set(updatedPatients.filter(p =>
-          hasPositivePool && ALL_KOMPONEN_KEYS.some(k => p[k] > 0) && p.totalCostPerPatient === 0).map(p => p.id));
+          hasPositivePool && ALL_KOMPONEN_KEYS.some(k => p[k] > 0) && p.totalCostPerPatient === 0 && !allocation.traces.some(t=>t.cost>0&&(t.unit==='rupiah'?(p[t.key as keyof KomponenTarif18]||0)>0:p.kelasRawat!=='rawat_jalan'&&p.kelasRawat!=='igd'&&(t.key==='intensive_amt'?(p.icuDays||0)>0:p.lhr>0)))).map(p => p.id));
         const allocationIssues: ValidationIssue[] = Object.keys(biayaRSMap).length ? updatedPatients.filter(p => zeroAllocation.has(p.id)).map(p => ({
           id: 'uc-zero-' + p.id, severity: 'error', label: 'UC belum teralokasi · iDRG ' + p.drg,
           expected: sum(ALL_KOMPONEN_KEYS.map(k => p[k])).toNumber(), actual: 0,
           message: `Tagihan positif tetapi tidak menerima alokasi biaya RS. Jenis rawat: ${p.kelasRawat === 'rawat_jalan' || p.kelasRawat === 'igd' ? 'jalan' : 'inap'}. Komponen terisi: ${ALL_KOMPONEN_KEYS.filter(k=>p[k]>0).map(k=>KOMPONEN_LABELS[k]).join(', ')}. ${ALL_KOMPONEN_KEYS.filter(k=>p[k]>0).every(k=>!(biayaRSMap[k]||0))?'Pool biaya komponen tersebut masih nol; petakan ulang dari biaya RS aktif.':'Periksa kesesuaian jenis rawat dengan dasar alokasi kamar/ICU.'} Kasus ini tidak membentuk CW.`
         })) : [];
-        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,code:p.drg===p.inaCBGs?'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'?'jalan':'inap',uc:Object.keys(biayaRSMap).length&&!zeroAllocation.has(p.id)?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
-        set({validationIssues:[...get().validationIssues.filter(i=>!i.id.startsWith('uc-zero-')),...allocationIssues]});
-        set({ distribusi, patients: updatedPatients.map((p,i)=>({...p,outlier:localCosting.patients[i].outlier})),localCosting,calculationVersion:get().calculationVersion+1 });
+        const localCosting=calculateHospitalBaseRate(updatedPatients.map(p=>({id:p.id,sep:p.noSEP,cwEligible:!options.excludedDischargeStatuses.includes(String(sourceById.get(p.id)?.discharge_status)),code:sourceById.has(p.id)?sourceById.get(p.id)?.idrg?.drg_code||'':p.drg,description:p.idrgDescription||'',care:p.kelasRawat==='rawat_jalan'||p.kelasRawat==='igd'?'jalan':'inap',uc:Object.keys(biayaRSMap).length&&!zeroAllocation.has(p.id)?p.totalCostPerPatientDecimal!:null})),{method:'18 Komponen',period,options,unassignedUnallocated:sum(Object.values(biayaRSMap).map(String)).minus(sum(updatedPatients.map(p=>p.totalCostPerPatientDecimal!))).toString()});
+        set({validationIssues:[...get().validationIssues.filter(i=>!i.id.startsWith('uc-zero-')&&i.id!=='calculation-error'),...allocationIssues]});
+        const raw=useCostingStore.getState().rawRecords;const config=useHospitalCostStore.getState().config;
+        const origin=config.sourceOrigin||'contoh';const quality=inputQuality(config,raw,options,origin);
+        allocationIssues.forEach(i=>quality.push({id:i.id,severity:i.severity,message:i.message,source:'/tarif-pasien',count:1,examples:[]}));
+        allocation.traces.filter(t=>dec(t.unallocated).gt(0)).forEach(t=>quality.push({id:'unallocated-'+t.key,severity:'error',message:t.warning,source:'/tarif-pasien',count:1,examples:[]}));
+        const periodState=useCostingStore.getState().periodNormalization;
+        if(periodState?.dateOutliers?.length&&!periodState.confirmed)quality.push({id:'period-outliers',severity:'error',message:'Ada pencilan bulan. Konfirmasi periode di Data sebelum menggunakan hasil.',source:'/upload',count:periodState.dateOutliers.length,examples:periodState.dateOutliers});
+        const plan=mappingPlan(biayaRSMap as Record<string,number>);
+        if(plan)for(const t of plan.traces.filter(t=>t.source.startsWith('Fallback')))quality.push({id:'fallback-'+t.id+'-'+t.key,severity:'warning',message:`${t.center}: ${t.amount} rupiah tahunan mengikuti fallback proporsi tagihan ke ${KOMPONEN_LABELS[t.key as keyof KomponenTarif18]}. Lengkapi matriks pusat biaya.`,source:'/settings',count:1,examples:[]});
+        const ratios=allocation.traces.filter(t=>t.billingRatio!==null&&t.cost>0).map(t=>t.billingRatio!.toFixed(2));if(ratios.some(r=>ratios.filter(v=>v===r).length>=5))quality.push({id:'identical-rcc',severity:'warning',message:'Minimal lima komponen mempunyai RCC identik pada dua desimal. Periksa pemetaan; kesamaan rasio bukan bukti kesalahan dengan sendirinya.',source:'/settings',count:1,examples:[]});
+        const snapshot=buildAnalysisSnapshot(raw,localCosting,options,policy.revision,periodState,quality,origin,'Sources kept in memory');snapshot.mapping=plan;snapshot.annual=plan?Number(plan.annual):0;
+        registerSnapshotSources(snapshot,raw,biayaRSMap,config,policy.revision,useCostingStore.getState().jknProportion,useCostingStore.getState().mergeCarePool,periodState);
+        set({snapshot,distribusi, patients: updatedPatients.map((p,i)=>({...p,outlier:localCosting.patients[i].outlier})),localCosting,calculationVersion:get().calculationVersion+1 });
+        } catch(error) { set({snapshot:null,localCosting:null,validationIssues:[...get().validationIssues.filter(i=>i.id!=='calculation-error'),{id:'calculation-error',severity:'error',label:'Perhitungan belum tersedia',expected:0,actual:0,message:error instanceof Error?error.message:String(error)}]}); }
       },
 
       validateAgainstHospital: (config, periodFactor = 1) => {
@@ -297,7 +323,8 @@ export const useTarifPasienStore = create<TarifPasienState>()(
           'Akumulasi biaya pegawai seluruh cost center harus sama dengan Biaya Gaji Data Dasar RS.');
 
         const totalAlokasi = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-        const biayaTersedia = Math.round(((config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0)) * periodFactor);
+        const activePlan=mappingPlan(biayaRSMap as Record<string,number>)??get().snapshot?.mapping;
+        const biayaTersedia = activePlan?.periodCost!==undefined?Number(activePlan.periodCost):Math.round(((config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0)) * periodFactor);
         if (totalAlokasi > 0 && biayaTersedia > 0 && totalAlokasi > biayaTersedia) {
           issues.push({
             id: 'biaya-alokasi', severity: 'error', label: 'Total biaya dialokasikan',
@@ -328,7 +355,8 @@ export const useTarifPasienStore = create<TarifPasienState>()(
         // again from the current upload and must not be stored in this small cache.
         calculationVersion:state.calculationVersion,
       }),
-      merge:(saved,current)=>{const old=saved as Partial<TarifPasienState>|undefined;return {...current,biayaRSMap:old?.biayaRSMap||{},distribusi:old?.distribusi||[],calculationVersion:old?.calculationVersion||0,localCosting:null};},
+      merge:(saved,current)=>{const old=saved as Partial<TarifPasienState>|undefined;return {...current,biayaRSMap:old?.biayaRSMap||{},distribusi:old?.distribusi||[],calculationVersion:old?.calculationVersion||0,localCosting:null,snapshot:null};},
     }
   )
 );
+

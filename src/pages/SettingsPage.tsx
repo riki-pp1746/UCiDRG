@@ -1,92 +1,24 @@
+import {MethodologyControls} from '../components/ui/AnalysisControls';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import { useUiPrefsStore } from '../stores/uiPrefsStore';
-import { DEFAULT_TARIF_IDRG_CONFIG } from '../lib/calculations/patientLevelCosting';
+import {useMethodologyStore} from '../stores/methodologyStore';
 import PageIntro from '../components/ui/PageIntro';
 import { useAuthStore } from '../stores/authStore';
 import { useCostingStore } from '../stores/costingStore';
-import { Settings, Info, Trash2, Calculator } from 'lucide-react';
+import { Settings, Info, Trash2 } from 'lucide-react';
 
 export default function SettingsPage() {
   const { user } = useAuthStore();
   const { beginnerMode, setBeginnerMode } = useUiPrefsStore();
-  const { clearData, tarifIDRGConfig, setTarifIDRGConfig, setJknProportion } = useCostingStore();
-
-  const handleConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    const numValue = parseFloat(value) || 0;
-    if(type!=='checkbox'&&(!Number.isFinite(numValue)||numValue<=0))return;
-    
-    setTarifIDRGConfig({
-      [name]: type === 'checkbox' ? checked : numValue
-    });
-  };
+  const clearData=useCostingStore(s=>s.clearData);
+  const role=useMethodologyStore(s=>s.role);
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <PageIntro title="Pengaturan perhitungan" what="Atur parameter tarif iDRG (National Base Rate, Adjustment Factor) dan proporsi JKN. Perubahan langsung memengaruhi seluruh hasil perhitungan." />
+    <div className="max-w-5xl mx-auto space-y-6"><MethodologyControls/>
+      <PageIntro title="Pengaturan perhitungan" what="Atur metode, sumber tarif, proporsi JKN, dan asumsi. Setelah mengubah input, tekan Hitung ulang sebelum menggunakan hasil." />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>
         <p className="text-gray-500 text-sm mt-1">Informasi aplikasi dan pengelolaan data lokal</p>
-      </div>
-
-      <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-        <h2 className="font-semibold text-gray-800 flex items-center gap-2">
-          <Calculator className="w-4 h-4 text-purple-600" /> Pengaturan Tarif iDRG
-        </h2>
-        <p className="text-sm text-gray-600 mt-2">
-          Rumus: Tarif iDRG = Cost Weight × National Base Rate × Adjustment Factor
-        </p>
-        <div className="mt-4 space-y-4">
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input 
-              type="checkbox" 
-              name="useFormula"
-              checked={tarifIDRGConfig.useFormula} 
-              onChange={handleConfigChange} 
-              className="rounded border-gray-300 text-blue-600"
-            />
-            Gunakan rumus iDRG (jika dimatikan, akan memakai total_tarif iDRG bawaan data)
-          </label>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">National Base Rate Inap (Rp)</label>
-              <input 
-                type="number" 
-                name="baseRateInap"
-                value={tarifIDRGConfig.baseRateInap}
-                onChange={handleConfigChange}
-                disabled={!tarifIDRGConfig.useFormula}
-                className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">National Base Rate Jalan (Rp)</label>
-              <input 
-                type="number" 
-                name="baseRateJalan"
-                value={tarifIDRGConfig.baseRateJalan}
-                onChange={handleConfigChange}
-                disabled={!tarifIDRGConfig.useFormula}
-                className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Adjustment Factor (bawaan 1)</label>
-              <input 
-                type="number" 
-                step="0.0001"
-                name="adjFactor"
-                min="0.0001"
-                value={tarifIDRGConfig.adjFactor}
-                onChange={handleConfigChange}
-                disabled={!tarifIDRGConfig.useFormula}
-                className="w-full text-sm border-gray-300 rounded-lg disabled:bg-gray-100 px-3 py-2 border"
-              />
-            </div>
-
-          </div>
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -101,7 +33,7 @@ export default function SettingsPage() {
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
         <h2 className="font-semibold text-gray-800 flex items-center gap-2"><Info className="w-4 h-4 text-blue-500" /> Perhitungan Unit Cost</h2>
-        <p className="text-sm text-gray-600 mt-3 leading-relaxed">Aplikasi menggunakan biaya aktual dari hasil alokasi Step 1 sampai Step 3. Jika biaya RS belum diisi, sistem hanya menampilkan billing aktual pasien dan tidak menambahkan persentase overhead asumsi.</p>
+        <p className="text-sm text-gray-600 mt-3 leading-relaxed">Unit cost berasal dari alokasi biaya RS yang diverifikasi. Tagihan dipakai sebagai driver bila sesuai; tagihan tidak menggantikan unit cost ketika biaya belum tersedia.</p>
       </div>
 
       <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
@@ -127,22 +59,14 @@ export default function SettingsPage() {
             <span className="block text-xs text-gray-500">Tampilkan penjelasan singkat di setiap halaman dan petunjuk langkah berikutnya. Matikan jika sudah terbiasa.</span>
           </span>
         </label>
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
-          <p className="text-xs text-gray-500">Kembalikan Base Rate, faktor penyesuaian, dan proporsi JKN ke nilai standar.</p>
-          <button
-            type="button"
-            onClick={() => { if (window.confirm('Kembalikan parameter tarif iDRG dan proporsi JKN ke nilai standar?')) { setTarifIDRGConfig(DEFAULT_TARIF_IDRG_CONFIG); setJknProportion(100); } }}
-            className="shrink-0 px-4 py-2 rounded-xl border border-[#17645D] text-[#17645D] text-sm font-semibold hover:bg-[#17645D] hover:text-white transition-colors"
-          >
-            Kembalikan nilai standar
-          </button>
-        </div>
       </div>
 
       <div className="bg-white rounded-2xl p-6 border border-red-200 shadow-sm flex items-center justify-between gap-4">
         <div><h2 className="font-semibold text-red-700">Hapus Data Analisis</h2><p className="text-xs text-gray-500 mt-1">Menghapus data klaim dan hasil perhitungan yang tersimpan di browser.</p></div>
-        <button onClick={() => { if (window.confirm('Hapus semua data analisis?')) clearData(); }} className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700"><Trash2 className="w-4 h-4" /> Hapus</button>
+        <button disabled={role==='Pembaca'} onClick={() => { if (window.confirm('Hapus semua data analisis?')) clearData(); }} className="shrink-0 flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-semibold hover:bg-red-700"><Trash2 className="w-4 h-4" /> Hapus</button>
       </div>
     </div>
   );
 }
+
+

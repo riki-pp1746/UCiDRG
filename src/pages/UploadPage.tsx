@@ -1,10 +1,14 @@
+import {prepareIdentities} from '../lib/analysisIdentity';
+
 import {shareSourceData} from '../lib/sharedSourceData';
+
 import PageIntro from '../components/ui/PageIntro';
 import { useCallback, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
-import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
+
+import {calculateAnalysisJob} from '../lib/analysisController';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import { detectPeriodNormalization, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
@@ -75,6 +79,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           useHospitalCostStore.setState(s => ({
             config: runStepDownCalculation({
               ...s.config,
+              sourceOrigin:'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(),importIssues:parsedData.importIssues||[],
               namaRS: parsedData.namaRS || s.config.namaRS,
               tipeRS: parsedData.tipeRS || s.config.tipeRS,
               kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,
@@ -114,8 +119,9 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
 
       // Keep the first SEP across uploads; Excel-only imports never touch claims.
       if(combinedTxtRecords.length){
+        combinedTxtRecords=await prepareIdentities(combinedTxtRecords);
         const seen=new Set<string>();let duplicates=0;
-        combinedTxtRecords=[...(claimMode==='append'?useCostingStore.getState().rawRecords:[]),...combinedTxtRecords].filter(record=>{const sep=String(record.sep||'').trim();if(!sep)return true;if(seen.has(sep)){duplicates++;return false;}seen.add(sep);return true;});
+        combinedTxtRecords=[...(claimMode==='append'?useCostingStore.getState().rawRecords:[]),...combinedTxtRecords].filter(record=>{const sep=String(record.sepToken||record.sep||'').trim();if(!sep)return true;if(seen.has(sep)){duplicates++;return false;}seen.add(sep);return true;});
         if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat: baris pertama dari urutan unggahan dipertahankan.`);
       }
       // Save TXT to store if any
@@ -145,13 +151,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         // Upload harus langsung menghasilkan distribusi, bukan hanya menyimpan
         // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
         // yang sama ke engine Dashboard/Perbandingan/Laporan.
-        const tarifStore = useTarifPasienStore.getState();
-        tarifStore.syncFromCosting(combinedTxtRecords);
-        const patients = useTarifPasienStore.getState().patients;
-        const biayaRSMap = buildBiayaRSMap(hospitalConfig, patients, detectedPeriod.factor, useCostingStore.getState().jknProportion);
-        useTarifPasienStore.setState({ biayaRSMap });
-        useTarifPasienStore.getState().calculateDistribution();
-        useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
+        try{await calculateAnalysisJob(n=>setProgress(70+n*.25));}catch(error){processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
         processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
       }
@@ -171,17 +171,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
 
-    const tarifStore = useTarifPasienStore.getState();
-    if (tarifStore.patients.length === 0) tarifStore.syncFromCosting(rawRecords);
-    const biayaRSMap = buildBiayaRSMap(
-      useHospitalCostStore.getState().config,
-      useTarifPasienStore.getState().patients,
-      updated.factor,
-      useCostingStore.getState().jknProportion,
-    );
-    useTarifPasienStore.setState({ biayaRSMap });
-    useTarifPasienStore.getState().calculateDistribution();
-    useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(biayaRSMap));
+    void calculateAnalysisJob().catch(error=>setErrorMsg(String(error)));
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -252,8 +242,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
                 </div>
                 {result.txtFiles.length > 0 ? (
                   <>
-                    <p className="text-sm text-gray-600">Berhasil menggabungkan <strong>{result.txtFiles.length} file</strong></p>
-                    <p className="text-2xl font-bold text-[#17645D] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien</span></p>
+                    <p className="text-sm text-gray-600">Berhasil membaca <strong>{result.txtFiles.length} file</strong>.</p>
+                    <p className="text-2xl font-bold text-[#17645D] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien valid dari {result.totalTxtRows.toLocaleString('id-ID')} baris</span></p>
+                    {result.totalTxtRows > result.totalParsedTxtRows && (
+                      <div className="mt-2 text-xs font-semibold text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <p>{(result.totalTxtRows - result.totalParsedTxtRows).toLocaleString('id-ID')} baris data ditolak karena tidak berformat E-Klaim JKN yang valid.</p>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <p className="text-sm text-gray-500 italic">Tidak ada file TXT yang diunggah.</p>
@@ -309,13 +305,23 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             )}
 
             {result.errors.length > 0 && (
-              <div className="mb-6 p-4 bg-amber-50 text-amber-700 text-sm rounded-xl border border-amber-200">
-                <p className="font-semibold mb-1 flex items-center gap-2"><AlertCircle className="w-4 h-4" /> Beberapa catatan:</p>
-                <ul className="list-disc list-inside space-y-1 ml-1 text-amber-600">
-                  {result.errors.map((err, i) => (
-                    <li key={i}>{err}</li>
-                  ))}
-                </ul>
+              <div className="mb-6 p-4 bg-amber-50 text-amber-800 text-sm rounded-xl border border-amber-200">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                  <div>
+                    <p className="font-bold mb-2 flex items-center gap-2"><AlertCircle className="w-4 h-4 text-amber-600" /> Masalah yang ditemukan saat membaca file:</p>
+                    <ul className="list-disc list-inside space-y-1 ml-1 text-amber-700 text-xs">
+                      {result.errors.map((err, i) => (
+                        <li key={i}>{err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    onClick={reset}
+                    className="shrink-0 px-4 py-2 bg-white border border-amber-300 text-amber-700 rounded-lg hover:bg-amber-100 font-semibold text-xs"
+                  >
+                    Perbaiki file & Upload ulang
+                  </button>
+                </div>
               </div>
             )}
 
@@ -476,3 +482,5 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     </div>
   );
 }
+
+

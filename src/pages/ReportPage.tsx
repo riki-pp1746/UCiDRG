@@ -1,10 +1,12 @@
+import {AnalysisReportDetails} from '../components/ui/AnalysisControls';
+import {analysisPdf} from '../lib/analysisPdf';
+import {ensureAnalysisExport,appendAnalysisSheets,methodologyRows} from '../lib/analysisExport';
+import {statusLabel,summaryMetricText,financialLabel} from '../lib/analysisSnapshot';
+import {useAnalysisView} from '../hooks/useAnalysisView';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {maskSEP} from '../v4/numbers';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
-import {useFilteredPatientResults} from '../stores/costingStore';
-import {aggregateByDRG,generateSummary} from '../lib/calculations/patientLevelCosting';
-import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 // PAGE: ReportPage.tsx
@@ -17,7 +19,7 @@ import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCost
 import { useAuthStore } from '../stores/authStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
-import { FileDown, Printer, FileSpreadsheet, Presentation } from 'lucide-react';
+import { Settings2, FileDown, Printer, FileSpreadsheet, Presentation } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import clsx from 'clsx';
@@ -58,24 +60,28 @@ const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
 
 export default function ReportPage() {
   const viewMode = useCostingStore(s => s.viewMode);
-  const originalSummary = useCostingStore(s => viewMode === 'INACBG' ? s.summaryINACBG : s.summaryIDRG);
-  const filteredResults=useFilteredPatientResults();
-  const drgResults=useMemo(()=>{const groups=aggregateByDRG(filteredResults);return viewMode==='INACBG'?groups.inacbg:groups.idrg;},[filteredResults,viewMode]);
-  const summary=useMemo(()=>originalSummary?generateSummary(filteredResults,drgResults,viewMode,originalSummary.periodNormalization,originalSummary.annualCostTotal,originalSummary.adjustedCostTotal,originalSummary.totalBiayaRS):null,[filteredResults,drgResults,viewMode,originalSummary]);
+  const view=useAnalysisView();
+  const filteredResults=view.rows;
+  const drgResults=view.groups;
+  const summary=view.summary;
   const patientResults = filteredResults;
   const periodNormalization = useCostingStore(s => s.periodNormalization);
   const config = useHospitalCostStore(s => s.config);
-  const validationIssues = useTarifPasienStore(s => s.validationIssues);
+  const allocationIssues = useTarifPasienStore(s => s.validationIssues);
+  const sourceIssues=useTarifPasienStore(s=>s.snapshot?.issues);
+  const validationIssues=[...allocationIssues,...(sourceIssues||[]).map(i=>({id:i.id,severity:i.severity==='info'?'warning' as const:i.severity,message:i.message,label:i.message,actual:i.count,expected:0}))];
   const biayaRSMap = useTarifPasienStore(s => s.biayaRSMap);
   const { user } = useAuthStore();
   const reportRef = useRef<HTMLDivElement>(null);
 
-  const totalBiayaTahunan = (config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
-  const periodFactor = periodNormalization?.factor || 1;
-  const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
+  const snapshot=useTarifPasienStore(s=>s.snapshot);
+  const totalBiayaTahunan = snapshot?.mapping?Number(snapshot.mapping.annual):(config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
+  const periodFactor = snapshot?.options.compatibility?1/12:periodNormalization?.factor??1;
+  const totalBiayaLaporan = snapshot?.mapping?.periodCost!==undefined?Number(snapshot.mapping.periodCost):Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
-  const jknProportion=useCostingStore(s=>s.jknProportion);
-  const poolJKN=totalBiayaLaporan*jknProportion/100;
+  const inputJknProportion=useCostingStore(s=>s.jknProportion);
+  const jknProportion=snapshot?.options.compatibility?85:inputJknProportion;
+  const poolJKN=snapshot?.pool??totalBiayaLaporan*jknProportion/100;
   const selisihRekonsiliasi = poolJKN - totalBiaya18Variabel;
 
   if (!summary) {
@@ -88,6 +94,7 @@ export default function ReportPage() {
 
   // Export Excel
   const exportExcel = () => {
+    if(!ensureAnalysisExport())return;
     const wb = XLSX.utils.book_new();
 
     // Sheet 1: Summary
@@ -95,11 +102,11 @@ export default function ReportPage() {
       ['LAPORAN UNIT COST - UnitCOSt PRO'],
       ['Rumah Sakit', user?.namaRS],
       ['Periode Data', summary.periodeData],
-      ['Sumber Periode', 'Bulan unik discharge_date'],
-      ['Bulan Efektif', periodNormalization?.effectiveMonths || 12],
+      ['Sumber Periode', 'Bulan efektif; pencilan memerlukan konfirmasi'],
+      ['Bulan Efektif',periodFactor*12],
       ['Faktor Periode', periodFactor],
       ['Total Biaya Tahunan', totalBiayaTahunan],
-      ['Total Biaya Periode', totalBiayaLaporan],
+      ['Total Biaya Periode sebelum porsi JKN dan kappa', totalBiayaLaporan],
       ['Peringatan Tahun', periodNormalization?.yearMismatch ? `Tahun klaim ${periodNormalization.claimYears.join(', ')} berbeda dari tahun biaya ${periodNormalization.costYear}` : 'Sesuai'],
       ['Fallback admission_date', periodNormalization?.fallbackCount || 0],
       ['Tanggal tidak valid', periodNormalization?.invalidDateCount || 0],
@@ -107,16 +114,16 @@ export default function ReportPage() {
       [],
       ['RINGKASAN EKSEKUTIF'],
       ['Total Kasus', summary.totalKasus],
-      ['Total Unit Cost RS', summary.totalBiayaRS],
+      ['Total biaya pada populasi ringkasan', summary.totalBiayaRS],
       [`Total Tarif ${viewMode}`, summary.totalTarif],
-      ['Total Selisih', summary.totalSelisih],
-      ['Case Mix Index (CMI)', summary.cmi.toFixed(3)],
-      ['Reduction of Variance (ROV)', (summary.riv * 100).toFixed(2) + '%'],
-      ['Rata-rata CoV DRG', (summary.rataCov * 100).toFixed(2) + '%'],
-      ['% DRG Defisit', summary.persenRugi.toFixed(1) + '%'],
-      ['% DRG Profit', summary.persenUntung.toFixed(1) + '%'],
+      ['Total Selisih', summary.totalSelisih],['CRR',summaryMetricText(summary,'crr')],['Status finansial agregat',financialLabel(summary.financialStatus)],['Populasi',summary.populationLabel||''],
+      ['Case Mix Index (CMI)', summaryMetricText(summary,'cmi')],
+      ['Reduction of Variance (ROV)', summaryMetricText(summary,'rov',2)],
+      ['Rata-rata CoV DRG', formatNumber(summary.rataCov * 100,2) + '%'],
+      ['% DRG Defisit', formatNumber(summary.persenRugi,1) + '%'],
+      ['% DRG Profit', formatNumber(summary.persenUntung,1) + '%'],
     ];
-    summaryData.push(['Trimming','Statistik menggunakan inlier ±2 SD sampel per iDRG/rawat'],['Kasus outlier pada filter',patientResults.filter(p=>p.outlier).length],['Biaya outlier pada filter',patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0)]);
+    summaryData.push(['Trimming','CW memakai metode pada lembar Metodologi; perbandingan memakai seluruh kasus UC valid'],['Kasus outlier pada filter',patientResults.filter(p=>p.outlier).length],['Biaya outlier pada filter',patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0)]);
     const local=useTarifPasienStore.getState().localCosting;if(local)for(const [name,rows] of Object.entries(hospitalBaseRateSheets(local)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
@@ -126,13 +133,13 @@ export default function ReportPage() {
     const drgHeader = [
       `Kode ${viewMode}`, `Nama ${viewMode}`, 'MDC', 'Deskripsi MDC',
       'Jumlah Kasus', 'Avg Unit Cost RS', `Avg Tarif ${viewMode}`,
-      'Selisih (Rp)', 'Selisih (%)', 'CoV', 'Total Biaya RS', `Total Tarif ${viewMode}`, 'Status'
+      'Selisih (Rp)', 'Selisih (%)', 'CoV', 'Total Biaya RS', `Total Tarif ${viewMode}`, 'Status','CRR','Kepastian statistik','CI selisih bawah','CI selisih atas'
     ];
     const drgData = drgResults.map(d => [
       d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || '-',
       d.jumlahKasus, d.rataUnitCost, d.rataTarif,
-      d.selisih, d.selisihPersen.toFixed(1) + '%', (d.cov * 100).toFixed(2) + '%',
-      d.totalBiayaRS, d.totalTarif, STATUS_LABEL[d.status]
+      d.selisih, formatNumber(d.selisihPersen,1) + '%', formatNumber(d.cov * 100,2) + '%',
+      d.totalBiayaRS, d.totalTarif, statusLabel(d),d.crrAvailable?d.crr:null,d.statisticalLabel,d.ci?.low??null,d.ci?.high??null
     ]);
     const ws2 = XLSX.utils.aoa_to_sheet([drgHeader, ...drgData]);
     XLSX.utils.book_append_sheet(wb, ws2, `${viewMode} Comparison`);
@@ -142,10 +149,10 @@ export default function ReportPage() {
       'Nama Pasien', 'MRN', 'SEP', 'Tgl Masuk', 'Tgl Keluar', 'LOS',
       'Kelas Rawat', `Kode ${viewMode}`, `Deskripsi ${viewMode}`, 'Diagnosa', 'Prosedur',
       ...BILLING_EXPORT.map(item => item.label),
-      'Unit Cost Dihitung', `Tarif ${viewMode}`, 'Selisih', 'Status','Trimming ±2 SD'
+      'Unit Cost Dihitung', `Tarif ${viewMode}`, 'Selisih', 'Status','Penanda trimming'
     ];
     const patData = patientResults.map(r => [
-      r.patient.nama_pasien, r.patient.mrn, maskSEP(r.patient.sep),
+      'Tidak diekspor', 'Tidak diekspor', maskSEP(r.patient.sep),
       r.patient.admission_date, r.patient.discharge_date, r.patient.los,
       r.patient.kelas_rawat,
       viewMode === 'INACBG' ? r.patient.inacbg : r.patient.idrg?.drg_code,
@@ -154,7 +161,7 @@ export default function ReportPage() {
       ...BILLING_EXPORT.map(item => r.patient.billing[item.key] || 0),
       r.unitCostDihitung, viewMode === 'INACBG' ? r.tarifINACBG : r.tarifIDRG,
       viewMode === 'INACBG' ? r.selisihINACBG : r.selisihIDRG,
-      STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG],r.outlier?'Outlier (dikeluarkan)':'Inlier'
+      r.unitCostDihitung>0?STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG]:'Tidak tersedia',r.outlier?'Outlier; tidak membentuk CW':'Inlier'
     ]);
     const ws3 = XLSX.utils.aoa_to_sheet([patHeader, ...patData]);
     XLSX.utils.book_append_sheet(wb, ws3, 'Detail Pasien');
@@ -195,10 +202,11 @@ export default function ReportPage() {
     XLSX.utils.book_append_sheet(wb, ws6, 'Validasi Data Dasar');
 
     const filename = `UnitCost_${user?.namaRS?.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
-    XLSX.writeFile(formatCostingWorkbook(wb), filename);
+    appendAnalysisSheets(wb);XLSX.writeFile(formatCostingWorkbook(wb), filename);
   };
 
   const exportPptx = async () => {
+    if(!ensureAnalysisExport())return;
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
     pptx.author = 'UnitCOSt PRO';
@@ -216,7 +224,7 @@ export default function ReportPage() {
     let slide = pptx.addSlide();
     slide.background = { color: navy };
     slide.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.15, fill: { color: teal }, line: { color: teal } });
-    slide.addText('Hasil Unit Cost Rumah Sakit', { x: 0.8, y: 2.15, w: 11.5, h: 0.7, fontFace: 'Aptos Display', fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' });
+    slide.addText('DRAFT — Hasil Unit Cost Rumah Sakit', { x: 0.8, y: 2.15, w: 11.5, h: 0.7, fontFace: 'Aptos Display', fontSize: 34, bold: true, color: 'FFFFFF', align: 'center' });
     slide.addText('Patient Level Costing dan Analisis Tarif', { x: 0.8, y: 2.95, w: 11.5, h: 0.35, fontFace: 'Aptos', fontSize: 18, color: 'BFEDEA', align: 'center' });
     slide.addText(`${user?.namaRS || 'Rumah Sakit'}\nPeriode data: ${summary.periodeData} · Faktor biaya ${periodNormalization?.effectiveMonths || 12}/12`, { x: 0.8, y: 4.15, w: 11.5, h: 0.65, fontFace: 'Aptos', fontSize: 15, color: 'FFFFFF', align: 'center', breakLine: false });
     if (periodNormalization && (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0)) {
@@ -229,7 +237,7 @@ export default function ReportPage() {
     }
 
     slide = pptx.addSlide(); title(slide, 'Ringkasan Hasil', `Tarif pembanding: ${viewMode}`);
-    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total Unit Cost', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summary.cmi.toFixed(3)], ['ROV', `${(summary.riv * 100).toFixed(1)}%`]];
+    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total biaya ringkasan', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summaryMetricText(summary,'cmi')], ['ROV', summaryMetricText(summary,'rov')]];
     kpis.forEach((item, i) => { const x = 0.7 + (i % 3) * 4.15; const y = 1.55 + Math.floor(i / 3) * 2.05; slide.addShape(pptx.ShapeType.roundRect, { x, y, w: 3.65, h: 1.45, rectRadius: 0.08, fill: { color: light }, line: { color: 'D7E2E8', width: 0.8 } }); slide.addText(item[0], { x: x + 0.25, y: y + 0.28, w: 3.1, h: 0.25, fontFace: 'Aptos', fontSize: 11, color: gray }); slide.addText(item[1], { x: x + 0.25, y: y + 0.67, w: 3.1, h: 0.38, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); });
     slide.addText(`Status DRG: ${summary.jumlahDRGUntung} profit, ${summary.jumlahDRGImpas} BEP, ${summary.jumlahDRGRugi} defisit.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
 
@@ -243,18 +251,18 @@ export default function ReportPage() {
     slide.addTable([['Kode', 'DRG', 'Kasus', 'Unit Cost', 'Tarif', 'Selisih'], ...rows] as any, { x: 0.55, y: 1.45, w: 12.2, h: 4.85, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, color: navy, fill: { color: 'FFFFFF' }, rowH: 0.44, colW: [1.1, 3.7, 0.8, 2.0, 2.0, 2.0], bold: false, }); addFooter(slide, 4);
 
     slide = pptx.addSlide(); title(slide, 'Kualitas Pengelompokan DRG', 'CoV mengukur homogenitas biaya, ROV mengukur variasi yang dijelaskan DRG');
-    slide.addText(`ROV total: ${(summary.riv * 100).toFixed(1)}%`, { x: 0.8, y: 1.6, w: 5.2, h: 0.55, fontFace: 'Aptos Display', fontSize: 27, bold: true, color: navy });
-    slide.addText(`Rata-rata CoV DRG: ${(summary.rataCov * 100).toFixed(1)}%`, { x: 0.8, y: 2.3, w: 5.6, h: 0.4, fontFace: 'Aptos', fontSize: 17, color: gray });
+    slide.addText(`ROV total: ${summaryMetricText(summary,'rov')}`, { x: 0.8, y: 1.6, w: 5.2, h: 0.55, fontFace: 'Aptos Display', fontSize: 27, bold: true, color: navy });
+    slide.addText(`Rata-rata CoV DRG: ${formatNumber(summary.rataCov * 100,1)}%`, { x: 0.8, y: 2.3, w: 5.6, h: 0.4, fontFace: 'Aptos', fontSize: 17, color: gray });
     slide.addText('Interpretasi', { x: 7.0, y: 1.55, w: 2, h: 0.3, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy });
     slide.addText('CoV di bawah 1 menunjukkan biaya dalam grup DRG relatif homogen. ROV yang lebih tinggi menunjukkan DRG menjelaskan lebih banyak variasi biaya.', { x: 7.0, y: 2.1, w: 5.3, h: 1.0, fontFace: 'Aptos', fontSize: 16, color: gray, breakLine: false });
-    const covRows = drgResults.slice().sort((a, b) => b.cov - a.cov).slice(0, 5).map(d => [d.group_code, d.group_description.slice(0, 38), `${(d.cov * 100).toFixed(1)}%`]);
+    const covRows = drgResults.slice().sort((a, b) => b.cov - a.cov).slice(0, 5).map(d => [d.group_code, d.group_description.slice(0, 38), `${formatNumber(d.cov * 100,1)}%`]);
     slide.addTable([['DRG', 'Deskripsi', 'CoV'], ...covRows] as any, { x: 0.8, y: 3.65, w: 11.5, h: 2.0, border: { type: 'solid', color: 'D7E2E8', pt: 0.5 }, fontFace: 'Aptos', fontSize: 10, colW: [1.4, 7.8, 1.6] }); addFooter(slide, 5);
 
     slide = pptx.addSlide(); title(slide, 'Rekomendasi Tindak Lanjut', 'Berdasarkan biaya, variasi DRG, dan validasi data');
     const recommendations = [
-      `${summary.jumlahDRGRugi} grup DRG memiliki unit cost lebih tinggi daripada tarif ${viewMode}. Prioritaskan review grup dengan selisih terbesar.`,
+      `${summary.jumlahDRGRugi} grup DRG memiliki unit cost lebih tinggi daripada tarif ${viewMode}. Prioritas: kelompok yang memenuhi n minimum dan CI seluruhnya di bawah nol; urutkan total dampak.`,
       'Periksa komponen biaya dominan pada pasien defisit melalui tabel tarif pasien dan distribusi 18 variabel E-Klaim.',
-      'Tindak lanjuti grup dengan CoV tinggi melalui review coding, clinical pathway, serta pemakaian sumber daya.',
+      'Kelompok kecil atau interval selisih melintasi nol memerlukan data tambahan; variasi biaya belum membuktikan penyebab klinis.',
       validationIssues.some(issue => issue.severity === 'error')
         ? `${validationIssues.filter(issue => issue.severity === 'error').length} kesalahan data masih tercatat. Selesaikan sebelum memakai hasil untuk penetapan tarif.`
         : validationIssues.length
@@ -262,11 +270,14 @@ export default function ReportPage() {
           : 'Validasi data dasar tidak mencatat ketidaksesuaian pada saat laporan dibuat.',
     ];
     recommendations.forEach((text, i) => { const y = 1.55 + i * 1.2; slide.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.05, w: 0.32, h: 0.32, fill: { color: teal }, line: { color: teal } }); slide.addText(String(i + 1), { x: 0.85, y: y + 0.08, w: 0.32, h: 0.15, fontFace: 'Aptos', fontSize: 9, bold: true, color: 'FFFFFF', align: 'center' }); slide.addText(text, { x: 1.4, y, w: 10.7, h: 0.65, fontFace: 'Aptos', fontSize: 16, color: navy, breakLine: false }); }); addFooter(slide, 6);
-    await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(user?.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
+    const snapshot=useTarifPasienStore.getState().snapshot;
+    for(let page=0;page<Math.ceil((methodologyRows().length-1)/15);page++){const rows=methodologyRows().slice(1+page*15,1+(page+1)*15);if(!rows.length)continue;const assumptions=pptx.addSlide();title(assumptions,'DRAFT — Metodologi dan asumsi',snapshot?.version);assumptions.addTable([['Parameter','Nilai'],...rows].map(row=>row.map(text=>({text}))),{x:.6,y:1.4,w:12,h:5.1,fontSize:9,colW:[3,9],border:{type:'solid',color:'D9D9D9',pt:.5},autoPage:true});}
+    const warnings=pptx.addSlide();title(warnings,'DRAFT — Validasi dan batas hasil','Hasil analisis bukan tarif final; kelompok kecil memerlukan data tambahan');warnings.addText((snapshot?.issues||[]).map(i=>`${i.severity}: ${i.count} — ${i.message}`).join('\n')||'Periksa seluruh asumsi sebelum keputusan manajemen.',{x:.7,y:1.5,w:12,h:5.2,fontSize:12,breakLine:false});
+    await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(config.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
   };
 
   // Print / PDF
-  const handlePrint = () => window.print();
+  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
 
   return (
     <div className="space-y-6">
@@ -302,10 +313,10 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <AnalysisFilters/><p className="uc-notice">Ringkasan statistik memakai inlier ±2 SD. Biaya pool dan rekonsiliasi tetap untuk seluruh populasi unggahan; filter tidak mengubahnya. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
+      <AnalysisFilters/><AnalysisReportDetails/><p className="uc-notice">Perbandingan memakai seluruh kasus UC valid pada filter. Pool penuh dipakai hanya untuk ringkasan tanpa filter. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6 print:space-y-4">
-        <p className="uc-notice">Trimming ±2 SD sampel per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dikeluarkan dari statistik. Biaya tetap tercatat; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
+        <p className="uc-notice">Trimming sesuai parameter per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} tidak membentuk CW, tetap masuk biaya dan perbandingan; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
 
         {/* Report Header */}
         <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white rounded-2xl p-6 print:rounded-none print:from-blue-800 print:to-blue-800">
@@ -337,7 +348,7 @@ export default function ReportPage() {
             </div>
             <div>
               <p className="text-blue-300 text-xs">Faktor Biaya</p>
-              <p className="font-semibold">{periodNormalization?.effectiveMonths || 12}/12 ({(periodFactor * 100).toFixed(1)}%)</p>
+              <p className="font-semibold">{periodNormalization?.effectiveMonths || 12}/12 ({formatNumber(periodFactor * 100,1)}%)</p>
             </div>
           </div>
         </div>
@@ -355,8 +366,8 @@ export default function ReportPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
             { label: 'Total Kasus', value: formatNumber(summary.totalKasus), color: 'border-blue-400' },
-            { label: 'Case Mix Index', value: summary.cmi.toFixed(3), color: 'border-violet-400' },
-            { label: 'Total Unit Cost RS', value: formatRupiah(summary.totalBiayaRS), color: 'border-indigo-400' },
+            { label: 'Case Mix Index', value: summaryMetricText(summary,'cmi'), color: 'border-violet-400' },
+            { label: 'Total biaya pada populasi ringkasan', value: formatRupiah(summary.totalBiayaRS), color: 'border-indigo-400' },
             { label: `Total Tarif ${viewMode}`, value: formatRupiah(summary.totalTarif), color: 'border-cyan-400' },
           ].map(kpi => (
             <div key={kpi.label} className={clsx('bg-white rounded-xl p-4 border-l-4 shadow-sm', kpi.color)}>
@@ -369,7 +380,7 @@ export default function ReportPage() {
         <div className={clsx('rounded-xl p-4 border flex items-center justify-between gap-4', validationIssues.length ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200')}>
           <div>
             <p className={clsx('font-bold text-sm', validationIssues.length ? 'text-red-800' : 'text-emerald-800')}>{validationIssues.length ? 'Validasi Data Dasar RS perlu penyesuaian' : 'Validasi Data Dasar RS sesuai'}</p>
-            <p className="text-xs text-gray-600 mt-1">{validationIssues.length ? `${validationIssues.length} ketidaksesuaian akan disertakan pada sheet Validasi Data Dasar.` : 'Tidak ada ketidaksesuaian yang tercatat pada data pasien dan biaya RS.'}</p>
+            <p className="text-xs text-gray-600 mt-1">{validationIssues.length ? `${validationIssues.length} ketidaksesuaian akan disertakan pada sheet Validasi Data Dasar.` : 'Tidak ada temuan pada pemeriksaan yang dijalankan; tetap periksa kelengkapan sumber dan asumsi.'}</p>
           </div>
           <div className="text-right shrink-0"><p className="text-xs text-gray-500">Selisih rekonsiliasi</p><p className={clsx('font-bold', selisihRekonsiliasi === 0 ? 'text-emerald-700' : 'text-amber-700')}>{formatRupiah(selisihRekonsiliasi)}</p></div>
         </div>
@@ -382,7 +393,7 @@ export default function ReportPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
               <p className={clsx('text-lg font-bold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
-                {summary.totalSelisih < 0 ? '⚠ RS Defisit Secara Agregat' : '✓ RS Profit Secara Agregat'}
+                {'Status finansial agregat: '+financialLabel(summary.financialStatus)}
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 Total selisih: <strong className={summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700'}>
@@ -407,6 +418,16 @@ export default function ReportPage() {
           </div>
         </div>
 
+                {/* Catatan Asumsi */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mt-6">
+          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Settings2 className="w-4 h-4 text-gray-500" /> Asumsi & Parameter Kalkulasi</h3>
+          <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside">
+            <li><strong>Proporsi Pasien JKN:</strong> {useCostingStore.getState().jknProportion}% (Porsi seragam digunakan hanya pada komponen yang belum memiliki porsi khusus atau data volume).</li>
+            <li><strong>Faktor kalender dasar:</strong> {formatNumber(periodFactor * 100,1)}% (Faktor variabel bulanan, indeksasi dan kappa mengikuti Metodologi; tidak selalu sama dengan faktor kalender).</li>
+            <li><strong>Trimming:</strong> metode aktif pada Metodologi dan Asumsi. CW memakai inlier positif; perbandingan memakai seluruh kasus UC valid. Outlier {patientResults.filter(p=>p.outlier).length} kasus / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dicatat terpisah.</li><li><strong>Rumus iDRG:</strong> Tarif pembanding iDRG memakai total_tarif JSON klaim; Tarif RS = CW RS × HBR × Adjustment.</li>
+          </ul>
+        </div>
+
         {/* DRG Comparison Table */}
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
@@ -424,7 +445,7 @@ export default function ReportPage() {
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">Tarif {viewMode}</th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">Selisih</th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600">%</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">Status</th>
+                  <th className="px-3 py-2 text-center font-semibold text-gray-600">Status / Kepastian</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -442,12 +463,13 @@ export default function ReportPage() {
                       {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
                     </td>
                     <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersen < 0 ? 'text-red-500' : 'text-green-500')}>
-                      {drg.selisihPersen >= 0 ? '+' : ''}{drg.selisihPersen.toFixed(1)}%
+                      {drg.selisihPersen >= 0 ? '+' : ''}{formatNumber(drg.selisihPersen,1)}%
                     </td>
                     <td className="px-3 py-2 text-center">
                       <span className={clsx('inline-block px-2 py-0.5 rounded-full font-semibold', STATUS_BADGE[drg.status])}>
-                        {STATUS_LABEL[drg.status]}
+                        {statusLabel(drg)}
                       </span>
+                      <p className="text-xs mt-1">{drg.statisticalLabel}; CI 95% {drg.ci?formatRupiah(drg.ci.low)+' s.d. '+formatRupiah(drg.ci.high):'Tidak tersedia'}</p>
                     </td>
                   </tr>
                 ))}
@@ -461,11 +483,11 @@ export default function ReportPage() {
           <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200">
             <h3 className="font-bold text-amber-800 mb-3">⚠️ Rekomendasi Tindak Lanjut</h3>
             <ul className="space-y-2 text-sm text-amber-700">
-              <li>• <strong>{summary.jumlahDRGRugi} grup {viewMode}</strong> memiliki unit cost melebihi tarif {viewMode} — perlu negosiasi tarif atau efisiensi biaya</li>
-              <li>• {viewMode} dengan defisit terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> ({formatRupiah(summary.top10Rugi[0]?.selisih || 0)} per kasus)</li>
-              <li>• Review komponen biaya dominan (surgical, kamar, obat) untuk {viewMode} defisit</li>
-              <li>• Pertimbangkan clinical pathway optimization untuk {viewMode} high-cost</li>
-              <li>• Lakukan rekonsiliasi tarif dengan BPJS untuk periode berikutnya</li>
+              <li>• Prioritas tinjau: {summary.top10Rugi.length} kelompok memenuhi jumlah kasus minimum, berstatus Rugi, dan interval selisih seluruhnya di bawah nol.</li>
+              <li>• {viewMode} dengan defisit terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> ({formatRupiah((summary.top10Rugi[0]?.totalTarif||0)-(summary.top10Rugi[0]?.totalBiayaRS||0))} total)</li>
+              <li>• Telusuri pusat biaya dan komponen terbesar pada tabel struktur biaya; periksa pemetaan, volume, dan sumber pembayaran sebelum mengambil keputusan.</li>
+              <li>• Kelompok kecil dan interval yang melintasi nol memerlukan data tambahan. Status finansial tetap ditampilkan, dengan kepastian statistik terpisah.</li>
+              <li>• Hasil pembagian biaya belum membuktikan penyebab klinis atau kebutuhan perubahan tarif.</li>
             </ul>
           </div>
         )}
@@ -488,3 +510,11 @@ export default function ReportPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+

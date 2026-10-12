@@ -28,6 +28,7 @@ export function formatPeriodLabel(months: string[], effectiveMonths: number): st
 export function detectPeriodNormalization(
   records: PatientRecord[],
   costYear: number,
+  threshold=0.05,
 ): PeriodNormalization {
   const dates: string[] = [];
   let fallbackCount = 0;
@@ -46,11 +47,14 @@ export function detectPeriodNormalization(
 
   dates.sort();
   const detectedMonths = [...new Set(dates.map(date => date.slice(0, 7)))].sort();
-  const effectiveMonths = detectedMonths.length || 12;
+  const monthCounts:Record<string,number>={};dates.forEach(date=>{const month=date.slice(0,7);monthCounts[month]=(monthCounts[month]||0)+1;});
+  const effective=detectedMonths.filter(m=>monthCounts[m]/Math.max(1,dates.length)>=threshold);
+  const effectiveMonths = effective.length || 1;
   const claimYears = [...new Set(detectedMonths.map(month => Number(month.slice(0, 4))))].sort();
 
   return {
     mode: 'auto',
+    monthCounts,dateOutliers:detectedMonths.filter(m=>!effective.includes(m)),confirmed:false,
     detectedMonths,
     effectiveMonths,
     factor: effectiveMonths / 12,
@@ -61,7 +65,7 @@ export function detectPeriodNormalization(
     fallbackCount,
     invalidDateCount,
     yearMismatch: claimYears.some(year => year !== costYear),
-    label: detectedMonths.length ? formatPeriodLabel(detectedMonths, effectiveMonths) : '12 bulan (tanggal tidak tersedia)',
+    label: effective.length ? formatPeriodLabel(effective, effectiveMonths) : 'Periode belum tersedia; konfirmasi sebelum menggunakan hasil',
   };
 }
 
@@ -73,6 +77,7 @@ export function overrideEffectiveMonths(
   return {
     ...period,
     mode: 'manual',
+    confirmed:true,
     effectiveMonths: safeMonths,
     factor: safeMonths / 12,
     label: `${formatPeriodLabel(period.detectedMonths, safeMonths)} · ${safeMonths} bulan efektif`,
