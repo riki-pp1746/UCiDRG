@@ -9,6 +9,8 @@ export const EXPENSES = ['pegawai','jasaMedis','jasaLain','operasional','penyusu
 export type Expense = typeof EXPENSES[number];
 export interface Asset { id: string; name: string; value: Money; years: Money; }
 export interface Center {
+  staffAllocation?:boolean;
+  sourceMetrics?:{staff:string;area:string;days:string;patients:string;visits:string;alos:string;beds:string;allocationBasis:string};
   id: string; name: string; group: 'overhead'|'intermediate'|'final';
   costs: Record<Expense,Money>; excluded: Money;
   assets: Asset[]; building: Money; depreciationIncluded: boolean;
@@ -17,6 +19,9 @@ export interface Center {
   allocationUnit: string; recipients: Record<string,string>;
   mapping: Record<Key,string>;
   coveredVolume: string; coverageTotal: string;
+}
+export function recipientDrivers(donor:Center,centers:Center[]):Record<string,string>{
+  return donor.staffAllocation?Object.fromEntries(centers.filter(c=>donor.group==='overhead'?c.group!=='overhead':c.group==='final').map(c=>[c.id,c.sourceMetrics?.staff||'0'])):donor.recipients;
 }
 export interface Claim {
   id: string; sep: string; code: string; inacbg: string; description: string; mdc: string;

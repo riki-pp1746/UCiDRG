@@ -398,8 +398,8 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             Mendukung file Data Pasien Klaim JKN (INA-CBG/iDRG) (.TXT) dan Template Keuangan (.XLSX)
           </p>
           <div className="mb-8">
-            <a href="/Template_Costing_Standard.xlsx" download className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
-              Unduh Template Sample (.XLSX)
+            <a href="/Template_Costing_Standard.xlsx" download="Template_Costing_RS_Simulasi_ABC_2025.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
+              Unduh template simulasi 6 sheet (.XLSX)
             </a>
           </div>
           

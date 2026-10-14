@@ -1,11 +1,12 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { parseNumber, dec } from './numbers';
-import { newCenter,KEYS,emptyBill } from './types';
+import { newCenter,KEYS,emptyBill,recipientDrivers } from './types';
 import type { Input,Claim,Reference,Issue } from './types';
 import { validDate } from './engine';
 import {validateWorkbookSignature} from './security';
 import {appendTemplateHelp} from '../lib/templateGuidance';
+import {costingSheetName,numericCellValue,declaresStaffAllocation,isSimulationWorkbook,costingReconciliationIssues} from '../lib/costingWorkbookSchema';
 
 function date(value:unknown){const s=String(value||'').trim();const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s;}
 function num(value:unknown){return value===''||value===null||value===undefined||value==='None'||value==='-'?'0':parseNumber(value);}
@@ -36,8 +37,7 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
   validateWorkbookSignature(bytes);
   const wb=XLSX.read(bytes,{type:'array'});const input=structuredClone(current);const warnings:string[]=[];const years=new Set<number>();
   const rows=(name:string)=>wb.Sheets[name]?XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name],{header:1,defval:''}):[];
-  const sheet=wb.SheetNames.find(n=>/costing dummy/i.test(n))||wb.SheetNames.find(n=>/costing|template/i.test(n));
-  if(!sheet)throw new Error('Sheet Costing Template tidak ditemukan.');
+  const sheet=costingSheetName(wb);
   const basic=wb.SheetNames.find(n=>/data\s*dasar/i.test(n));
   if(basic)for(const r of rows(basic)) {
     const label=String(r[0]).toLowerCase();
@@ -55,9 +55,12 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
     if(/c\.?\s*pusat biaya/.test(line)){group='final';continue;}
     if(!group||!/^\d+\.?\d*\)?$/.test(String(r[0]))||!r[1])continue;
     const c=newCenter(group);c.id=String(r[19]||`${group}-${index}`);c.name=String(r[1]);
+    for(const column of [9,10,11,12,13,14])numericCellValue(wb,sheet,index,column);
+    c.sourceMetrics={staff:num(r[3]),area:num(r[17]),days:num(r[4]),patients:num(r[5]),visits:num(r[6]),alos:num(r[7]),beds:num(r[8]),allocationBasis:String(r[2]||'')};
     c.costs={pegawai:num(r[9]),jasaMedis:num(r[10]),jasaLain:num(r[11]),operasional:num(r[12]),penyusutan:'0'};
     c.assets=dec(num(r[13])).gt(0)?[{id:crypto.randomUUID(),name:'Alat (umur cadangan 5 tahun)',value:num(r[13]),years:'5'}]:[];c.building=num(r[14]);
-    c.care=/icu|iccu|nicu|picu|hcu|intensif|kelas|kamar|rawat inap|perinatologi/i.test(c.name)?'inap':/poli|rawat jalan/i.test(c.name)?'jalan':'campuran';
+    c.care=group==='final'&&dec(c.sourceMetrics.days).gt(0)&&!dec(c.sourceMetrics.visits).gt(0)?'inap':group==='final'&&dec(c.sourceMetrics.visits).gt(0)&&!dec(c.sourceMetrics.days).gt(0)?'jalan':/icu|iccu|nicu|picu|hcu|intensif|kelas|kamar|rawat inap|perinatologi/i.test(c.name)?'inap':/poli|rawat jalan/i.test(c.name)?'jalan':'campuran';
+    if(r[15]!==''&&r[15]!=null&&r[16]!==''&&r[16]!=null){c.costs.penyusutan=dec(num(r[15])).plus(num(r[16])).toString();c.depreciationIncluded=true;}
     c.mapping=emptyBill();c.mapping[/icu|iccu|nicu|picu|hcu|intensif/i.test(c.name)?'intensive_amt':/bedah|ibs|operasi/i.test(c.name)?'surgical_amt':c.care==='inap'?'room_amt':'procedure_amt']='100';
     input.centers.push(c);
   }
@@ -79,11 +82,20 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
     [c.driverUnit,c.jknVolume,c.totalVolume,c.care,c.inpatientVolume,c.outpatientVolume]=[String(r[1]),String(r[2]),String(r[3]),String(r[4]) as typeof c.care,String(r[5]),String(r[6])];
   }
   if(wb.Sheets['Aset']){input.centers.forEach(c=>{c.assets=[];c.building='0';});for(const r of rows('Aset').slice(1)){const c=input.centers.find(c=>c.id===String(r[0]));if(c){if(r[4]==='gedung')c.building=dec(c.building).plus(num(r[2])).toString();else c.assets.push({id:crypto.randomUUID(),name:String(r[1]),value:num(r[2]),years:num(r[3])});}}}
-  for(const r of rows('Driver Antarunit').slice(1)) {const c=input.centers.find(c=>c.id===String(r[0]));if(c){c.allocationUnit=String(r[2]);c.recipients[String(r[1])]=num(r[3]);}}
+  for(const r of rows('Driver Antarunit').slice(1)) {const c=input.centers.find(c=>c.id===String(r[0]));if(c){c.allocationUnit=String(r[2]);c.recipients[String(r[1])]=num(r[3]);c.staffAllocation=r[4]==='staf otomatis';}}
   const mapping=rows('Matriks 18');if(mapping.length){input.centers.filter(c=>c.group==='final').forEach(c=>c.mapping=emptyBill());for(const r of mapping.slice(1)){const c=input.centers.find(c=>c.id===String(r[0]));if(c&&KEYS.includes(String(r[1]) as typeof KEYS[number]))c.mapping[String(r[1]) as typeof KEYS[number]]=num(r[2]);}}
   for(const r of rows('Cakupan Klaim').slice(1)){const c=input.centers.find(c=>c.id===String(r[0]));if(c){c.coveredVolume=String(r[1]);c.coverageTotal=String(r[2]);}}
   for(const r of rows('Pengecualian').slice(1)){const c=input.centers.find(c=>c.id===String(r[0]));if(c){c.excluded=num(r[1]);c.costs.penyusutan=num(r[2]);c.depreciationIncluded=String(r[3])==='true';}}
-  if(!wb.Sheets['Pemicu JKN'])warnings.push('Template lama: pemicu dan matriks awal perlu diperiksa; driver antarunit dan cakupan belum tersedia.');
+  if(declaresStaffAllocation(wb)&&!wb.Sheets['Driver Antarunit']){
+    for(const donor of input.centers.filter(c=>c.group!=='final')){
+      donor.allocationUnit='orang';
+      donor.staffAllocation=true;
+      donor.recipients=Object.fromEntries(input.centers.filter(c=>donor.group==='overhead'?c.group!=='overhead':c.group==='final').map(c=>[c.id,c.sourceMetrics?.staff||'0']));
+    }
+  }
+  if(!wb.Sheets['Pemicu JKN'])warnings.push(declaresStaffAllocation(wb)?'Volume layanan dan driver staf dibaca dari enam sheet. Tinjau pemetaan 18 komponen dan cakupan klaim sebelum menghitung pasien.':'Template lama: pemicu dan matriks awal perlu diperiksa; driver antarunit dan cakupan belum tersedia.');
+  if(isSimulationWorkbook(wb))warnings.push('Workbook berisi data dummy untuk simulasi; bukan laporan keuangan aktual RS.');
+  warnings.push(...costingReconciliationIssues(wb,sheet));
   if(years.size>1)warnings.push('Tahun berbeda antarsheet; pilih tahun LK sebelum menghitung.');
   return {input,years:[...years].filter(Number.isFinite),warnings};
 }
@@ -95,13 +107,13 @@ export function templateWorkbook(input:Input) {
   const rows:unknown[][]=[['TEMPLATE COSTING REVISI 4'],['Tahun Data:',Number(input.settings.lkStart.slice(0,4))||new Date().getFullYear()]];
   for(const [g,title] of [['overhead','A. PUSAT BIAYA OVERHEAD'],['intermediate','B. PUSAT BIAYA INTERMEDIATE'],['final','C. PUSAT BIAYA FINAL']] as const) {
     rows.push([title],['No','Nama','Dasar','Staf','Hari rawat','Pasien','Kunjungan','ALOS','TT','Gaji','Jasa medis','Jasa lain','Operasional','Alat','Gedung','Dep alat','Dep gedung','Luas','Total','ID']);
-    input.centers.filter(c=>c.group===g).forEach((c,i)=>rows.push([i+1,c.name,c.driverUnit,0,0,0,0,0,0,c.costs.pegawai,c.costs.jasaMedis,c.costs.jasaLain,c.costs.operasional,'0',c.building,'0','0',0,'',c.id]));
+    input.centers.filter(c=>c.group===g).forEach((c,i)=>{const m=c.sourceMetrics;rows.push([i+1,c.name,m?.allocationBasis||c.driverUnit,m?.staff||0,m?.days||0,m?.patients||0,m?.visits||0,m?.alos||0,m?.beds||0,c.costs.pegawai,c.costs.jasaMedis,c.costs.jasaLain,c.costs.operasional,'0',c.building,'0','0',m?.area||0,'',c.id]);});
   }
   append('Costing Template',rows);
   append('Periode',[['Parameter','Nilai'],...Object.entries(input.settings).filter(([key])=>key!=='inflation'),...Object.entries(input.settings.inflation).map(([key,value])=>[`inflation.${key}`,value])]);
   append('Pemicu JKN',[['ID','Satuan','JKN','Total','Jenis rawat','Volume JKN inap','Volume JKN jalan'],...input.centers.map(c=>[c.id,c.driverUnit,c.jknVolume,c.totalVolume,c.care,c.inpatientVolume,c.outpatientVolume])]);
   append('Aset',[['ID pusat','Nama','Nilai','Umur tahun','Jenis'],...input.centers.flatMap(c=>[...c.assets.map(a=>[c.id,a.name,a.value,a.years,'alat']),[c.id,'Gedung',c.building,'40','gedung']])]);
-  append('Driver Antarunit',[['ID donor','ID penerima','Satuan','Volume'],...input.centers.flatMap(c=>Object.entries(c.recipients).map(([id,v])=>[c.id,id,c.allocationUnit,v]))]);
+  append('Driver Antarunit',[['ID donor','ID penerima','Satuan','Volume','Basis'],...input.centers.flatMap(c=>Object.entries(recipientDrivers(c,input.centers)).map(([id,v])=>[c.id,id,c.allocationUnit,v,c.staffAllocation?'staf otomatis':'manual']))]);
   append('Matriks 18',[['ID final','Komponen','Persen'],...input.centers.filter(c=>c.group==='final').flatMap(c=>KEYS.map(k=>[c.id,k,c.mapping[k]]))]);
   append('Cakupan Klaim',[['ID final','Volume tercakup','Volume JKN total'],...input.centers.filter(c=>c.group==='final').map(c=>[c.id,c.coveredVolume,c.coverageTotal])]);
   append('Pengecualian',[['ID pusat','Biaya dikecualikan','Penyusutan impor','Penyusutan sudah termasuk'],...input.centers.map(c=>[c.id,c.excluded,c.costs.penyusutan,String(c.depreciationIncluded)])]);

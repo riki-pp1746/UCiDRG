@@ -16,6 +16,7 @@
 
 import * as XLSX from 'xlsx';
 import { parseNumber } from '../../v4/numbers';
+import {costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
 import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
 // Bersihkan string dan lowercase
@@ -97,7 +98,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
             if (label === 'tipe rs') { if(row[1])parsedInfo.tipeRS=String(row[1]) as HospitalCostConfig['tipeRS'];return; }
             if (label === 'kepemilikan rs') { if(row[1])parsedInfo.kepemilikan=String(row[1]);return; }
             // Ignore headings and notes; only recognized numeric indicators are parsed.
-            if(!/bor|alos|tempat tidur|hari rawat|sdm|biaya gaji|jasa|remunerasi|operasional|penyusutan|pendapatan|subsidi|pendanaan pemerintah|^tahun data$/.test(label))return;
+            if(!/^(bor(?: \(%\))?|alos(?: \(hari\))?|jumlah tempat tidur|lama hari rawat (?:jkn|non jkn)|jumlah sdm (?:dokter|nakes|non nakes)|biaya gaji(?: total)?|biaya jasa\/remunerasi|biaya operasional lainnya|biaya penyusutan|pendapatan fungsional (?:jkn|non jkn)|pendapatan lainnya|subsidi\/pendanaan pemerintah|tahun data)$/.test(label))return;
             const value = safeFloat(row[1]);
             if (label.includes('bor')) parsedDataDasar.bor = value;
             else if (label.includes('alos')) parsedDataDasar.alos = value;
@@ -125,49 +126,11 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           const operationRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataOperasionalSheetName], { header: 1, defval: null }) as any[][];
           operationRows.slice(1).forEach(row => {
             const namaUnit = String(row[0] ?? '').trim();
-            if (namaUnit) parsedDataLayanan.push({ namaUnit, kunjunganJKN: safeFloat(row[1]), kunjunganNonJKN: safeFloat(row[2]), hariRawatJKN: safeFloat(row[3]), hariRawatNonJKN: safeFloat(row[4]) });
+            if (namaUnit&&!/^total\b/i.test(namaUnit)&&row.slice(1,5).every(v=>v==null||v===''||typeof v==='number'||/^[\d.,\s-]+$/.test(String(v)))) parsedDataLayanan.push({ namaUnit, kunjunganJKN: safeFloat(row[1]), kunjunganNonJKN: safeFloat(row[2]), hariRawatJKN: safeFloat(row[3]), hariRawatNonJKN: safeFloat(row[4]) });
           });
         }
 
-        // ── Pilih sheet yang tepat ──────────────────────────────────
-        // Prioritas:
-        // 1. Sheet bernama persis "Costing Dummy" (format template standar)
-        // 2. Sheet mengandung "dummy"
-        // 3. Sheet mengandung "costing" TAPI bukan yang terlalu pendek (template kosong)
-        // 4. Sheet mengandung "template" atau "input"
-        // 5. Sheet dengan paling banyak baris (paling banyak data)
-        let sheetName = workbook.SheetNames[0]; // fallback
-
-        const dummy = workbook.SheetNames.find(s => s.toLowerCase().includes('dummy'));
-        const costing = workbook.SheetNames.find(s => s.toLowerCase() === 'costing dummy' || s.toLowerCase().includes('costing dummy'));
-        const template = workbook.SheetNames.find(s => s.toLowerCase().includes('template'));
-        const input = workbook.SheetNames.find(s => s.toLowerCase().includes('input'));
-
-        if (costing) {
-          sheetName = costing;
-        } else if (dummy) {
-          sheetName = dummy;
-        } else if (template) {
-          sheetName = template;
-        } else if (input) {
-          sheetName = input;
-        } else {
-          // Pilih sheet dengan jumlah baris terbanyak (paling banyak data)
-          let maxRows = 0;
-          for (const sn of workbook.SheetNames) {
-            const s = workbook.Sheets[sn];
-            const ref = s['!ref'];
-            if (ref) {
-              const range = XLSX.utils.decode_range(ref);
-              if (range.e.r > maxRows) {
-                maxRows = range.e.r;
-                sheetName = sn;
-              }
-            }
-          }
-        }
-
-        console.log(`📊 Parsing sheet: "${sheetName}" dari [${workbook.SheetNames.join(', ')}]`);
+        const sheetName = costingSheetName(workbook);
 
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null }) as any[][];
@@ -176,6 +139,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         const intermediateCenters: IntermediateCenter[] = [];
         const finalCenters: FinalCenter[] = [];
         const importIssues:NonNullable<HospitalCostConfig['importIssues']>=[];
+        costingReconciliationIssues(workbook,sheetName).forEach((message,index)=>importIssues.push({id:`control-${index}`,sheet:'Data Dasar RS / Data LO Lapkeu',cell:'',message}));
 
         // State mesin parser
         type Section = 'overhead' | 'intermediate' | 'final' | null;
@@ -259,6 +223,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           const kunjungan   = safeFloat(row[6]);
           const alos        = typeof row[7] === 'number' ? row[7] : safeFloat(row[7]);
           const tt          = safeFloat(row[8]);
+          for(const column of [9,10,11,12,13,14])numericCellValue(workbook,sheetName,i,column);
           const gaji        = safeFloat(row[9]);
           const jasaMedis   = safeFloat(row[10]);
           const jasaLain    = safeFloat(row[11]);
@@ -363,7 +328,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ ...parsedInfo,importIssues,sourceOrigin:'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
+        resolve({ ...parsedInfo,importIssues,sourceOrigin:isSimulationWorkbook(workbook)?'contoh':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);

@@ -93,9 +93,9 @@ export function RVUInputForm() {
             <p className="text-gray-500 text-sm">Masukkan hasil Step-Down ke-18 komponen tarif E-Klaim.</p>
           </div>
           <div className="sm:ml-auto">
-            <a href="/Template_Costing_Standard.xlsx" download className="flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl hover:bg-teal-100 font-medium transition-colors text-sm">
+            <a href="/Template_Costing_Standard.xlsx" download="Template_Costing_RS_Simulasi_ABC_2025.xlsx" className="flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 border border-teal-200 rounded-xl hover:bg-teal-100 font-medium transition-colors text-sm">
               <Download className="w-4 h-4" />
-              Template Excel
+              Template simulasi 6 sheet
             </a>
           </div>
         </div>

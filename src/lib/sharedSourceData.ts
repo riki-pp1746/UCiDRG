@@ -24,11 +24,15 @@ export function sharedCostInput(config:HospitalCostConfig,current:Input):Input {
   const sources=group==='overhead'?config.overheadCenters:group==='intermediate'?config.intermediateCenters:config.finalCenters;
   for(const source of sources){
    const c=newCenter(group);c.id=source.id;c.name=source.nama;
+   c.sourceMetrics={staff:String(source.jumlahStaf||0),area:String(source.luasLantai||0),days:String('jumlahHariRawat' in source?source.jumlahHariRawat:0),patients:String('jumlahPasienPulang' in source?source.jumlahPasienPulang:0),visits:String('jumlahKunjungan' in source?source.jumlahKunjungan:0),alos:String('alos' in source?source.alos:0),beds:String('jumlahTempat' in source?source.jumlahTempat:0),allocationBasis:source.dasarAlokasi};
    c.costs={pegawai:String(source.biayaPegawai||0),jasaMedis:String(source.biayaJasaMedis||0),jasaLain:String(source.biayaJasaMedisLain||0),operasional:String(source.biayaOperasional||0),penyusutan:'0'};
    c.assets=source.hargaPeralatan5Tahun?[{id:`${source.id}-alat`,name:'Alat sumber (umur 5 tahun)',value:String(source.hargaPeralatan5Tahun),years:'5'}]:[];
    c.building=String(source.biayaInvestasiGedung||0);
    const category='kategori' in source?String(source.kategori):'';
    c.care=['rawat_inap','icu','perinatologi'].includes(category)?'inap':category==='rawat_jalan'?'jalan':'campuran';
+   if(group==='final'){const days=Number(c.sourceMetrics.days),visits=Number(c.sourceMetrics.visits);if(days>0&&visits===0)c.care='inap';else if(visits>0&&days===0)c.care='jalan';}
+   const depreciation=(source.depresiasiPeralatan||0)+(source.depresiasiGedung||0);
+   if(depreciation>0){c.costs.penyusutan=String(depreciation);c.depreciationIncluded=true;}
    const mapping=Object.fromEntries(KEYS.map(k=>[k,'0'])) as Claim['bill'];mapping[category==='icu'?'intensive_amt':category==='bedah'?'surgical_amt':c.care==='inap'?'room_amt':'procedure_amt']='100';c.mapping=mapping;
    const volumes=config.dataLayanan.find(v=>v.namaUnit===source.nama);
    if(volumes&&c.care!=='campuran'){const jkn=c.care==='inap'?volumes.hariRawatJKN:volumes.kunjunganJKN;const non=c.care==='inap'?volumes.hariRawatNonJKN:volumes.kunjunganNonJKN;c.driverUnit=c.care==='inap'?'hari rawat':'kunjungan';c.jknVolume=String(jkn);c.totalVolume=String(jkn+non);}

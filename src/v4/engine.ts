@@ -2,7 +2,7 @@ import {twoSDFlags} from '../lib/calculations/trimming';
 import {calculateIDRGTariff} from '../lib/calculations/idrgTariff';
 import {calculateHospitalBaseRate} from '../lib/calculations/hospitalBaseRate';
 import { dec, sum, ratio } from './numbers';
-import { KEYS, EXPENSES, emptyBill } from './types';
+import { KEYS, EXPENSES, emptyBill,recipientDrivers } from './types';
 import type { Input, Claim, Center, Care, Method, Result, Issue, Reference, MethodResult, Pool, PatientResult, Status } from './types';
 
 export function classify(tariff:string|null,cost:string,mode:'persen'|'rupiah',limit:string): Status {
@@ -120,11 +120,12 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
     if(method==='M1') {
       for(const donor of [...input.centers.filter(c=>c.group==='overhead'),...input.centers.filter(c=>c.group==='intermediate')]) {
         const recipients=input.centers.filter(c=>donor.group==='overhead'?c.group!=='overhead':c.group==='final');
-        if(Object.entries(donor.recipients).some(([id,v])=>dec(v).gt(0)&&!recipients.some(c=>c.id===id)))issue('V18',`Driver ${donor.name} menunjuk penerima yang tidak diizinkan.`,'error',method);
-        const total=sum(recipients.map(c=>donor.recipients[c.id]||'0')); const amount=dec(full.get(donor.id)||0);
-        if(amount.gt(0)&&(!total.gt(0)||!donor.allocationUnit||Object.values(donor.recipients).some(v=>dec(v).lt(0))))issue('V18',`Isi driver penerima ${donor.name} dengan satuan yang sama.`,'error',method);
+        const drivers=recipientDrivers(donor,input.centers);
+        if(Object.entries(drivers).some(([id,v])=>dec(v).gt(0)&&!recipients.some(c=>c.id===id)))issue('V18',`Driver ${donor.name} menunjuk penerima yang tidak diizinkan.`,'error',method);
+        const total=sum(recipients.map(c=>drivers[c.id]||'0')); const amount=dec(full.get(donor.id)||0);
+        if(amount.gt(0)&&(!total.gt(0)||!donor.allocationUnit||Object.values(drivers).some(v=>dec(v).lt(0))))issue('V18',`Isi driver penerima ${donor.name} dengan satuan yang sama.`,'error',method);
         if(total.gt(0)) for(const c of recipients) {
-          const driver=donor.recipients[c.id]||'0'; const allocation=amount.mul(driver).div(total);
+          const driver=drivers[c.id]||'0'; const allocation=amount.mul(driver).div(total);
           full.set(c.id,dec(full.get(c.id)||0).plus(allocation).toString());
           traces.push({donor:donor.name,recipient:c.name,driver,unit:donor.allocationUnit,amount:allocation.toString()});
         }
