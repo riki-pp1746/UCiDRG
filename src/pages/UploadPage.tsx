@@ -3,7 +3,7 @@ import {prepareIdentities} from '../lib/analysisIdentity';
 import {shareSourceData} from '../lib/sharedSourceData';
 
 import PageIntro from '../components/ui/PageIntro';
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
@@ -11,6 +11,7 @@ import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospital
 import {calculateAnalysisJob} from '../lib/analysisController';
 import { parseINACBGFile } from '../lib/parsers/inacbgParser';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
+import {readExcelClaims} from '../lib/excelClaimsJob';
 import { detectPeriodNormalization, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
 import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
@@ -36,15 +37,22 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
   const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization, sessions, activeSessionId, setActiveSession, deleteSession } = useCostingStore();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
+  const [phase,setPhase]=useState('Membaca file...');
   const [result, setResult] = useState<ProcessResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAbort=useRef<AbortController|null>(null);
+  useEffect(()=>()=>uploadAbort.current?.abort(),[]);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
     if(disabled)return;
     const fileArray = Array.from(files);
     if (fileArray.length === 0) return;
+    if(uploadAbort.current)return;
+    const abort=new AbortController();uploadAbort.current=abort;
+    let progressInterval:ReturnType<typeof setInterval>|undefined;
 
+    setPhase('Membaca file di latar belakang...');
     setUploadState('parsing');
     setProgress(10);
     setResult(null);
@@ -56,12 +64,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     if (txtFiles.length === 0 && excelFiles.length === 0) {
       setErrorMsg('Format file tidak didukung. Mohon unggah file .TXT (Klaim JKN (INA-CBG/iDRG)) atau .XLSX (Template Costing).');
       setUploadState('error');
+      uploadAbort.current=null;
       return;
     }
 
     try {
-      const progressInterval = setInterval(() => {
-        setProgress(p => Math.min(p + 5, 85));
+      if(fileArray.some(f=>f.size>250*1024*1024))throw new Error('Maksimal 250 MB per file. Pisahkan klaim per bulan.');
+      progressInterval = setInterval(() => {
+        setProgress(p => p<55?Math.min(p+5,55):p);
       }, 300);
 
       const processResult: ProcessResult = {
@@ -72,14 +82,26 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         errors: [],
       };
 
+      let combinedTxtRecords: any[] = [];
       // 1. Process Excel Files
       for (const file of excelFiles) {
         try {
+          const claims=await readExcelClaims(file,p=>setProgress(previous=>Math.max(previous,10+p*.6)),abort.signal);
+          if(abort.signal.aborted)return;
+          if(claims){
+            for(const record of claims.records)combinedTxtRecords.push(record);
+            processResult.txtFiles.push(file.name);
+            processResult.totalTxtRows+=claims.totalRows;processResult.totalParsedTxtRows+=claims.parsedRows;
+            processResult.errors.push(`Excel klaim dibaca dari satu sheet utama; pivot dan salinan severity tidak digabungkan. ${claims.parsedRows.toLocaleString('id-ID')} baris valid.`);
+            if(claims.errors.length)processResult.errors.push(...claims.errors);
+            continue;
+          }
+          if(file.size>5*1024*1024)throw new Error('Excel ini tidak dikenali sebagai klaim. Untuk costing gunakan template enam sheet; untuk klaim gunakan XLSX dengan judul KODE_RS/PTD/SEP atau TXT asli.');
           const parsedData = await parseExcelTemplate(file);
           useHospitalCostStore.setState(s => ({
             config: runStepDownCalculation({
               ...s.config,
-              sourceOrigin:'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(),importIssues:parsedData.importIssues||[],
+              sourceOrigin:parsedData.sourceOrigin||'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(),importIssues:parsedData.importIssues||[],
               namaRS: parsedData.namaRS || s.config.namaRS,
               tipeRS: parsedData.tipeRS || s.config.tipeRS,
               kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,
@@ -93,16 +115,16 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           }));
           processResult.excelFiles.push(file.name);
         } catch (e: any) {
+          if(abort.signal.aborted)return;
           processResult.errors.push(`Gagal memproses Excel ${file.name}: ${e.message}`);
         }
       }
 
       // 2. Process TXT Files
-      let combinedTxtRecords: any[] = [];
       for (const file of txtFiles) {
         try {
           const parseResult = await parseINACBGFile(file);
-          combinedTxtRecords = [...combinedTxtRecords, ...parseResult.records];
+          for(const record of parseResult.records)combinedTxtRecords.push(record);
           processResult.txtFiles.push(file.name);
           processResult.totalTxtRows += parseResult.totalRows;
           processResult.totalParsedTxtRows += parseResult.parsedRows;
@@ -115,11 +137,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
       }
 
       clearInterval(progressInterval);
-      setProgress(100);
+      if(!combinedTxtRecords.length&&!processResult.excelFiles.length)throw new Error(processResult.errors.join('\n')||'Tidak ada data valid yang berhasil dibaca.');
+      setProgress(70);
+      setPhase('Memeriksa identitas dan duplikasi klaim...');
 
       // Keep the first SEP across uploads; Excel-only imports never touch claims.
       if(combinedTxtRecords.length){
         combinedTxtRecords=await prepareIdentities(combinedTxtRecords);
+        if(abort.signal.aborted)return;
         const seen=new Set<string>();let duplicates=0;
         combinedTxtRecords=[...(claimMode==='append'?useCostingStore.getState().rawRecords:[]),...combinedTxtRecords].filter(record=>{const sep=String(record.sepToken||record.sep||'').trim();if(!sep)return true;if(seen.has(sep)){duplicates++;return false;}seen.add(sep);return true;});
         if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat: baris pertama dari urutan unggahan dipertahankan.`);
@@ -151,18 +176,27 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         // Upload harus langsung menghasilkan distribusi, bukan hanya menyimpan
         // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
         // yang sama ke engine Dashboard/Perbandingan/Laporan.
-        try{await calculateAnalysisJob(n=>setProgress(70+n*.25));}catch(error){processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
+        setPhase('Menghitung biaya pasien di latar belakang...');
+        try{await calculateAnalysisJob(n=>{if(!abort.signal.aborted)setProgress(80+n*.15);});}catch(error){processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
         processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
       }
 
+      if(abort.signal.aborted)return;
+      setPhase('Menyiapkan data analisis...');
       try{await shareSourceData({claims:combinedTxtRecords.length>0,costs:processResult.excelFiles.length>0,excel:excelFiles.filter(f=>processResult.excelFiles.includes(f.name)).slice(-1)[0]});}catch(error){processResult.errors.push('Data sumber tersimpan; sinkronisasi analisis terintegrasi perlu dicoba lagi: '+String(error));}
+      if(abort.signal.aborted)return;
+      setProgress(100);
       setResult(processResult);
       setUploadState('done');
 
     } catch (e) {
+      if(abort.signal.aborted)return;
       setErrorMsg(String(e));
       setUploadState('error');
+    }finally{
+      if(progressInterval!==undefined)clearInterval(progressInterval);
+      if(uploadAbort.current===abort)uploadAbort.current=null;
     }
   }, [setPeriodNormalization, setRawRecords,disabled,claimMode]);
 
@@ -195,6 +229,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
   };
 
   const reset = () => {
+    uploadAbort.current?.abort();uploadAbort.current=null;
     setUploadState('idle');
     setResult(null);
     setErrorMsg('');
@@ -206,12 +241,12 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     <div className="max-w-4xl mx-auto space-y-6">
       <p className="uc-notice">Unggah sekali untuk kedua ruang analisis. Data TXT dan biaya RS menjadi sumber bersama; hasil alokasi tetap dihitung terpisah. Parameter khusus analisis terintegrasi yang belum tersedia perlu dilengkapi, tanpa upload ulang.</p>
       {(rawRecords.length>0||sourceCost>0)&&<p className="uc-success" role="status">Data sumber sudah tersedia: {rawRecords.length.toLocaleString('id-ID')} klaim · biaya RS sumber Rp {Math.round(sourceCost).toLocaleString('id-ID')}. Tidak perlu upload ulang ketika berpindah ruang; lanjutkan memeriksa biaya dan parameter alokasi.</p>}
-      <label className="uc-label">Cara memasukkan TXT/CSV<select className="uc-input" value={claimMode} disabled={disabled||uploadState==='parsing'} onChange={e=>setClaimMode(e.target.value as 'append'|'replace')}><option value="append">Tambah ke sumber klaim bersama</option><option value="replace">Ganti seluruh sumber klaim bersama</option></select></label>
-      <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Template biaya RS (.XLSX), opsional - biaya juga bisa diisi manual di langkah berikutnya']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
+      <label className="uc-label">Cara memasukkan TXT/CSV/Excel<select className="uc-input" value={claimMode} disabled={disabled||uploadState==='parsing'} onChange={e=>setClaimMode(e.target.value as 'append'|'replace')}><option value="append">Tambah ke sumber klaim bersama</option><option value="replace">Ganti seluruh sumber klaim bersama</option></select></label>
+      <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Klaim dalam TXT/CSV atau Excel dengan judul kolom E-Klaim; costing Excel opsional']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Upload Excel Biaya RS dan TXT E-Klaim</h1>
-          <p className="text-gray-500 mt-1">Unggah beberapa file TXT Klaim JKN (INA-CBG/iDRG) dan Excel Template sekaligus.</p>
+          <p className="text-gray-500 mt-1">Unggah klaim TXT/CSV/Excel dan template costing. Excel klaim dibaca berdasarkan judul kolom.</p>
         </div>
         {rawRecords.length > 0 && (
           <button
@@ -380,13 +415,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           {uploadState === 'parsing' && (
             <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
               <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
-              <p className="text-gray-900 font-semibold mb-2">Memproses File Anda...</p>
+              <p className="text-gray-900 font-semibold mb-2">{phase}</p>
               <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-teal-500 transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
+              <button type="button" onClick={e=>{e.stopPropagation();reset();}} className="mt-4 text-sm text-red-700 underline">Batalkan unggah</button>
             </div>
           )}
 
@@ -395,7 +431,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           </div>
           <h2 className="text-xl font-bold text-gray-900">Tarik & Lepas File Di Sini</h2>
           <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
-            Mendukung file Data Pasien Klaim JKN (INA-CBG/iDRG) (.TXT) dan Template Keuangan (.XLSX)
+            Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)
           </p>
           <div className="mb-8">
             <a href="/Template_Costing_Standard.xlsx" download="Template_Costing_RS_Simulasi_ABC_2025.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">

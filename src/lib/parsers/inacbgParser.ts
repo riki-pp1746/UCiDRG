@@ -10,7 +10,7 @@ import Papa from 'papaparse';
 import { PatientRecord, BillingGroup, IDRGInfo } from '../../types/costing.types';
 
 // Header kolom sesuai file TXT aktual (93 kolom)
-const COLUMN_MAP = {
+export const COLUMN_MAP = {
   KODE_RS: 0,
   KELAS_RS: 1,
   KELAS_RAWAT: 2,
@@ -110,7 +110,7 @@ function calcAge(birthDate: string, admissionDate: string): number {
   return diff;
 }
 
-function parseRow(cols: string[]): PatientRecord | null {
+export function parseRow(cols: string[]): PatientRecord | null {
   if (!cols || cols.length < 80) return null;
   
   const get = (idx: number) => (cols[idx] || '').trim();

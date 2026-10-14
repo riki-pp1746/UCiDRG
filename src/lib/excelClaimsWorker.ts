@@ -1,0 +1,2 @@
+import {parseExcelClaims} from './parsers/excelClaimsParser';
+self.onmessage=async(e:MessageEvent<{file:File}>)=>{try{const file=e.data.file;if(file.size>250*1024*1024)throw Error('Maksimal 250 MB per file. Pisahkan klaim per bulan.');let last=-1;const result=await parseExcelClaims(await file.arrayBuffer(),file.name,value=>{const progress=Math.round(value);if(progress>last){last=progress;self.postMessage({progress});}});self.postMessage({result});}catch(e){self.postMessage({error:e instanceof Error?e.message:'Gagal membaca Excel klaim.'});}};
