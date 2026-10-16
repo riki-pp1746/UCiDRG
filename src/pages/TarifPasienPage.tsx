@@ -1,3 +1,6 @@
+import {shouldAutoAnalyse} from '../lib/largeData';
+import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
+import {proxyFromPatient} from '../lib/calculations/proxyCostWeight';
 import {analysisStale} from '../lib/analysisController';
 import {useMethodologyStore,effectiveMethodology} from '../stores/methodologyStore';
 import {ensureAnalysisExport,appendAnalysisSheets} from '../lib/analysisExport';
@@ -10,7 +13,7 @@ import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import PageIntro from '../components/ui/PageIntro';
 import { useSearchParams } from 'react-router-dom';
 import IDRGTariffPage from './IDRGTariffPage';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {buildBiayaRSMap,biayaRSMapToRVU} from '../stores/tarifPasienStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
@@ -46,12 +49,14 @@ export default function TarifPasienPage() {
   const localCosting=analysisStale()?null:storedLocalCosting;
   const { config } = useHospitalCostStore();
   const { rawRecords, periodNormalization } = useCostingStore();
+  const proxyEditable=useMethodologyStore(s=>s.role!=='Pembaca');
+
   const periodFactor = periodNormalization?.factor || 1;
 
 
   // Auto-sync patients dari rawRecords E-Klaim
   useEffect(() => {
-    if (rawRecords.length > 0 && patients.length === 0) {
+    if (rawRecords.length > 0 && patients.length === 0 && shouldAutoAnalyse(rawRecords.length)) {
       const mapped = rawRecords.map((r, i) => ({
         ...makeEmptyPatient(),
         id: r.internalId||r.sepToken||r.sep||`row-${i}`,
@@ -93,16 +98,16 @@ export default function TarifPasienPage() {
 
   // Recalculate saat tab pindah
   useEffect(() => {
-    if (activeTab !== 'input') {
+    if (activeTab !== 'input'&&shouldAutoAnalyse(rawRecords.length)) {
       calculateDistribution();
     }
   }, [activeTab, calculateDistribution,biayaRSMap,periodNormalization?.label]);
 
   useEffect(() => {
-    validateAgainstHospital(config, periodFactor);
+    if(shouldAutoAnalyse(rawRecords.length))validateAgainstHospital(config, periodFactor);
   }, [patients, biayaRSMap, storedLocalCosting, config, periodFactor, validateAgainstHospital]);
 
-  const filteredPatients=patients.filter(p=>(careFilter==='all'||(careFilter==='jalan'?p.kelasRawat==='rawat_jalan':p.kelasRawat!=='rawat_jalan'))&&`${maskSEP(p.noSEP)} ${p.drg} ${p.idrgDescription||''} ${p.diagnosis}`.toLowerCase().includes(query.toLowerCase()));
+  const filteredPatients=useMemo(()=>{const q=query.trim().toLowerCase();if(careFilter==='all'&&!q)return patients;return patients.filter(p=>(careFilter==='all'||(careFilter==='jalan'?p.kelasRawat==='rawat_jalan':p.kelasRawat!=='rawat_jalan'))&&(!q||`${maskSEP(p.noSEP)} ${p.drg} ${p.idrgDescription||''} ${p.diagnosis}`.toLowerCase().includes(q)));},[patients,careFilter,query]);
   const inputTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
   const resultTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));
   const inputPatients = filteredPatients.slice((Math.min(inputPage,inputTotalPages) - 1) * pageSize, inputPage * pageSize);
@@ -135,6 +140,7 @@ export default function TarifPasienPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
       <label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setInputPage(1);setResultPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label>{activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · pool JKN penuh {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = pool HBR aktif sesuai kebijakan ÷ total casemix positif. Biaya dikecualikan ditampilkan pada tab CW, Casemix & HBR RS.</p></section>}
+      {activeTab!=='tarif'&&<ProxyCostWeightPanel records={rawRecords} local={localCosting} scope="main" editable={proxyEditable}/>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -182,7 +188,7 @@ export default function TarifPasienPage() {
           </div>
           <button 
             onClick={() => {
-              validateAgainstHospital(config, periodFactor);
+              if(shouldAutoAnalyse(rawRecords.length))validateAgainstHospital(config, periodFactor);
               setShowValidationModal(true);
             }} 
             className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-300 rounded-lg text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"

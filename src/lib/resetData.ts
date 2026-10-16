@@ -1,3 +1,4 @@
+import {useProxyCWStore} from '../stores/proxyCWStore';
 import {useCostingStore} from '../stores/costingStore';
 import {useHospitalCostStore,runStepDownCalculation} from '../stores/hospitalCostStore';
 import {useTarifPasienStore} from '../stores/tarifPasienStore';
@@ -27,14 +28,15 @@ export async function resetApplicationData(scope:'active'|'total',integrated:boo
     return;
   }
   if(useV4Store.getState().workspace){
-    await useV4Store.getState().update(i=>({...i,claims:[],centers:[],corrections:[],importIssues:[],mappingVersion:i.mappingVersion+1}),integrated?'Reset sumber bersama dari analisis terintegrasi':'Reset sumber bersama dari analisis 18 komponen');
+    await useV4Store.getState().update(i=>({...i,claims:[],centers:[],workbookSource:undefined,corrections:[],importIssues:[],mappingVersion:i.mappingVersion+1}),integrated?'Reset sumber bersama dari analisis terintegrasi':'Reset sumber bersama dari analisis 18 komponen');
     useV4Store.setState({selected:null,importIssues:[]});
   }
   {
+    useProxyCWStore.setState({entries:{}});
     useCostingStore.getState().clearData();
     useCostingStore.setState({rvuGlobalCosts:undefined,isProcessing:false,processProgress:0});
     const config=useHospitalCostStore.getState().config;
-    useHospitalCostStore.setState({config:runStepDownCalculation({...config,dataDasar:{...DEFAULT_DATA_DASAR},dataLayanan:[],overheadCenters:[],intermediateCenters:[],finalCenters:[]})});
+    useHospitalCostStore.setState({config:runStepDownCalculation({...config,workbookSource:undefined,dataDasar:{...DEFAULT_DATA_DASAR},dataLayanan:[],overheadCenters:[],intermediateCenters:[],finalCenters:[]})});
     useTarifPasienStore.setState({patients:[],biayaRSMap:{},distribusi:[],validationIssues:[],localCosting:null});
   }
 }

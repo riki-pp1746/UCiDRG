@@ -59,6 +59,7 @@ export interface IDRGInfo {
 // Data Pasien Lengkap (1 baris dari file TXT)
 // ============================================================
 export interface PatientRecord {
+  proxySource?:{topup:number|null;missing:string[]};
   internalId?:string;
   sepToken?:string;
   sourceFile?:string;
@@ -82,6 +83,7 @@ export interface PatientRecord {
   discharge_date: string;
   los: number;
   icuDays?: number;
+  icuIndicator?:number;
   kelas_rawat: number;   // 1=Kelas 1, 2=Kelas 2, 3=Kelas 3, VIP
   discharge_status: number;
   

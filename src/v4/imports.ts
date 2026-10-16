@@ -1,3 +1,5 @@
+import {parseRow} from '../lib/parsers/inacbgParser';
+import {proxyFromPatient} from '../lib/calculations/proxyCostWeight';
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { parseNumber, dec } from './numbers';
@@ -6,7 +8,7 @@ import type { Input,Claim,Reference,Issue } from './types';
 import { validDate } from './engine';
 import {validateWorkbookSignature} from './security';
 import {appendTemplateHelp} from '../lib/templateGuidance';
-import {costingSheetName,numericCellValue,declaresStaffAllocation,isSimulationWorkbook,costingReconciliationIssues} from '../lib/costingWorkbookSchema';
+import {costingWorkbookFormat,workbookSourceIssues,workbookLO,costingSheetName,numericCellValue,declaresStaffAllocation,isSimulationWorkbook,costingReconciliationIssues} from '../lib/costingWorkbookSchema';
 
 function date(value:unknown){const s=String(value||'').trim();const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);return m?`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`:s;}
 function num(value:unknown){return value===''||value===null||value===undefined||value==='None'||value==='-'?'0':parseNumber(value);}
@@ -20,7 +22,8 @@ export function claimFromRow(cols:string[],file:string,row:number):Claim {
   const code=cols[82]||String(json.drg_code||'');
   if(!code&&!cols[19])throw new Error('Kode DRG dan INA-CBG kosong.');
   const flags=cols.slice(93).join(' ').toLowerCase();
-  return {id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:code?(cols[83]||String(json.drg_description||'')):(cols[26]||''),mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
+  const sourceRecord=parseRow(cols);
+  return {proxy:sourceRecord?proxyFromPatient(sourceRecord,row-1):undefined,id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:code?(cols[83]||String(json.drg_description||'')):(cols[26]||''),mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
 }
 export function parseClaimsText(text:string,file:string) {
   const claims:Claim[]=[];const issues:Issue[]=[];const rows=Papa.parse<string[]>(text,{delimiter:claimsDelimiter(text),skipEmptyLines:true}).data;
@@ -35,9 +38,12 @@ export function claimsDelimiter(text:string) {
 export interface ImportExcel { input:Input; years:number[]; warnings:string[]; }
 export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
   validateWorkbookSignature(bytes);
-  const wb=XLSX.read(bytes,{type:'array'});const input=structuredClone(current);const warnings:string[]=[];const years=new Set<number>();
+  const wb=XLSX.read(bytes,{type:'array'});const input={...current,settings:structuredClone(current.settings),references:[...current.references],corrections:[...current.corrections]};const warnings:string[]=[];const years=new Set<number>();
   const rows=(name:string)=>wb.Sheets[name]?XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name],{header:1,defval:''}):[];
   const sheet=costingSheetName(wb);
+  const format=costingWorkbookFormat(wb);
+  warnings.push(...workbookSourceIssues(wb).map(i=>`${i.sheet}!${i.cell}: ${i.message}`));
+  input.workbookSource={format,lo:workbookLO(wb)};
   const basic=wb.SheetNames.find(n=>/data\s*dasar/i.test(n));
   if(basic)for(const r of rows(basic)) {
     const label=String(r[0]).toLowerCase();
@@ -54,10 +60,11 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
     if(/b\.?\s*pusat biaya/.test(line)){group='intermediate';continue;}
     if(/c\.?\s*pusat biaya/.test(line)){group='final';continue;}
     if(!group||!/^\d+\.?\d*\)?$/.test(String(r[0]))||!r[1])continue;
-    const c=newCenter(group);c.id=String(r[19]||`${group}-${index}`);c.name=String(r[1]);
-    for(const column of [9,10,11,12,13,14])numericCellValue(wb,sheet,index,column);
-    c.sourceMetrics={staff:num(r[3]),area:num(r[17]),days:num(r[4]),patients:num(r[5]),visits:num(r[6]),alos:num(r[7]),beds:num(r[8]),allocationBasis:String(r[2]||'')};
-    c.costs={pegawai:num(r[9]),jasaMedis:num(r[10]),jasaLain:num(r[11]),operasional:num(r[12]),penyusutan:'0'};
+    const c=newCenter(group);c.id=String(format==='session'?r[19]||`${group}-${index}`:`${group}-${index}`);c.name=String(r[1]);
+    for(const column of [9,10,11,12,13,14,15,16])numericCellValue(wb,sheet,index,column);
+    const blankNumber=(v:unknown)=>v===''||v===null||v===undefined?'':num(v);
+    c.sourceMetrics={staff:blankNumber(r[3]),area:num(r[17]),days:num(r[4]),patients:num(r[5]),visits:num(r[6]),alos:num(r[7]),beds:num(r[8]),allocationBasis:String(r[2]||'')};
+    c.costs={pegawai:blankNumber(r[9]),jasaMedis:blankNumber(r[10]),jasaLain:blankNumber(r[11]),operasional:blankNumber(r[12]),penyusutan:'0'};
     c.assets=dec(num(r[13])).gt(0)?[{id:crypto.randomUUID(),name:'Alat (umur cadangan 5 tahun)',value:num(r[13]),years:'5'}]:[];c.building=num(r[14]);
     c.care=group==='final'&&dec(c.sourceMetrics.days).gt(0)&&!dec(c.sourceMetrics.visits).gt(0)?'inap':group==='final'&&dec(c.sourceMetrics.visits).gt(0)&&!dec(c.sourceMetrics.days).gt(0)?'jalan':/icu|iccu|nicu|picu|hcu|intensif|kelas|kamar|rawat inap|perinatologi/i.test(c.name)?'inap':/poli|rawat jalan/i.test(c.name)?'jalan':'campuran';
     if(r[15]!==''&&r[15]!=null&&r[16]!==''&&r[16]!=null){c.costs.penyusutan=dec(num(r[15])).plus(num(r[16])).toString();c.depreciationIncluded=true;}
@@ -69,7 +76,7 @@ export function importWorkbook(bytes:ArrayBuffer,current:Input):ImportExcel {
   if(operational)for(const r of rows(operational).slice(1)) {
     const c=input.centers.find(c=>c.name===String(r[0]));if(!c||c.care==='campuran')continue;
     const j=c.care==='inap'?r[3]:r[1], n=c.care==='inap'?r[4]:r[2];
-    c.driverUnit=c.care==='inap'?'hari rawat':'kunjungan';c.jknVolume=num(j);c.totalVolume=dec(num(j)).plus(num(n)).toString();
+    c.driverUnit=c.care==='inap'?'hari rawat':'kunjungan';c.jknVolume=j===''||j===null||j===undefined?'':num(j);c.totalVolume=[j,n].some(v=>v===''||v===null||v===undefined)?'':dec(num(j)).plus(num(n)).toString();
   }
   if(years.size===1){const year=[...years][0];input.settings.lkStart=`${year}-01-01`;input.settings.lkEnd=`${year}-12-31`;}
   const period=rows('Periode');for(const r of period.slice(1)){
@@ -110,6 +117,7 @@ export function templateWorkbook(input:Input) {
     input.centers.filter(c=>c.group===g).forEach((c,i)=>{const m=c.sourceMetrics;rows.push([i+1,c.name,m?.allocationBasis||c.driverUnit,m?.staff||0,m?.days||0,m?.patients||0,m?.visits||0,m?.alos||0,m?.beds||0,c.costs.pegawai,c.costs.jasaMedis,c.costs.jasaLain,c.costs.operasional,'0',c.building,'0','0',m?.area||0,'',c.id]);});
   }
   append('Costing Template',rows);
+  if(input.workbookSource?.lo.length)append('Data LO Lapkeu',[['Indikator','Realisasi (Rp)'],...input.workbookSource.lo.map(r=>[r.label,r.value])]);
   append('Periode',[['Parameter','Nilai'],...Object.entries(input.settings).filter(([key])=>key!=='inflation'),...Object.entries(input.settings.inflation).map(([key,value])=>[`inflation.${key}`,value])]);
   append('Pemicu JKN',[['ID','Satuan','JKN','Total','Jenis rawat','Volume JKN inap','Volume JKN jalan'],...input.centers.map(c=>[c.id,c.driverUnit,c.jknVolume,c.totalVolume,c.care,c.inpatientVolume,c.outpatientVolume])]);
   append('Aset',[['ID pusat','Nama','Nilai','Umur tahun','Jenis'],...input.centers.flatMap(c=>[...c.assets.map(a=>[c.id,a.name,a.value,a.years,'alat']),[c.id,'Gedung',c.building,'40','gedung']])]);

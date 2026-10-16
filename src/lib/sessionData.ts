@@ -1,3 +1,5 @@
+import {cancelAnalysisJob} from './analysisController';
+import {useProxyCWStore} from '../stores/proxyCWStore';
 import {useMethodologyStore} from '../stores/methodologyStore';
 import {useAnalysisHistoryStore} from '../stores/analysisHistoryStore';
 import {clearIdentityKey} from './analysisIdentity';
@@ -11,7 +13,9 @@ import {purgeLegacyDatabase} from '../v4/storage';
 import {clearSessionMemory} from './sessionMemory';
 
 export function clearAnalysisSession(){
+  cancelAnalysisJob();
   endIntegratedSession();
+  useProxyCWStore.setState({entries:{}});
   clearIdentityKey();
   useMethodologyStore.setState(useMethodologyStore.getInitialState(),true);
   useAnalysisHistoryStore.setState({entries:[]});

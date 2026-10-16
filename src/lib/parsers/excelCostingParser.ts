@@ -16,7 +16,7 @@
 
 import * as XLSX from 'xlsx';
 import { parseNumber } from '../../v4/numbers';
-import {costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
+import {costingWorkbookFormat,workbookSourceIssues,workbookLO,costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
 import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
 // Bersihkan string dan lowercase
@@ -130,6 +130,8 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           });
         }
 
+        const sourceIssues=workbookSourceIssues(workbook);
+        parsedInfo={...parsedInfo,workbookSource:{format:costingWorkbookFormat(workbook),lo:workbookLO(workbook)}};
         const sheetName = costingSheetName(workbook);
 
         const sheet = workbook.Sheets[sheetName];
@@ -223,7 +225,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           const kunjungan   = safeFloat(row[6]);
           const alos        = typeof row[7] === 'number' ? row[7] : safeFloat(row[7]);
           const tt          = safeFloat(row[8]);
-          for(const column of [9,10,11,12,13,14])numericCellValue(workbook,sheetName,i,column);
+          for(const column of [9,10,11,12,13,14,15,16])numericCellValue(workbook,sheetName,i,column);
           const gaji        = safeFloat(row[9]);
           const jasaMedis   = safeFloat(row[10]);
           const jasaLain    = safeFloat(row[11]);
@@ -328,7 +330,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ ...parsedInfo,importIssues,sourceOrigin:isSimulationWorkbook(workbook)?'contoh':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
+        resolve({ ...parsedInfo,importIssues:[...sourceIssues,...importIssues],sourceOrigin:isSimulationWorkbook(workbook)?'contoh':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);

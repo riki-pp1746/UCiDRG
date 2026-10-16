@@ -1,3 +1,4 @@
+import {shouldAutoAnalyse} from '../lib/largeData';
 import {sessionMemoryStorage} from '../lib/sessionMemory';
 // ============================================================
 // STORE: costingStore.ts
@@ -113,13 +114,13 @@ export const useCostingStore = create<CostingState>()(
           summaryINACBG: null,
           summaryIDRG: null,
         });
-        // Auto-process
-        setTimeout(() => get().processData(), 100);
+        // The upload controller owns analysis scheduling; do not also run the legacy engine.
       },
 
       processData: () => {
         const { rawRecords, overheadConfig, tarifIDRGConfig, rvuGlobalCosts, periodNormalization, sessions, activeSessionId } = get();
         if (!rawRecords.length) return;
+        if(!shouldAutoAnalyse(rawRecords.length)){set({isProcessing:false,processProgress:0});return;}
 
         set({ isProcessing: true, processProgress: 10 });
 

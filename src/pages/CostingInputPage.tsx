@@ -1,3 +1,5 @@
+import {shouldAutoAnalyse} from '../lib/largeData';
+import {calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
@@ -308,6 +310,7 @@ export default function CostingInputPage() {
   // Recalculate otomatis saat masuk ke tab distribusi18
   useEffect(() => {
     if (activeTab === 'distribusi18') {
+      if(!shouldAutoAnalyse(useCostingStore.getState().rawRecords.length))return;
       // 1. Sinkronisasi data TXT E-Klaim terlebih dahulu
       const rawRecords = useCostingStore.getState().rawRecords;
       const tarifState = useTarifPasienStore.getState();
@@ -363,6 +366,7 @@ export default function CostingInputPage() {
   const hasBiayaGajiError = validation.errors.has('biaya-gaji');
 
   const handleAutoMapBiaya = () => {
+    if(!shouldAutoAnalyse(useCostingStore.getState().rawRecords.length)){void calculateAnalysisJob().catch(e=>toast.error(String(e)));return;}
     const state = useTarifPasienStore.getState();
     const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
       acc[key] = state.patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);

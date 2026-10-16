@@ -1,6 +1,6 @@
 import type {Input,Claim,Issue} from './types';
 export function mergeCostInput(current:Input,imported:Input):Input {
-  return {...current,hospital:imported.hospital,centers:imported.centers,settings:imported.settings,mappingVersion:current.mappingVersion+1,corrections:[]};
+  return {...current,hospital:imported.hospital,workbookSource:imported.workbookSource,centers:imported.centers,settings:imported.settings,mappingVersion:current.mappingVersion+1,corrections:[]};
 }
 export function appendClaims(existing:Claim[],incoming:Claim[],issues:Issue[]){
   const claims=[...existing];const seen=new Set(existing.filter(c=>c.sep.trim()).map(c=>c.sep.trim()));const conflicts:Issue[]=[];

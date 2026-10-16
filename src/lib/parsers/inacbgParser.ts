@@ -185,6 +185,7 @@ export function parseRow(cols: string[]): PatientRecord | null {
   const admissionDate = parseDate(get(COLUMN_MAP.ADMISSION_DATE));
   
   return {
+    proxySource:{topup:get(87)!==''?parseNum(get(87)):null,missing:[0,1,4,6,10,11,19,27,39,41,42,50,52,80,82,87,91,92,...Array.from({length:18},(_,i)=>60+i)].filter(i=>!get(i)).map(i=>'Kolom '+i+' kosong')},
     pending:cols.slice(93).join(' ').toLowerCase().includes('pending'),
     disputed:cols.slice(93).join(' ').toLowerCase().includes('dispute'),
     kode_rs: get(COLUMN_MAP.KODE_RS),
@@ -198,6 +199,7 @@ export function parseRow(cols: string[]): PatientRecord | null {
     admission_date: admissionDate,
     discharge_date: parseDate(get(COLUMN_MAP.DISCHARGE_DATE)),
     los: parseNum(get(COLUMN_MAP.LOS)),
+    icuIndicator:get(COLUMN_MAP.ICU_INDIKATOR)!==''?parseNum(get(COLUMN_MAP.ICU_INDIKATOR)):undefined,
     icuDays:get(COLUMN_MAP.ICU_LOS)?parseNum(get(COLUMN_MAP.ICU_LOS)):undefined,
     kelas_rawat: parseNum(get(COLUMN_MAP.KELAS_RAWAT)),
     discharge_status: parseNum(get(COLUMN_MAP.DISCHARGE_STATUS)),

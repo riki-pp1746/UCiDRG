@@ -2,11 +2,12 @@ import type {PatientRecord} from '../types/costing.types';
 import type {HospitalCostConfig} from '../types/hospitalCost.types';
 import type {Methodology} from '../stores/methodologyStore';
 export interface QualityIssue {id:string;severity:'error'|'warning'|'info';message:string;source:string;count:number;examples:string[]}
-export function claimQuality(rows:PatientRecord[]):QualityIssue[]{
+const qualityCache=new WeakMap<PatientRecord[],QualityIssue[]>();
+function qualityAccumulator(){
  const findings=new Map<string,QualityIssue>();const seen=new Set<string>();
  const add=(id:string,severity:QualityIssue['severity'],message:string,r:PatientRecord,i:number)=>{const finding=findings.get(id)||{id,severity,message,source:'/upload',count:0,examples:[]};finding.count++;if(finding.examples.length<5)finding.examples.push(`${r.sourceFile||'Data'}: baris ${r.sourceRow||i+1}`);findings.set(id,finding);};
  const validDate=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
- rows.forEach((r,i)=>{const sep=r.sepToken||r.sep?.trim();if(sep&&seen.has(sep))add('duplicate','error','SEP duplikat dapat menggandakan biaya. Periksa sumber dan pertahankan satu episode yang sah.',r,i);if(sep)seen.add(sep);
+ return {add(r:PatientRecord,i:number){const sep=r.sepToken||r.sep?.trim();if(sep&&seen.has(sep))add('duplicate','error','SEP duplikat dapat menggandakan biaya. Periksa sumber dan pertahankan satu episode yang sah.',r,i);if(sep)seen.add(sep);
   if(!r.sep?.trim())add('sep-empty','error','SEP kosong. Lengkapi identitas episode pada sumber; masking bukan pengganti identitas unik.',r,i);
   if(r.ptd!==1&&r.ptd!==2)add('care','error','Jenis rawat bukan 1/2. Koreksi sumber sebelum memakai hasil.',r,i);
   if(!validDate(r.admission_date)||!validDate(r.discharge_date))add('date','warning','Tanggal tidak valid. Konfirmasi periode dan perbaiki tanggal sumber.',r,i);
@@ -16,7 +17,15 @@ export function claimQuality(rows:PatientRecord[]):QualityIssue[]{
   if(!bills.some(v=>v>0))add('zero','warning','Semua komponen tagihan nol. Kasus tetap ditampilkan untuk peninjauan.',r,i);
   if(Number.isFinite(r.tarif_rs)&&r.tarif_rs>0&&Math.abs(bills.reduce((a,b)=>a+b,0)-r.tarif_rs)>1)add('billing-total','warning','Total tagihan berbeda dari jumlah 18 komponen. Konfirmasi cakupan tagihan sumber.',r,i);
   if(!r.idrg?.drg_code)add('code','warning','Kode iDRG kosong. Biaya tetap masuk pool; kasus belum membentuk casemix.',r,i);
- });return [...findings.values()];
+ },finish:()=>[...findings.values()]};
+}
+export function claimQuality(rows:PatientRecord[]):QualityIssue[]{
+ const cached=qualityCache.get(rows);if(cached)return cached.map(i=>({...i,examples:[...i.examples]}));
+ const accumulator=qualityAccumulator();rows.forEach((r,i)=>accumulator.add(r,i));const result=accumulator.finish();qualityCache.set(rows,result);return result.map(i=>({...i,examples:[...i.examples]}));
+}
+export async function prepareClaimQuality(rows:PatientRecord[],signal?:AbortSignal,progress:(n:number)=>void=()=>{}){
+ const accumulator=qualityAccumulator();for(let i=0;i<rows.length;i++){accumulator.add(rows[i],i);if(i%2000===1999){if(signal?.aborted)throw new DOMException('Proses dibatalkan.','AbortError');progress((i+1)/rows.length*100);await new Promise<void>(resolve=>setTimeout(resolve,0));}}
+ if(signal?.aborted)throw new DOMException('Proses dibatalkan.','AbortError');qualityCache.set(rows,accumulator.finish());
 }
 export function inputQuality(config:HospitalCostConfig,rows:PatientRecord[],options:Methodology,origin:string):QualityIssue[]{
  const issues=claimQuality(rows);const add=(id:string,severity:QualityIssue['severity'],message:string,source='/costing')=>issues.push({id,severity,message,source,count:1,examples:[]});

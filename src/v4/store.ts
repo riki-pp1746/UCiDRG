@@ -65,9 +65,9 @@ export const useV4Store=create<Store>((set,get)=>({
   cancel:()=>cancelJob?.(),
   importCosts:async(input,reason)=>get().update(current=>mergeCostInput(current,input),reason),
   clearInput:async(scope)=>{
-    await get().update(i=>scope==='claims'?{...i,claims:[],importIssues:[],corrections:[]}:{...i,centers:[],corrections:[],mappingVersion:i.mappingVersion+1},scope==='claims'?'Hapus seluruh klaim aktif':'Hapus seluruh biaya RS aktif');
+    await get().update(i=>scope==='claims'?{...i,claims:[],importIssues:[],corrections:[]}:{...i,workbookSource:undefined,centers:[],corrections:[],mappingVersion:i.mappingVersion+1},scope==='claims'?'Hapus seluruh klaim aktif':'Hapus seluruh biaya RS aktif');
     if(scope==='claims'){useCostingStore.getState().clearData();useTarifPasienStore.getState().clearPatients();}
-    else{const config=useHospitalCostStore.getState().config;useHospitalCostStore.setState({config:runStepDownCalculation({...config,overheadCenters:[],intermediateCenters:[],finalCenters:[],dataLayanan:[]})});useTarifPasienStore.setState({biayaRSMap:{},distribusi:[],localCosting:null});useCostingStore.setState({rvuGlobalCosts:undefined,patientResults:[],inacbgResults:[],idrgResults:[],summaryINACBG:null,summaryIDRG:null});}
+    else{const config=useHospitalCostStore.getState().config;useHospitalCostStore.setState({config:runStepDownCalculation({...config,workbookSource:undefined,overheadCenters:[],intermediateCenters:[],finalCenters:[],dataLayanan:[]})});useTarifPasienStore.setState({biayaRSMap:{},distribusi:[],localCosting:null});useCostingStore.setState({rvuGlobalCosts:undefined,patientResults:[],inacbgResults:[],idrgResults:[],summaryINACBG:null,summaryIDRG:null});}
     set({selected:null,importIssues:scope==='claims'?[]:get().importIssues});
   },
   upload:async(files,mode='append')=>{

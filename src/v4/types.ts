@@ -24,6 +24,7 @@ export function recipientDrivers(donor:Center,centers:Center[]):Record<string,st
   return donor.staffAllocation?Object.fromEntries(centers.filter(c=>donor.group==='overhead'?c.group!=='overhead':c.group==='final').map(c=>[c.id,c.sourceMetrics?.staff||'0'])):donor.recipients;
 }
 export interface Claim {
+  proxy?:import('../lib/calculations/proxyCostWeight').ProxyClaim;
   id: string; sep: string; code: string; inacbg: string; description: string; mdc: string;
   care: Care; admission: string; discharge: string; bill: Record<Key,Money>;
   tariffINA: Money; tariffIDRG: Money; pending: boolean; disputed: boolean;
@@ -45,6 +46,7 @@ export interface Settings {
 }
 export interface Correction { id: string; method: Method; care: Care; key: Key; value: Money; before: Money; reason: string; actor: string; at: string; }
 export interface Input {
+  workbookSource?:{format:string;lo:{label:string;value:number}[]};
   schema: 4; hospital: string; centers: Center[]; claims: Claim[]; settings: Settings;
   references: Reference[]; mappingVersion: number; corrections: Correction[]; importIssues?: Issue[];
 }

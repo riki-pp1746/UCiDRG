@@ -6,7 +6,7 @@ import {importWorkbook,templateWorkbook} from '../src/v4/imports';
 import {initialInput,recipientDrivers} from '../src/v4/types';
 import {calculate} from '../src/v4/engine';
 import {costingSheetName,numericCellValue} from '../src/lib/costingWorkbookSchema';
-const bytes=()=>readFileSync('public/Template_Costing_Standard.xlsx');
+const bytes=()=>readFileSync('tests/fixtures/Template_Costing_Legacy.xlsx');
 it('standard download is masked and has six requested sheets',()=>{
  const b=XLSX.read(bytes(),{type:'buffer'});expect(b.SheetNames).toEqual(['Panduan Pengisian','Data Dasar RS','Data Operasional','Data LO Lapkeu','Costing Template','Rumus Perhitungan']);
  expect(JSON.stringify(b)).not.toMatch(/Hasan|Sadikin|RSHS|Mega Oktaviany|PUSBIKES|Downloads/i);
@@ -15,7 +15,7 @@ it('standard download is masked and has six requested sheets',()=>{
 it('both imports read the same units, staff, volumes, identity and costs',async()=>{
  const b=bytes();vi.stubGlobal('FileReader',class{onload:any;readAsBinaryString(){this.onload({target:{result:b.toString('binary')}})}});
  try{const old=await parseExcelTemplate({name:'standard.xlsx'} as File);const modern=importWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),initialInput());
- expect(old.sourceOrigin).toBe('contoh');expect(old.importIssues).toHaveLength(0);expect(modern.input.hospital).toBe('RS Simulasi ABC');expect(modern.input.centers).toHaveLength(54);
+ expect(old.sourceOrigin).toBe('contoh');expect(old.importIssues).toEqual([]);expect(modern.input.hospital).toBe('RS Simulasi ABC');expect(modern.input.centers).toHaveLength(54);
  const centers=[...old.overheadCenters!,...old.intermediateCenters!,...old.finalCenters!];expect(centers.reduce((s,c)=>s+c.jumlahStaf,0)).toBe(900);
  expect(modern.input.centers.reduce((s,c)=>s+Number(c.sourceMetrics?.staff),0)).toBe(900);
  for(const c of centers){const n=modern.input.centers.find(n=>n.name===c.nama)!;expect(Number(n.costs.pegawai)).toBe(c.biayaPegawai);expect(Number(n.costs.penyusutan)).toBe(c.depresiasiPeralatan+c.depresiasiGedung);}

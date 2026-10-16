@@ -10,8 +10,9 @@ let sessionWorkspace:Workspace|undefined;
 const sessionSnapshots=new Map<string,Snapshot>();
 let sessionEpoch=0;
 export function clearAnalysisMemory(){sessionEpoch++;sessionWorkspace=undefined;sessionSnapshots.clear();}
-export async function readWorkspace():Promise<Workspace|undefined>{return sessionWorkspace?structuredClone(sessionWorkspace):undefined;}
-export async function writeWorkspace(value:Workspace){sessionWorkspace=structuredClone(value);}
+function workspaceCopy(value:Workspace):Workspace{const copy:Workspace=structuredClone({...value,input:{...value.input,claims:[]}});copy.input.claims=value.input.claims;return copy;}
+export async function readWorkspace():Promise<Workspace|undefined>{return sessionWorkspace?workspaceCopy(sessionWorkspace):undefined;}
+export async function writeWorkspace(value:Workspace){sessionWorkspace=workspaceCopy(value);}
 export async function resetWorkspaceStorage(){
   clearAnalysisMemory();const workspace=freshWorkspace();
   workspace.audit=[audit('admin','Reset total','Data sesi dan riwayat dikosongkan oleh pengguna.')];

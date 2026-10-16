@@ -1,11 +1,30 @@
 import * as XLSX from 'xlsx';
 
 export const STANDARD_COSTING_TEMPLATE_URL='/Template_Costing_Standard.xlsx';
-export const STANDARD_COSTING_TEMPLATE_FILENAME='Template_Costing_RS_Simulasi_ABC_2025.xlsx';
+export const STANDARD_COSTING_TEMPLATE_FILENAME='Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx';
 export function downloadStandardCostingTemplate(){
  const link=document.createElement('a');link.href=STANDARD_COSTING_TEMPLATE_URL;link.download=STANDARD_COSTING_TEMPLATE_FILENAME;link.click();
 }
 export const workbookRows=(book:XLSX.WorkBook,name:string):unknown[][]=>book.Sheets[name]?XLSX.utils.sheet_to_json(book.Sheets[name],{header:1,defval:null}):[];
+export function costingWorkbookFormat(book:XLSX.WorkBook):'workshop-do'|'session'|'legacy'{
+ const sheet=costingSheetName(book);
+ if(workbookRows(book,sheet).some(r=>r[19]==='ID'))return 'session';
+ return workbookRows(book,'Data Dasar RS').some(r=>String(r[3]).includes('Definisi Operasional'))?'workshop-do':'legacy';
+}
+/** Check source and calculated numeric cells, never consume Excel's validation text as data. */
+export function workbookSourceIssues(book:XLSX.WorkBook){
+ const issues:{id:string;sheet:string;cell:string;message:string}[]=[];
+ const sheet=costingSheetName(book);
+ const inspect=(name:string,row:number,column:number,required:boolean)=>{
+  const address=XLSX.utils.encode_cell({r:row,c:column}),v=numericCellValue(book,name,row,column);
+  if(required&&(v===null||v===undefined||v===''))issues.push({id:`${name}-${address}`,sheet:name,cell:address,message:'Nilai kosong; belum dinyatakan nol.'});
+ };
+ workbookRows(book,sheet).forEach((r,row)=>{if(/^\d+\.?\d*\)?$/.test(String(r[0]))&&r[1])for(const c of [3,9,10,11,12,13,14,15,16,17])inspect(sheet,row,c,c!==15&&c!==16);});
+ for(const name of ['Data Dasar RS','Data LO Lapkeu'])workbookRows(book,name).forEach((r,row)=>{if(!r[0]||/^([IVX]+\.|BEBAN$|PENDAPATAN$|Catatan|Status|LAPORAN OPERASIONAL)/i.test(String(r[0])))return;if(name==='Data Dasar RS'&&(!r[0]||/nama|tipe|kepemilikan|data dasar|catatan/i.test(String(r[0]))))return;inspect(name,row,1,true);});
+ workbookRows(book,'Data Operasional').forEach((r,row)=>{if(row===0||!r[0]||/^total|catatan|panduan/i.test(String(r[0])))return;for(const col of [1,2,3,4])inspect('Data Operasional',row,col,true);});
+ return issues;
+}
+export function workbookLO(book:XLSX.WorkBook){return workbookRows(book,'Data LO Lapkeu').filter(r=>r[0]&&typeof r[1]==='number').map(r=>({label:String(r[0]),value:Number(r[1])}));}
 export function costingSheetName(book:XLSX.WorkBook){
  const exact=book.SheetNames.find(n=>n.trim().toLowerCase()==='costing template')||book.SheetNames.find(n=>n.trim().toLowerCase()==='costing dummy');
  if(exact)return exact;

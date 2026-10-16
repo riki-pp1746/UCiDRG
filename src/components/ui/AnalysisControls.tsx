@@ -1,4 +1,4 @@
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {useMethodologyStore,defaultMethodology,CALC_VERSION} from '../../stores/methodologyStore';
 import type {Methodology} from '../../stores/methodologyStore';
@@ -56,7 +56,7 @@ export function MethodologyControls(){
 export function AnalysisReviewPanel(){
  const policy=useMethodologyStore();const raw=useCostingStore(s=>s.rawRecords);const period=useCostingStore(s=>s.periodNormalization);const config=useHospitalCostStore(s=>s.config);const snapshot=useTarifPasienStore(s=>s.snapshot);const local=useTarifPasienStore(s=>s.localCosting);const view=useAnalysisView();
  const [error,setError]=useState('');const [password,setPassword]=useState('');const [preview,setPreview]=useState<BackupPayload|null>(null);const [busy,setBusy]=useState(false);const [progress,setProgress]=useState(0);const [remind,setRemind]=useState(false);const history=useAnalysisHistoryStore();
- const issues=snapshot?.issues||inputQuality(config,raw,policy.settings,config.sourceOrigin||'contoh');const blocked=issues.some(i=>i.severity==='error');
+ const issues=useMemo(()=>snapshot?.issues||inputQuality(config,raw,policy.settings,config.sourceOrigin||'contoh'),[snapshot,config,raw,policy.settings]);const blocked=issues.some(i=>i.severity==='error');
  useEffect(()=>{const dirty=()=>raw.length>0&&(!policy.lastBackup||Boolean(snapshot&&Date.parse(snapshot.at)>policy.lastBackup));const leave=(e:BeforeUnloadEvent)=>{if(dirty()){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',leave);const timer=setInterval(()=>{if(dirty())setRemind(true);},policy.settings.reminderMinutes*60000);return()=>{window.removeEventListener('beforeunload',leave);clearInterval(timer);};},[raw.length,policy.lastBackup,policy.settings.reminderMinutes,snapshot]);
  const run=async(fn:()=>void|Promise<void>)=>{setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}};
  return <section className="uc-panel mb-5 space-y-3 print:hidden" aria-label="Kualitas dan cadangan analisis"><div className="flex flex-wrap gap-3 items-center justify-between"><p className="font-semibold">{config.sourceOrigin==='contoh'||!config.sourceOrigin?'DATA CONTOH':'Biaya '+config.sourceOrigin} · {CALC_VERSION} · {raw.length.toLocaleString('id-ID')} kasus sumber</p><button className="uc-primary" disabled={busy||!raw.length||policy.role==='Pembaca'} onClick={()=>void run(()=>calculateAnalysisJob(setProgress))}>Hitung ulang</button></div><p className="text-xs">{config.sourceFilename||'Biaya bawaan/manual'} · {config.sourceAt?new Date(config.sourceAt).toLocaleString('id-ID'):''} · {snapshot?'Hasil tersimpan dalam sesi':'Hasil perlu dihitung'} · {policy.lastBackup?'Cadangan terakhir '+new Date(policy.lastBackup).toLocaleTimeString('id-ID'):'Perubahan belum dicadangkan'}</p>

@@ -1,3 +1,8 @@
+import {readDelimitedClaims} from '../lib/delimitedClaimsJob';
+import {mergeClaimSources} from '../lib/mergeClaimSources';
+import {shouldAutoAnalyse,MAX_TEXT_FILE_BYTES} from '../lib/largeData';
+import {prepareClaimQuality} from '../lib/analysisQuality';
+import {useTarifPasienStore} from '../stores/tarifPasienStore';
 import {prepareIdentities} from '../lib/analysisIdentity';
 
 import {shareSourceData} from '../lib/sharedSourceData';
@@ -9,10 +14,10 @@ import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 
 import {calculateAnalysisJob} from '../lib/analysisController';
-import { parseINACBGFile } from '../lib/parsers/inacbgParser';
+
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {readExcelClaims} from '../lib/excelClaimsJob';
-import { detectPeriodNormalization, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
+import { detectPeriodNormalizationAsync, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
 import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -69,10 +74,8 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     }
 
     try {
-      if(fileArray.some(f=>f.size>250*1024*1024))throw new Error('Maksimal 250 MB per file. Pisahkan klaim per bulan.');
-      progressInterval = setInterval(() => {
-        setProgress(p => p<55?Math.min(p+5,55):p);
-      }, 300);
+      if(fileArray.some(f=>f.size>(/\.(txt|csv)$/i.test(f.name)?MAX_TEXT_FILE_BYTES:250*1024*1024)))throw new Error('Maksimal 2 GB per TXT/CSV dan 250 MB per Excel.');
+
 
       const processResult: ProcessResult = {
         txtFiles: [],
@@ -101,7 +104,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           useHospitalCostStore.setState(s => ({
             config: runStepDownCalculation({
               ...s.config,
-              sourceOrigin:parsedData.sourceOrigin||'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(),importIssues:parsedData.importIssues||[],
+              workbookSource:parsedData.workbookSource,sourceOrigin:parsedData.sourceOrigin||'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(),importIssues:parsedData.importIssues||[],
               namaRS: parsedData.namaRS || s.config.namaRS,
               tipeRS: parsedData.tipeRS || s.config.tipeRS,
               kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,
@@ -123,7 +126,9 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
       // 2. Process TXT Files
       for (const file of txtFiles) {
         try {
-          const parseResult = await parseINACBGFile(file);
+          const fileIndex=txtFiles.indexOf(file);
+          const parseResult = await readDelimitedClaims(file,(p,rows)=>{if(!abort.signal.aborted){setProgress(10+(fileIndex+p/100)/txtFiles.length*50);setPhase(`Membaca ${file.name}: ${rows.toLocaleString('id-ID')} pasien`);}},abort.signal);
+          if(abort.signal.aborted)return;
           for(const record of parseResult.records)combinedTxtRecords.push(record);
           processResult.txtFiles.push(file.name);
           processResult.totalTxtRows += parseResult.totalRows;
@@ -132,21 +137,22 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             processResult.errors.push(`[${file.name}] ${parseResult.errors.length} baris gagal diparsing.`);
           }
         } catch (e: any) {
+          if(abort.signal.aborted)return;
           processResult.errors.push(`Gagal memproses TXT ${file.name}: ${String(e)}`);
         }
       }
 
       clearInterval(progressInterval);
       if(!combinedTxtRecords.length&&!processResult.excelFiles.length)throw new Error(processResult.errors.join('\n')||'Tidak ada data valid yang berhasil dibaca.');
-      setProgress(70);
+      setProgress(60);
       setPhase('Memeriksa identitas dan duplikasi klaim...');
 
       // Keep the first SEP across uploads; Excel-only imports never touch claims.
       if(combinedTxtRecords.length){
         combinedTxtRecords=await prepareIdentities(combinedTxtRecords);
         if(abort.signal.aborted)return;
-        const seen=new Set<string>();let duplicates=0;
-        combinedTxtRecords=[...(claimMode==='append'?useCostingStore.getState().rawRecords:[]),...combinedTxtRecords].filter(record=>{const sep=String(record.sepToken||record.sep||'').trim();if(!sep)return true;if(seen.has(sep)){duplicates++;return false;}seen.add(sep);return true;});
+        const merged=await mergeClaimSources(claimMode==='append'?useCostingStore.getState().rawRecords:[],combinedTxtRecords,abort.signal,p=>setProgress(60+p*.15));
+        combinedTxtRecords=merged.records;const duplicates=merged.duplicates;
         if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat: baris pertama dari urutan unggahan dipertahankan.`);
       }
       // Save TXT to store if any
@@ -156,7 +162,11 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           : processResult.txtFiles[0];
 
         const hospitalConfig = useHospitalCostStore.getState().config;
-        const detectedPeriod = detectPeriodNormalization(combinedTxtRecords, hospitalConfig.tahunData);
+        setPhase('Memeriksa periode klaim secara bertahap...');
+        const detectedPeriod = await detectPeriodNormalizationAsync(combinedTxtRecords, hospitalConfig.tahunData,abort.signal,p=>setProgress(75+p*.05));
+        setPhase('Memeriksa kualitas sumber secara bertahap...');
+        await prepareClaimQuality(combinedTxtRecords,abort.signal,p=>setProgress(80+p*.08));
+        if(abort.signal.aborted)return;
         const annualCostTotal = hospitalConfig.totalOverheadCost + hospitalConfig.totalIntermediateCost + hospitalConfig.totalFinalCost;
         const session: UploadSession = {
           id: Date.now().toString(),
@@ -170,6 +180,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           adjustedCostTotal: Math.round(annualCostTotal * detectedPeriod.factor),
         };
 
+        useTarifPasienStore.setState({patients:[],snapshot:null,localCosting:null,validationIssues:[]});
         setRawRecords(combinedTxtRecords, session);
         setPeriodNormalization(detectedPeriod);
 
@@ -177,14 +188,16 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
         // yang sama ke engine Dashboard/Perbandingan/Laporan.
         setPhase('Menghitung biaya pasien di latar belakang...');
-        try{await calculateAnalysisJob(n=>{if(!abort.signal.aborted)setProgress(80+n*.15);});}catch(error){processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
+        if(shouldAutoAnalyse(combinedTxtRecords.length)){
+          try{await calculateAnalysisJob(n=>{if(!abort.signal.aborted)setProgress(88+n*.08);},abort.signal);}catch(error){if(abort.signal.aborted)return;processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
+        }else processResult.errors.push('Mode data besar: seluruh klaim tersimpan. Lengkapi biaya dan gunakan Hitung ulang untuk menghitung di latar belakang; perhitungan otomatis saat unggah dinonaktifkan agar aplikasi tetap ringan.');
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
         processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
       }
 
       if(abort.signal.aborted)return;
       setPhase('Menyiapkan data analisis...');
-      try{await shareSourceData({claims:combinedTxtRecords.length>0,costs:processResult.excelFiles.length>0,excel:excelFiles.filter(f=>processResult.excelFiles.includes(f.name)).slice(-1)[0]});}catch(error){processResult.errors.push('Data sumber tersimpan; sinkronisasi analisis terintegrasi perlu dicoba lagi: '+String(error));}
+      try{await shareSourceData({claims:combinedTxtRecords.length>0,deferLargeClaims:true,costs:processResult.excelFiles.length>0,excel:excelFiles.filter(f=>processResult.excelFiles.includes(f.name)).slice(-1)[0]});}catch(error){processResult.errors.push('Data sumber tersimpan; sinkronisasi analisis terintegrasi perlu dicoba lagi: '+String(error));}
       if(abort.signal.aborted)return;
       setProgress(100);
       setResult(processResult);
@@ -205,6 +218,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
 
+    if(!shouldAutoAnalyse(rawRecords.length)){setErrorMsg('Periode diperbarui. Gunakan Hitung ulang untuk menghitung data besar di latar belakang.');return;}
     void calculateAnalysisJob().catch(error=>setErrorMsg(String(error)));
   };
 
@@ -434,8 +448,8 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)
           </p>
           <div className="mb-8">
-            <a href="/Template_Costing_Standard.xlsx" download="Template_Costing_RS_Simulasi_ABC_2025.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
-              Unduh template simulasi 6 sheet (.XLSX)
+            <a href="/Template_Costing_Standard.xlsx" download="Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
+              Unduh template costing RS 6 sheet (.XLSX)
             </a>
           </div>
           

@@ -1,3 +1,6 @@
+import {proxySheets} from '../lib/proxyCWExport';
+import {useProxyCWStore} from '../stores/proxyCWStore';
+import {proxyFromClaim,proxyFingerprint} from '../lib/calculations/proxyCostWeight';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
@@ -6,7 +9,10 @@ import type { Snapshot } from './types';
 import { KEYS,LABELS } from './types';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 export function reportSheets(snap:Snapshot) {
+  const proxy=useProxyCWStore.getState().entries.integrated;
+  const proxyResult=proxy?.result&&proxy.source===snap.input.claims&&JSON.stringify(proxy.parameters)===JSON.stringify(proxy.result.parameters)?proxy?.result:null;
   const sheets:Record<string,unknown[][]>={
+    ...(proxyResult?proxySheets(proxyResult,snap.result.methods[0]?.localCosting):{}),
     Ringkasan:[['Snapshot',snap.id],['Status',snap.state],['Tanggal',snap.at],['RS',snap.input.hospital],['Versi input',snap.inputVersion],['Kualitas data persen',snap.result.quality],['Baris diterima',snap.result.accepted],['Baris ditolak',snap.result.rejected],['Skenario sensitivitas',snap.sensitivity]],
     Asumsi:[['Parameter','Nilai'],...Object.entries(snap.input.settings).map(([k,v])=>[k,typeof v==='object'?JSON.stringify(v):String(v)]),['Matriks versi',snap.input.mappingVersion],['Kontrol lokal','Profil dan audit lokal bukan kontrol keamanan server']],
     Referensi:[['Jenis','Kode','Rawat','Nilai','Versi','Mulai','Akhir','Sumber','Terverifikasi','Dipakai'],...snap.input.references.map(r=>[r.kind,r.code,r.care,r.value,r.version,r.from,r.until,r.source,r.verified,snap.result.referenceIds.includes(r.id)])],

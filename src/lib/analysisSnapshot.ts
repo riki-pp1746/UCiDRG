@@ -18,8 +18,11 @@ export function buildAnalysisSnapshot(raw:PatientRecord[],local:HospitalCostResu
 }
 export interface AnalysisView {rows:PatientCostResult[];groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number}
 const cache=new WeakMap<AnalysisSnapshot,Map<string,AnalysisView>>();
+export function primeFullAnalysisViews(snapshot:AnalysisSnapshot,views:Record<string,{groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number}>){
+ const memo=new Map<string,AnalysisView>();for(const [mode,v]of Object.entries(views))memo.set(JSON.stringify([mode,'','','ALL']),{...v,rows:snapshot.rows});cache.set(snapshot,memo);
+}
 export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG',filter:{care?:string;search?:string;status?:string}={}):AnalysisView {
- if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0};const key=JSON.stringify([mode,filter]);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
+ if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0};const key=JSON.stringify([mode,filter.care||'',(filter.search||'').toLowerCase(),filter.status||'ALL']);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
  const q=(filter.search||'').toLowerCase();let rows=snapshot.rows.filter(r=>(!filter.care||String(r.patient.ptd)===filter.care)&&(!q||`${r.patient.inacbg} ${r.patient.deskripsi_inacbg} ${r.patient.idrg?.drg_code} ${r.patient.idrg?.drg_description}`.toLowerCase().includes(q)));
  const build=(rows:PatientCostResult[])=>{const aggregate=aggregateByDRG(rows,snapshot.options);return mode==='INACBG'?aggregate.inacbg:aggregate.idrg;};let groups=build(rows);
  if(filter.status&&filter.status!=='ALL'){const keys=new Set(groups.filter(g=>filter.status==='DATA_TIDAK_CUKUP'?g.statisticalLabel==='Data tidak cukup':(g.decisionStatus||g.status)===filter.status).map(g=>g.ptd+'|'+g.group_code));rows=rows.filter(r=>keys.has(r.patient.ptd+'|'+(mode==='INACBG'?r.patient.inacbg:r.patient.idrg?.drg_code)));groups=build(rows);}
