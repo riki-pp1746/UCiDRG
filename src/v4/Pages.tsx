@@ -1,4 +1,5 @@
 import {useCostingStore} from '../stores/costingStore';
+import {parseRupiahInput} from '../lib/rupiahInput';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
 import {proxyFromClaim} from '../lib/calculations/proxyCostWeight';
 import SharedUploadPage from '../pages/UploadPage';
@@ -31,7 +32,7 @@ const detailPanels=new Set(['Kelola data aktif','Populasi pasien','Kelompok iDRG
 function Panel({title,children}:{title:string;children:ReactNode}){return detailPanels.has(title)?<details className="uc-panel space-y-4"><summary className="font-semibold text-base">{title}</summary>{children}</details>:<section className="uc-panel space-y-4"><h2 className="font-semibold text-base">{title}</h2>{children}</section>;}
 function Field({label,value,onChange,numeric=false,type='text',disabled=false}:{label:string;value:string;onChange:(v:string)=>void;numeric?:boolean;type?:string;disabled?:boolean}){
   const [local,setLocal]=useState({source:value,text:value});const draft=local.source===value?local.text:value;const [error,setError]=useState('');
-  return <label className="block text-sm space-y-1"><span className="text-gray-600">{label}</span><input className={field} type={type} value={draft} disabled={disabled} onChange={e=>{setLocal({source:value,text:e.target.value});setError('');}} onBlur={()=>{try{const v=numeric&&draft!==''?parseNumber(draft):draft;if(v!==value)onChange(v);setLocal({source:v,text:v});}catch(e){setError(String(e));}}}/>{error&&<span className="text-red-700" role="alert">{error}</span>}</label>;
+  return <label className="block text-sm space-y-1"><span className="text-gray-600">{label}</span><input className={field} type={type} value={draft} disabled={disabled} onChange={e=>{setLocal({source:value,text:e.target.value});setError('');}} onBlur={()=>{try{const v=numeric&&draft!==''?(/^(Biaya |Pendapatan |Nilai investasi |Nilai perolehan)/i.test(label)?String(parseRupiahInput(draft)):parseNumber(draft)):draft;if(v!==value)onChange(v);setLocal({source:v,text:v});}catch(e){setError(String(e));}}}/>{error&&<span className="text-red-700" role="alert">{error}</span>}</label>;
 }
 function Select({label,value,onChange,options}:{label:string;value:string;onChange:(v:string)=>void;options:(string|{value:string;label:string})[]}){return <label className="block text-sm space-y-1"><span className="text-gray-600">{label}</span><select className={field} value={value} onChange={e=>onChange(e.target.value)}>{options.map(v=>typeof v==="string"?<option key={v}>{v}</option>:<option key={v.value} value={v.value}>{v.label}</option>)}</select></label>;}
 function Check({label,value,onChange}:{label:string;value:boolean;onChange:(v:boolean)=>void}){return <label className="flex gap-2 items-center text-sm"><input type="checkbox" checked={value} onChange={e=>onChange(e.target.checked)}/>{label}</label>;}

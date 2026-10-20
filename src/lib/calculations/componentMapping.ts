@@ -10,8 +10,12 @@ const plans=new WeakMap<Record<string,number>,MappingPlan>();
 export const mappingPlan=(costs:Record<string,number>)=>plans.get(costs);
 
 export function componentMapping(config:HospitalCostConfig,patients:PatientRecord[],factor:number,jkn:number,options:Methodology,claimYear:number):MappingPlan{
+ if(!Number.isFinite(factor)||factor<=0)throw new Error('Faktor periode biaya harus positif dan valid.');
+ if(!Number.isFinite(jkn)||jkn<0||jkn>100)throw new Error('Porsi JKN harus antara 0 dan 100%.');
  const centers=[...config.overheadCenters.map(c=>({...c,group:'Overhead',cost:c.totalCost})),...config.intermediateCenters.map(c=>({...c,group:'Intermediate',cost:c.totalCostDirect})),...config.finalCenters.map(c=>({...c,group:'Final',cost:c.totalCostDirect}))];
  for(const center of centers){const values=options.depreciationValues[center.id];if(options.depreciation==='replacement'&&(center.hargaPeralatan5Tahun>0||center.biayaInvestasiGedung>0)&&!values)throw new Error('Lengkapi nilai ganti dan umur manfaat aset '+center.nama+'.');if(values&&options.depreciation==='replacement'){if(values.equipmentYears<=0||values.buildingYears<=0)throw new Error('Umur manfaat aset harus positif.');const old=center.depresiasiPeralatan+center.depresiasiGedung;center.cost=center.cost-old+Math.round(values.equipmentValue/values.equipmentYears)+Math.round(values.buildingValue/values.buildingYears);}else if(options.depreciation==='book'){const derived=Math.round(center.hargaPeralatan5Tahun/5)+Math.round(center.biayaInvestasiGedung/40);center.cost=center.cost-derived+(center.bookDepreciationEquipment??center.depresiasiPeralatan)+(center.bookDepreciationBuilding??center.depresiasiGedung);}}
+ for(const center of centers)if(!Number.isFinite(center.cost)||center.cost<0)throw new Error('Biaya pusat biaya tidak valid: '+center.nama);
+ for(const center of centers)if(!Number.isFinite(center.cost)||center.cost<0)throw new Error('Biaya pusat biaya tidak valid: '+center.nama);
  const bills=KEYS.map(k=>sum(patients.map(p=>Number.isFinite(p[k])&&p[k]>0?p[k]:0)).toNumber());
  const stageTraces:MappingPlan['stageTraces']=[];
  if(options.allocationMethod==='step-down'){
@@ -28,6 +32,7 @@ export function componentMapping(config:HospitalCostConfig,patients:PatientRecor
  }
  const components=KEYS.map(()=>dec(0));const fallback=KEYS.map(()=>dec(0));const traces:{id:string;center:string;group:string;key:string;amount:string;source:string}[]=[];
  for(const center of centers){
+  if(!Number.isFinite(center.cost)||center.cost<0)throw new Error('Biaya pusat biaya tidak valid: '+center.nama);
   let mapping=options.mapping[center.id];let source='Pemetaan dikonfirmasi';
   if(!mapping){source='Saran pemetaan; perlu ditinjau';let target:string|undefined;const name=center.nama.toLowerCase();
    if(/laborat/.test(name))target='laboratory_amt';else if(/radiolog/.test(name))target='radiology_amt';else if(/rehab/.test(name))target='rehab_amt';else if(/bank darah|transfusi/.test(name))target='blood_amt';else if('kategori' in center){if(center.kategori==='icu')target='intensive_amt';else if(['rawat_inap','perinatologi'].includes(String(center.kategori)))target='room_amt';else if(center.kategori==='bedah')target='surgical_amt';}
@@ -44,12 +49,14 @@ export function componentMapping(config:HospitalCostConfig,patients:PatientRecor
  const completeness=options.completenessActive?patients.length/(options.estimatedClaims||0):1;
  if(!Number.isFinite(completeness)||completeness<0||completeness>1)throw new Error('Estimasi kasus SIMRS harus positif dan tidak lebih kecil dari klaim terunggah.');
  const effectiveFactor=Math.abs(factor*12-Math.round(factor*12))<1e-12?dec(Math.round(factor*12)).div(12):dec(factor);
- let periodCost=dec(0);const exact=components.map((c,i)=>{const key=KEYS[i],phi=options.variableShares[key]||0,volume=options.volumeRatios[key]??1;
+ let periodCost=dec(0),beforeCompleteness=dec(0);const exact=components.map((c,i)=>{const key=KEYS[i],phi=options.variableShares[key]??0,volume=options.volumeRatios[key]??1;
+  if(!Number.isFinite(phi)||phi<0||phi>1||!Number.isFinite(volume)||volume<0)throw new Error('Porsi biaya variabel harus 0–1 dan rasio volume tidak boleh negatif: '+key);
   const monthly=options.monthlyVolumeRatios?.[key];if(monthly&&(monthly.length!==Math.round(factor*12)||Math.abs(factor*12-Math.round(factor*12))>1e-10||monthly.some(v=>!Number.isFinite(v)||v<0)))throw new Error('Rasio volume bulanan harus cocok dengan jumlah bulan efektif dan tidak negatif.');
   const f=monthly?sum(monthly.map(r=>dec(1).minus(phi).plus(dec(phi).mul(r)).div(12))):effectiveFactor.mul(dec(1).minus(phi).plus(dec(phi).mul(volume)));const volumes=options.componentVolumes[key];const share=volumes?(volumes.total>0?volumes.jkn/volumes.total:NaN):(options.componentShares[key]??jkn)/100;
-  if(!Number.isFinite(share)||share<0||share>1)throw new Error('Porsi JKN harus antara 0 dan 100%.');const periodAmount=c.mul(f).mul(inflation);periodCost=periodCost.plus(periodAmount);return periodAmount.mul(share).mul(completeness);});
+  if(volumes&&(!Number.isFinite(volumes.jkn)||volumes.jkn<0||!Number.isFinite(volumes.total)||volumes.total<=0))throw new Error('Volume JKN dan total harus valid: '+key);
+  if(!Number.isFinite(share)||share<0||share>1)throw new Error('Porsi JKN harus antara 0 dan 100%.');const periodAmount=c.mul(f).mul(inflation);periodCost=periodCost.plus(periodAmount);const jknAmount=periodAmount.mul(share);beforeCompleteness=beforeCompleteness.plus(jknAmount);return jknAmount.mul(completeness);});
  const mapped=largestRemainder(sum(exact).toString(),exact.map(v=>v.toString()),KEYS);
- const plan:MappingPlan={periodCost:periodCost.toString(),costs:Object.fromEntries(KEYS.map((k,i)=>[k,Number(mapped[i])])) as Record<keyof KomponenTarif18,number>,traces,fallback:Object.fromEntries(KEYS.map((k,i)=>[k,fallback[i].toString()])),annual:sum(components).toString(),beforeCompleteness:completeness>0?sum(exact).div(completeness).toString():sum(components).mul(effectiveFactor).mul(inflation).mul(jkn/100).toString(),completeness,inflation,stageTraces};plans.set(plan.costs,plan);return plan;
+ const plan:MappingPlan={periodCost:periodCost.toString(),costs:Object.fromEntries(KEYS.map((k,i)=>[k,Number(mapped[i])])) as Record<keyof KomponenTarif18,number>,traces,fallback:Object.fromEntries(KEYS.map((k,i)=>[k,fallback[i].toString()])),annual:sum(components).toString(),beforeCompleteness:beforeCompleteness.toString(),completeness,inflation,stageTraces};plans.set(plan.costs,plan);return plan;
 }
 
 

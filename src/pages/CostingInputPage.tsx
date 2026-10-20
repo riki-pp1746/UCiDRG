@@ -1,6 +1,7 @@
 import {shouldAutoAnalyse} from '../lib/largeData';
 import {calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
+import RupiahInput from '../components/ui/RupiahInput';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadStandardCostingTemplate} from '../lib/costingWorkbookSchema';
@@ -33,47 +34,7 @@ import type { RVUGlobalCosts } from '../types/costing.types';
 import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.types';
 
 // ── Reusable Rupiah input — simpan draft string, commit ke store saat blur ──
-function RpInput({ value, onChange, placeholder = '0' }: {
-  value: number;
-  onChange: (v: number) => void;
-  placeholder?: string;
-}) {
-  const [draft, setDraft] = useState<string>('');
-  const [focused, setFocused] = useState(false);
-
-  const handleFocus = () => {
-    setFocused(true);
-    setDraft(value > 0 ? String(value) : '');
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const clean = e.target.value.replace(/[^0-9]/g, '');
-    setDraft(clean);
-    onChange(parseFloat(clean) || 0);
-  };
-
-  const handleBlur = () => {
-    setFocused(false);
-    setDraft('');
-  };
-
-  const displayValue = focused
-    ? draft
-    : (value > 0 ? value.toLocaleString('id-ID') : '');
-
-  return (
-    <input
-      type="text"
-      inputMode="numeric"
-      value={displayValue}
-      onChange={handleChange}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      placeholder={placeholder}
-      className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
-    />
-  );
-}
+const RpInput=RupiahInput;
 
 // ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
 function NumInput({ value, onChange, placeholder = '0', invalid = false, className }: {

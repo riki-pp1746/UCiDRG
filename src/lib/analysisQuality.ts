@@ -14,6 +14,8 @@ function qualityAccumulator(){
   else if(r.discharge_date<r.admission_date)add('date-order','error','Tanggal pulang sebelum masuk. Koreksi sumber sebelum memakai hasil.',r,i);
   if(!Number.isFinite(r.los)||r.los<0)add('los','error','LOS negatif/tidak valid. Perbaiki lama hari rawat.',r,i);
   const bills=Object.values(r.billing);if(bills.some(v=>!Number.isFinite(v)||v<0))add('billing','error','Tagihan negatif/tidak valid. Koreksi angka pada sumber.',r,i);
+  const totalBilling=bills.reduce((a,b)=>a+b,0);
+  if(totalBilling>0&&r.billing.nursing_amt/totalBilling>=0.9&&r.billing.procedure_amt===0&&r.billing.surgical_amt===0&&r.billing.device_amt===0&&r.billing.drug_amt===0)add('nursing-concentration','warning','Minimal 90% tagihan episode tercatat pada Keperawatan, sedangkan tindakan, alkes dan obat nol. Periksa apakah paket tindakan/stent/obat tergabung pada sumber. Alokasi memakai isi komponen tersebut; hasil rendah tidak membuktikan biaya layanan sebenarnya rendah.',r,i);
   if(!bills.some(v=>v>0))add('zero','warning','Semua komponen tagihan nol. Kasus tetap ditampilkan untuk peninjauan.',r,i);
   if(Number.isFinite(r.tarif_rs)&&r.tarif_rs>0&&Math.abs(bills.reduce((a,b)=>a+b,0)-r.tarif_rs)>1)add('billing-total','warning','Total tagihan berbeda dari jumlah 18 komponen. Konfirmasi cakupan tagihan sumber.',r,i);
   if(!r.idrg?.drg_code)add('code','warning','Kode iDRG kosong. Biaya tetap masuk pool; kasus belum membentuk casemix.',r,i);

@@ -23,6 +23,7 @@ it('costing workbooks are routed to costing without decoding claim rows',async()
 it.runIf(Boolean(process.env.EXCEL_CLAIMS_VERIFY_PATH))('reads the reported large workbook without loading pivot/severity copies',async()=>{
  const b=readFileSync(process.env.EXCEL_CLAIMS_VERIFY_PATH!);const start=Date.now();const result=await parseExcelClaims(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'verification.xlsx');
  expect(result?.totalRows).toBe(50079);expect(result!.parsedRows).toBeGreaterThan(49000);
+ if(process.env.RUPIAH_VERIFY_ROWS){const expected=JSON.parse(readFileSync(process.env.RUPIAH_VERIFY_ROWS,'utf8')) as number[][];for(const r of result!.records){const source=expected[r.sourceRow!-2];expect([r.total_tarif,r.tarif_rs,r.billing.procedure_amt,r.billing.room_amt]).toEqual(source);}}
  console.log(JSON.stringify({total:result?.totalRows,valid:result?.parsedRows,errors:result?.errors.length,elapsedSeconds:(Date.now()-start)/1000}));
  writeFileSync('.test-temp/excel-claims-verification.json',JSON.stringify({total:result?.totalRows,valid:result?.parsedRows,errors:result?.errors.length,elapsedSeconds:(Date.now()-start)/1000}));
 },120000);

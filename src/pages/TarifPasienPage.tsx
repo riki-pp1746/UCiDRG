@@ -1,3 +1,4 @@
+import RupiahInput from '../components/ui/RupiahInput';
 import {shouldAutoAnalyse} from '../lib/largeData';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
 import {proxyFromPatient} from '../lib/calculations/proxyCostWeight';
@@ -261,7 +262,7 @@ export default function TarifPasienPage() {
                       <td className="px-3 py-1.5"><input aria-label={`Hari ICU ${maskSEP(p.noSEP)}`} type="number" min="0" max={p.lhr} value={p.icuDays??''} placeholder="Belum ada" onChange={e=>updatePatient(p.id,{icuDays:e.target.value===''?undefined:Number(e.target.value)})} className="uc-input w-24"/></td>
                       {ALL_KOMPONEN_KEYS.map(k => (
                         <td key={k} className="px-3 py-1.5 border-l border-gray-100">
-                          <input type="number" value={p[k] || ''} onChange={e => updatePatient(p.id, { [k]: parseFloat(e.target.value)||0 })} placeholder="0" className="w-20 px-2 py-1 border border-gray-200 rounded text-xs text-right text-gray-700 bg-gray-50 focus:bg-white" />
+                          <RupiahInput value={p[k] || 0} onChange={value => updatePatient(p.id, { [k]: value })} className="w-28 px-2 py-1 border border-gray-200 rounded text-xs text-right text-gray-700 bg-gray-50 focus:bg-white" />
                         </td>
                       ))}
                     </tr>

@@ -1,3 +1,4 @@
+import RupiahInput from '../ui/RupiahInput';
 ﻿import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
@@ -110,10 +111,9 @@ export function RVUInputForm() {
               <label className="text-sm font-semibold text-gray-700">{label}</label>
               <div className="relative">
                 <span className="absolute left-3 top-2 text-gray-400 text-sm">Rp</span>
-                <input
-                  type="number"
-                  value={localCosts[key] || ''}
-                  onChange={e => handleChange(key, parseFloat(e.target.value) || 0)}
+                <RupiahInput
+                  value={localCosts[key] || 0}
+                  onChange={value => handleChange(key, value)}
                   className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
                 />
               </div>
