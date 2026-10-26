@@ -32,9 +32,9 @@ it('formula, existing E-Klaim tariffs and unit cost remain distinct in patient d
 it('main allocation engine uses same formula and preserves original E-Klaim tariff',()=>{
   const {results}=runRVUAllocation([record],null,undefined,config);expect(results[0].tarifIDRG).toBe(1000);expect(record.idrg.total_tarif).toBe(700);
 });
-it('patient page now renders hospital CW and HBR with no tariff comparisons',()=>{
+it('patient page renders local HBR and the new base rate comparison without patient tariff comparisons',()=>{
   useCostingStore.setState({patientResults:[result],rawRecords:[record],tarifIDRGConfig:config,rvuGlobalCosts:record.billing,isProcessing:false});
   useTarifPasienStore.setState({localCosting:calculateHospitalBaseRate([{id:'test',sep:record.sep,care:'inap',code:'A',uc:'600'}],{method:'18 Komponen',period:'2025-01'}),calculationVersion:1});
   const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(IDRGTariffPage)));
-  for(const text of ['CW, Casemix &amp; HBR RS','HBR Inap','HBR Jalan','Unit cost pasien','Rp 600'])expect(html).toContain(text);expect(html).not.toContain('SYNTHETIC');for(const text of ['Tarif INA-CBG','Tarif iDRG eksisting','National Base Rate','PROFIT','DEFISIT','BEP'])expect(html).not.toContain(text);
+  for(const text of ['CW, Casemix &amp; HBR RS','HBR Inap','HBR Jalan','Unit cost pasien','Rp 600'])expect(html).toContain(text);expect(html).toContain('Hospital Base Rate vs National Base Rate');expect(html).toContain('NBR belum tersedia');expect(html).not.toContain('SYNTHETIC');for(const text of ['Tarif INA-CBG','Tarif iDRG eksisting','PROFIT','DEFISIT','BEP'])expect(html).not.toContain(text);
 });

@@ -1,3 +1,8 @@
+import BaseRateComparisonPanel from './BaseRateComparisonPanel';
+import {useBaseRateComparisonStore} from '../../stores/baseRateComparisonStore';
+import {useMethodologyStore} from '../../stores/methodologyStore';
+import {baseRateComparisonRows} from '../../lib/calculations/baseRateComparison';
+import type {Reference} from '../../v4/types';
 import TrimmingImpact from './TrimmingImpact';
 
 import {formatCostingWorkbook} from '../../lib/costingWorkbookFormat';
@@ -20,8 +25,9 @@ import {ensureAnalysisExport,appendAnalysisSheets} from '../../lib/analysisExpor
 
 
 
-export default function HospitalBaseRateResults({result,exportAllowed=true}:{result:HospitalCostResult;exportAllowed?:boolean}){
+export default function HospitalBaseRateResults({result,exportAllowed=true,references,editable}:{result:HospitalCostResult;exportAllowed?:boolean;references?:Reference[];editable?:boolean}){
 
+  const comparison=useBaseRateComparisonStore();const mainEditable=useMethodologyStore(s=>s.role!=='Pembaca');
   const [care,setCare]=useState('semua');const [query,setQuery]=useState('');const [page,setPage]=useState(0);const [flag,setFlag]=useState('semua');
 
   const patients=useMemo(()=>result.patients.filter(p=>(flag==='semua'||(flag==='outlier'?p.outlier:!p.outlier))&&(care==='semua'||p.care===care)&&`${p.code} ${p.description||''} ${p.sep}`.toLowerCase().includes(query.toLowerCase())),[result,care,query,flag]);
@@ -36,9 +42,9 @@ export default function HospitalBaseRateResults({result,exportAllowed=true}:{res
 
   const weight=(v:string|null)=>v===null?'Tidak dapat dihitung':dec(v).toNumber().toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  const exportData=()=>{if(result.schema===4&&!ensureAnalysisExport())return;const book=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(result)))XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),name);if(result.schema===4)appendAnalysisSheets(book);XLSX.writeFile(formatCostingWorkbook(book),'CW-Casemix-HBR-RS.xlsx');};
+  const exportData=()=>{if(result.schema===4&&!ensureAnalysisExport())return;const book=XLSX.utils.book_new();for(const [name,rows] of Object.entries(hospitalBaseRateSheets(result)))XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(rows),name);XLSX.utils.book_append_sheet(book,XLSX.utils.aoa_to_sheet(baseRateComparisonRows(result,references??comparison.references,comparison.date)),'HBR vs NBR');if(result.schema===4)appendAnalysisSheets(book);XLSX.writeFile(formatCostingWorkbook(book),'CW-Casemix-HBR-RS.xlsx');};
 
-  return <div className="space-y-5">
+  return <div className="space-y-5"><BaseRateComparisonPanel result={result} references={references} editable={editable??mainEditable} exportAllowed={exportAllowed}/>
 
     <section className="uc-panel space-y-4">{Number(result.schema)<3&&<p className="uc-notice">Snapshot lama memakai rumus HBR sebelumnya. Hitung versi baru untuk memakai pool JKN penuh; snapshot lama tetap tersimpan.</p>}<h2 className="font-semibold">CW, Casemix &amp; HBR RS</h2><p className="text-sm text-slate-600">Sumber: hasil alokasi {result.source} · Metode {result.method} · Periode {result.period}. Adjustment {result.adjustment}.</p>
 

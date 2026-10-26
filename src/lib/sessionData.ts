@@ -1,3 +1,4 @@
+import {useBaseRateComparisonStore} from '../stores/baseRateComparisonStore';
 import {cancelAnalysisJob} from './analysisController';
 import {useProxyCWStore} from '../stores/proxyCWStore';
 import {useMethodologyStore} from '../stores/methodologyStore';
@@ -13,6 +14,7 @@ import {purgeLegacyDatabase} from '../v4/storage';
 import {clearSessionMemory} from './sessionMemory';
 
 export function clearAnalysisSession(){
+  useBaseRateComparisonStore.setState(useBaseRateComparisonStore.getInitialState(),true);
   cancelAnalysisJob();
   endIntegratedSession();
   useProxyCWStore.setState({entries:{}});

@@ -1,3 +1,5 @@
+import {baseRateComparisonRows} from '../lib/calculations/baseRateComparison';
+import {useBaseRateComparisonStore} from '../stores/baseRateComparisonStore';
 import {proxySheets} from '../lib/proxyCWExport';
 import {useProxyCWStore} from '../stores/proxyCWStore';
 import {proxyFromClaim,proxyFingerprint} from '../lib/calculations/proxyCostWeight';
@@ -11,7 +13,10 @@ import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 export function reportSheets(snap:Snapshot) {
   const proxy=useProxyCWStore.getState().entries.integrated;
   const proxyResult=proxy?.result&&proxy.source===snap.input.claims&&JSON.stringify(proxy.parameters)===JSON.stringify(proxy.result.parameters)?proxy?.result:null;
+  const comparisonDate=useBaseRateComparisonStore.getState().date;
+  const comparisonSheets=Object.fromEntries(snap.result.methods.filter(m=>m.localCosting).map(m=>['HBR vs NBR '+m.method,baseRateComparisonRows(m.localCosting!,snap.input.references,comparisonDate)]));
   const sheets:Record<string,unknown[][]>={
+    ...comparisonSheets,
     ...(proxyResult?proxySheets(proxyResult,snap.result.methods[0]?.localCosting):{}),
     Ringkasan:[['Snapshot',snap.id],['Status',snap.state],['Tanggal',snap.at],['RS',snap.input.hospital],['Versi input',snap.inputVersion],['Kualitas data persen',snap.result.quality],['Baris diterima',snap.result.accepted],['Baris ditolak',snap.result.rejected],['Skenario sensitivitas',snap.sensitivity]],
     Asumsi:[['Parameter','Nilai'],...Object.entries(snap.input.settings).map(([k,v])=>[k,typeof v==='object'?JSON.stringify(v):String(v)]),['Matriks versi',snap.input.mappingVersion],['Kontrol lokal','Profil dan audit lokal bukan kontrol keamanan server']],

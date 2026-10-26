@@ -1,3 +1,4 @@
+import BaseRateComparisonPanel from '../components/costing/BaseRateComparisonPanel';
 import {MethodologyControls} from '../components/ui/AnalysisControls';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import { useUiPrefsStore } from '../stores/uiPrefsStore';
@@ -14,7 +15,7 @@ export default function SettingsPage() {
   const role=useMethodologyStore(s=>s.role);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6"><MethodologyControls/>
+    <div className="max-w-5xl mx-auto space-y-6"><MethodologyControls/><BaseRateComparisonPanel editable={role!=='Pembaca'}/>
       <PageIntro title="Pengaturan perhitungan" what="Atur metode, sumber tarif, proporsi JKN, dan asumsi. Setelah mengubah input, tekan Hitung ulang sebelum menggunakan hasil." />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pengaturan</h1>

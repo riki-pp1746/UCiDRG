@@ -1,3 +1,4 @@
+import BaseRateComparisonPanel from '../components/costing/BaseRateComparisonPanel';
 import RupiahInput from '../components/ui/RupiahInput';
 import {shouldAutoAnalyse} from '../lib/largeData';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
@@ -141,6 +142,7 @@ export default function TarifPasienPage() {
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
       <label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setInputPage(1);setResultPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label>{activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · pool JKN penuh {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = pool HBR aktif sesuai kebijakan ÷ total casemix positif. Biaya dikecualikan ditampilkan pada tab CW, Casemix & HBR RS.</p></section>}
+      {activeTab!=='tarif'&&<BaseRateComparisonPanel result={localCosting} editable={proxyEditable} exportAllowed={!!localCosting}/>}
       {activeTab!=='tarif'&&<ProxyCostWeightPanel records={rawRecords} local={localCosting} scope="main" editable={proxyEditable}/>}
       {/* Header */}
       <div>
