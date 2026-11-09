@@ -386,6 +386,11 @@ export default function CostingInputPage() {
       useHospitalCostStore.setState(s => {
         const newConfig = runStepDownCalculation({
           ...s.config,
+          workbookSource: parsedData.workbookSource,
+          sourceOrigin: parsedData.sourceOrigin,
+          sourceFilename: parsedData.sourceFilename,
+          sourceAt: parsedData.sourceAt,
+          importIssues: parsedData.importIssues,
           namaRS: parsedData.namaRS || s.config.namaRS,
           tipeRS: parsedData.tipeRS || s.config.tipeRS,
           kepemilikan: parsedData.kepemilikan || s.config.kepemilikan,

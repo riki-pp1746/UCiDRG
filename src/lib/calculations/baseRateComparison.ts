@@ -1,6 +1,20 @@
 import {dec} from '../../v4/numbers';
 import type {Reference,Care} from '../../v4/types';
 import type {HospitalCostResult} from './hospitalBaseRate';
+import {DEFAULT_TARIF_IDRG_CONFIG} from './patientLevelCosting';
+
+export const SIMULATION_NBR_SOURCE = {
+ label: 'Materi Indonesian Diagnosis Related Group (iDRG), slide 20',
+ url: 'https://id.scribd.com/document/978806578/MPD-3-Indonesian-Diagnosis-Related-Group-IDRG',
+};
+
+export function compareSimulationBaseRates(rows: BaseRateComparison[]) {
+ return rows.map(({care,hbr}) => {
+  const nbr = String(care === 'inap' ? DEFAULT_TARIF_IDRG_CONFIG.baseRateInap : DEFAULT_TARIF_IDRG_CONFIG.baseRateJalan);
+  const difference = hbr === null ? null : dec(hbr).minus(nbr);
+  return {care,hbr,nbr,difference:difference?.toString() ?? null,percent:difference?.div(nbr).mul(100).toString() ?? null};
+ });
+}
 export interface BaseRateComparison {care:Care;hbr:string|null;nbr:string|null;difference:string|null;percent:string|null;ratio:string|null;status:string;reference:Reference|null}
 export const validComparisonDate=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 export function validateNBR(r:Reference){

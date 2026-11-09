@@ -33,13 +33,17 @@ export function componentMapping(config:HospitalCostConfig,patients:PatientRecor
  const components=KEYS.map(()=>dec(0));const fallback=KEYS.map(()=>dec(0));const traces:{id:string;center:string;group:string;key:string;amount:string;source:string}[]=[];
  for(const center of centers){
   if(!Number.isFinite(center.cost)||center.cost<0)throw new Error('Biaya pusat biaya tidak valid: '+center.nama);
-  let mapping=options.mapping[center.id];let source='Pemetaan dikonfirmasi';
+  let mapping:Record<string,number>|undefined=options.mapping[center.id];let source='Pemetaan dikonfirmasi';
+  if (!mapping && config.sourceOrigin==='simulasi') {
+   mapping=config.workbookSource?.demoMapping?.[center.id];
+   if (mapping) source='Matriks 18 Demo dari workbook';
+  }
   if(!mapping){source='Saran pemetaan; perlu ditinjau';let target:string|undefined;const name=center.nama.toLowerCase();
    if(/laborat/.test(name))target='laboratory_amt';else if(/radiolog/.test(name))target='radiology_amt';else if(/rehab/.test(name))target='rehab_amt';else if(/bank darah|transfusi/.test(name))target='blood_amt';else if('kategori' in center){if(center.kategori==='icu')target='intensive_amt';else if(['rawat_inap','perinatologi'].includes(String(center.kategori)))target='room_amt';else if(center.kategori==='bedah')target='surgical_amt';}
    if(target)mapping={[target]:100};else {source='Fallback proporsi tagihan';mapping=Object.fromEntries(KEYS.map((k,i)=>[k,bills[i]]));}
   }
   const weights=KEYS.map(k=>mapping[k]||0);if(weights.some(v=>!Number.isFinite(v)||v<0))throw new Error('Pemetaan biaya tidak valid: '+center.nama);
-  if(options.mapping[center.id]&&Math.abs(weights.reduce((a,b)=>a+b,0)-100)>1e-8)throw new Error('Jumlah pemetaan '+center.nama+' harus 100%.');
+  if((options.mapping[center.id]||source==='Matriks 18 Demo dari workbook')&&Math.abs(weights.reduce((a,b)=>a+b,0)-100)>1e-8)throw new Error('Jumlah pemetaan '+center.nama+' harus 100%.');
   if(!weights.some(v=>v>0)&&center.cost>0)throw new Error('Tidak ada pemetaan atau pembagi tagihan untuk '+center.nama+'. Lengkapi matriks biaya.');
   const parts=largestRemainder(center.cost,weights,KEYS);
   for(let i=0;i<KEYS.length;i++){const part=dec(parts[i]);if(part.isZero())continue;components[i]=components[i].plus(part);if(source.startsWith('Fallback'))fallback[i]=fallback[i].plus(part);traces.push({id:center.id,center:center.nama,group:center.group,key:KEYS[i],amount:part.toString(),source});}

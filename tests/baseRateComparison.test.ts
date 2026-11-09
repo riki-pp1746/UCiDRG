@@ -25,5 +25,5 @@ it('preserves zero HBR, unavailable HBR and exact-care reference precedence',()=
 });
 it('exports source, validity, method and full precision and renders two accessible cards',()=>{
  const refs=[{...ref(),until:''},{...ref('jalan','500'),until:''}],sheet=baseRateComparisonRows(result,refs,'2025-06-01');expect(JSON.stringify(sheet)).toContain('Dokumen sintetis');expect(JSON.stringify(sheet)).toContain('18 Komponen');
- useBaseRateComparisonStore.setState({date:'2025-06-01'});const html=renderToStaticMarkup(createElement(BaseRateComparisonPanel,{result,references:refs,editable:false}));expect(html).toContain('Rawat inap');expect(html).toContain('Rawat jalan');expect(html).toContain('Grafik HBR dan NBR inap');expect(html).toContain('Ekspor HBR vs NBR');expect(html).toContain('HBR di atas NBR');
+ useBaseRateComparisonStore.setState({date:'2025-06-01'});const html=renderToStaticMarkup(createElement(BaseRateComparisonPanel,{result,references:refs,editable:false}));expect(html).toContain('Rawat inap');expect(html).toContain('Rawat jalan');expect(html).toContain('Grafik HBR dan rancangan NBR inap');expect(html).toContain('Rancangan NBR iDRG');expect(html).toContain('8.037.060');expect(html).toContain('461.474');expect(html).toContain('Ekspor HBR vs NBR');expect(html).toContain('HBR di atas NBR');
 });

@@ -17,6 +17,7 @@
 import * as XLSX from 'xlsx';
 import { parseNumber } from '../../v4/numbers';
 import {costingWorkbookFormat,workbookSourceIssues,workbookLO,costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
+import {ALL_KOMPONEN_KEYS} from '../../types/tarifPasien.types';
 import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
 // Bersihkan string dan lowercase
@@ -329,8 +330,33 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
           );
         }
 
-        console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ ...parsedInfo,importIssues:[...sourceIssues,...importIssues],sourceOrigin:isSimulationWorkbook(workbook)?'simulasi':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
+        const simulation = isSimulationWorkbook(workbook);
+        const demoSheet = workbook.Sheets['Matriks 18 Demo'];
+        if (simulation && demoSheet && parsedInfo.workbookSource) {
+          const [header,...rows] = XLSX.utils.sheet_to_json<unknown[]>(demoSheet,{header:1,blankrows:false});
+          const centers = [...overheadCenters,...intermediateCenters,...finalCenters];
+          if (header?.[0] !== 'Pusat biaya' || ALL_KOMPONEN_KEYS.some((key,index)=>header[index+1]!==key)) {
+            throw new Error('Kolom Matriks 18 Demo tidak sesuai.');
+          }
+          const demoMapping: Record<string,Record<string,number>> = {};
+          for (const [name,...weights] of rows) {
+            const center = centers.find(c=>c.nama===name);
+            if (!center || demoMapping[center.id] || weights.length!==ALL_KOMPONEN_KEYS.length ||
+                weights.some(value=>typeof value!=='number'||!Number.isFinite(value)||value<0)) {
+              throw new Error(`Baris Matriks 18 Demo tidak sah untuk ${String(name)}.`);
+            }
+            const percentages = weights as number[];
+            if (Math.abs(percentages.reduce((sum,value)=>sum+value,0)-100)>1e-8) {
+              throw new Error(`Jumlah pemetaan Matriks 18 Demo untuk ${center.nama} harus 100%.`);
+            }
+            demoMapping[center.id] = Object.fromEntries(ALL_KOMPONEN_KEYS.map((key,index)=>[key,percentages[index]]));
+          }
+          if (Object.keys(demoMapping).length!==centers.length) throw new Error('Matriks 18 Demo harus mencakup seluruh pusat biaya.');
+          parsedInfo.workbookSource.demoMapping = demoMapping;
+        }
+
+        console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Penunjang, ${finalCenters.length} Layanan`);
+        resolve({ ...parsedInfo,importIssues:[...sourceIssues,...importIssues],sourceOrigin:simulation?'simulasi':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);
