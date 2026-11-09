@@ -109,7 +109,7 @@ describe('impor dan kontrol lokal',()=>{
   it('baris gagal impor masuk pembagi skor dan jumlah ditolak',()=>{const x=fixture();x.importIssues=[{code:'V12',severity:'warning',file:'uji.txt',row:8,message:'Kolom tidak lengkap'}];const r=calculate(x);expect(r.rows).toBe(3);expect(r.rejected).toBe(1);expect(r.issues.some(i=>i.row===8)).toBe(true);});
   it('inflasi referensi bertanggal memakai tanggal penuh klaim',()=>{const x=fixture();Object.assign(x.settings,{priceActive:true,priceMonths:'12',inflation:{pegawai:'0',jasaMedis:'0',jasaLain:'0',operasional:'0',penyusutan:''}});x.references.push({id:'infl',kind:'inflation',code:'pegawai',care:'semua',value:'10',from:'2025-01-15',until:'2025-01-31',version:'infl-uji',source:'ilustrasi',verified:false});near(m2(x).total,'1320');expect(calculate(x).referenceIds).toContain('infl');});
   it('tahunan dengan cakupan selain 12 memblokir hasil',()=>{const x=fixture();x.settings.costMonths='6';expect(m2(x).blocked).toBe(true);});
-  it('Upload menerima Excel dan TXT pada picker yang sama',()=>{useV4Store.setState({workspace:workspace(),snapshots:[],selected:null,busy:false,importIssues:[]});const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(V4Page,{view:'upload'})));expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');expect(html).toContain('Upload Excel Biaya RS dan TXT E-Klaim');});
+  it('Upload menerima Excel dan TXT pada picker yang sama',()=>{useV4Store.setState({workspace:workspace(),snapshots:[],selected:null,busy:false,importIssues:[]});const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(V4Page,{view:'upload'})));expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');expect(html).toContain('Unggah data sumber');});
   it('mode pengembangan menyembunyikan profil dan tidak terkunci profil Pembaca lama',()=>{const w=workspace();w.activeProfile='reader';expect(workingProfile(w).role).toBe('Administrator');useV4Store.setState({workspace:w,snapshots:[],selected:null,busy:false});const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(V4Page,{view:'upload'})));expect(html).not.toContain('Profil lokal aktif');expect(html).not.toContain('Ajukan review');expect(html).toContain('Lanjut ke 2. Biaya &amp; Alokasi');expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');expect(workflowSteps.map(s=>s.view)).toEqual(['upload','input','patients','comparison','reports']);});
   it('Pengaturan pengembangan tidak menampilkan tab Profil',()=>{const w=workspace();w.activeProfile='reader';useV4Store.setState({workspace:w,snapshots:[],selected:null,busy:false});const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(V4Page,{view:'settings'})));expect(html).not.toContain('>Profil</button>');expect(html).toContain('Referensi');});
   it('TXT comma/semicolon/pipe dan PTD berspasi dibaca tanpa menghapus desimal',()=>{const cols=Array(94).fill('');cols[4]=' 1 ';cols[5]='01/01/2025';cols[6]='31/01/2025';cols[19]='INA';cols[50]='SEP';cols[60]='10.25';cols[82]='A';for(const delimiter of [',',';','|','\t']){const result=parseClaimsText(cols.join(delimiter),'test.txt');expect(result.issues).toHaveLength(0);expect(result.claims[0].bill.procedure_amt).toBe('10.25');expect(result.claims[0].care).toBe('inap');}});
@@ -131,7 +131,7 @@ describe('Analisis tambahan setelah login',()=>{
     const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
     expect(html).toContain('CW, Casemix &amp; HBR RS');expect(html).not.toContain('National Base Rate');expect(html).not.toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
   });
-  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Upload Excel Biaya RS dan TXT E-Klaim'],['/costing','Siapkan costing rumah sakit'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Tarif RS dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
+  for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Unggah data sumber'],['/costing','Siapkan costing rumah sakit'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Tarif RS dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
       const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
@@ -147,14 +147,14 @@ describe('Analisis tambahan setelah login',()=>{
 
 it('mempertahankan halaman lama sebagai tampilan utama',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Panduan Penggunaan');expect(html).toContain('!text-white');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Pastikan Data yang Digunakan Sudah Diaudit');expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+ expect(html).toContain('Panduan kerja');expect(html).toContain('Lima tahap kerja');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('gunakan laporan keuangan yang sudah diperiksa atau diaudit');expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
 });
 
 it('panduan kedua ruang menjelaskan lima tahap dan hanya menautkan data ruang aktif',()=>{
  const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
  for(const prefix of ['', '/revisi4']){
    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[prefix||'/']},createElement(AppRoutes)));
-   for(const title of ['1. Data','2. Biaya &amp; Alokasi','3. Hasil Pasien','4. Perbandingan','5. Laporan'])expect(html).toContain(title);
+   for(const title of ['Rincian tahap 1','Rincian tahap 2','Rincian tahap 3','Rincian tahap 4','Rincian tahap 5'])expect(html).toContain(title);
    for(const path of ['upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="${prefix}/${path}"`);
    expect(html).toContain(prefix?'HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode':'HBR = pool HBR aktif ÷ casemix positif');expect(html).toContain('Data kedua ruang');expect(html).toContain('hanya berada di memori');
    if(prefix){expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. CW, Casemix &amp; HBR RS');}
@@ -169,6 +169,3 @@ it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
  for(const path of ['dashboard','upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="/revisi4/${path}"`);
  expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).toContain('Data kedua ruang hanya berada di memori');
 });
-
-
-

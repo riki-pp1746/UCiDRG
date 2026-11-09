@@ -111,17 +111,18 @@ interface HospitalCostState {
   resetToDefault: () => void;
 }
 
-const makeDefaultConfig = (): HospitalCostConfig => ({
-  sourceOrigin:'contoh',importIssues:[],
+const makeDefaultConfig = (withTemplate = false): HospitalCostConfig => ({
+  sourceOrigin: withTemplate ? 'contoh' : 'diketik',
+  importIssues: [],
   namaRS: '',
   tipeRS: 'B',
   kepemilikan: 'Pemerintah Daerah',
   tahunData: new Date().getFullYear(),
   dataDasar: { ...DEFAULT_DATA_DASAR },
   dataLayanan: [],
-  overheadCenters: DEFAULT_OVERHEAD_CENTERS.map(c => ({ ...c })),
-  intermediateCenters: DEFAULT_INTERMEDIATE_CENTERS.map(c => ({ ...c })),
-  finalCenters: DEFAULT_FINAL_CENTERS.map(c => ({ ...c })),
+  overheadCenters: withTemplate ? DEFAULT_OVERHEAD_CENTERS.map(c => ({ ...c })) : [],
+  intermediateCenters: withTemplate ? DEFAULT_INTERMEDIATE_CENTERS.map(c => ({ ...c })) : [],
+  finalCenters: withTemplate ? DEFAULT_FINAL_CENTERS.map(c => ({ ...c })) : [],
   totalOverheadCost: 0,
   totalIntermediateCost: 0,
   totalFinalCost: 0,
@@ -248,7 +249,7 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
 
       resetToDefault: () => {
-        set({ config: makeDefaultConfig() });
+        set({ config: makeDefaultConfig(true) });
       },
     }),
     {

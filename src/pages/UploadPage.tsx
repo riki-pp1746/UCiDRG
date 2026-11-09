@@ -7,7 +7,6 @@ import {prepareIdentities} from '../lib/analysisIdentity';
 
 import {shareSourceData} from '../lib/sharedSourceData';
 
-import PageIntro from '../components/ui/PageIntro';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
@@ -252,26 +251,29 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <p className="uc-notice">Unggah sekali untuk kedua ruang analisis. Data TXT dan biaya RS menjadi sumber bersama; hasil alokasi tetap dihitung terpisah. Parameter khusus analisis terintegrasi yang belum tersedia perlu dilengkapi, tanpa upload ulang.</p>
-      {(rawRecords.length>0||sourceCost>0)&&<p className="uc-success" role="status">Data sumber sudah tersedia: {rawRecords.length.toLocaleString('id-ID')} klaim · biaya RS sumber Rp {Math.round(sourceCost).toLocaleString('id-ID')}. Tidak perlu upload ulang ketika berpindah ruang; lanjutkan memeriksa biaya dan parameter alokasi.</p>}
-      <label className="uc-label">Cara memasukkan TXT/CSV/Excel<select className="uc-input" value={claimMode} disabled={disabled||uploadState==='parsing'} onChange={e=>setClaimMode(e.target.value as 'append'|'replace')}><option value="append">Tambah ke sumber klaim bersama</option><option value="replace">Ganti seluruh sumber klaim bersama</option></select></label>
-      <PageIntro title="Langkah 1: Unggah data sumber" what="Masukkan data klaim JKN (.TXT) dari E-Klaim dan, jika ada, template biaya RS (.XLSX). Sistem membaca file, mendeteksi periode data, lalu menyiapkan perhitungan." prepare={['File klaim JKN (INA-CBG/iDRG) format .TXT', 'Klaim dalam TXT/CSV atau Excel dengan judul kolom E-Klaim; costing Excel opsional']} result="Data pasien siap dipakai. Lanjutkan ke Input Biaya RS." />
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Upload Excel Biaya RS dan TXT E-Klaim</h1>
-          <p className="text-gray-500 mt-1">Unggah klaim TXT/CSV/Excel dan template costing. Excel klaim dibaca berdasarkan judul kolom.</p>
+    <div className="mx-auto max-w-5xl space-y-5">
+      <header className="border-b border-slate-200 pb-4">
+        <p className="text-xs font-semibold text-teal-800">Tahap 01</p>
+        <h1 className="mt-1 text-2xl font-bold tracking-tight text-teal-950 sm:text-3xl">Unggah data sumber</h1>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">Unggah klaim E-Klaim dan workbook biaya RS. Periksa file yang diterima dan periode klaim sebelum melanjutkan ke alokasi.</p>
+      </header>
+      <section className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.65fr)] sm:items-center sm:p-5">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-teal-950">Sumber bersama</h2>
+          <p className="mt-1 text-sm leading-5 text-slate-700">Unggah sekali untuk kedua ruang analisis. Pengaturan metode dan hasil alokasi dikelola secara terpisah.</p>
+          {(rawRecords.length > 0 || sourceCost > 0) && (
+            <p className="mt-2 text-xs font-semibold tabular-nums text-teal-800" role="status">
+              {rawRecords.length.toLocaleString('id-ID')} klaim · biaya sumber Rp{Math.round(sourceCost).toLocaleString('id-ID')}
+            </p>
+          )}
         </div>
-        {rawRecords.length > 0 && (
-          <button
-            onClick={() => navigate(integrated?'/revisi4/compare':'/comparison')}
-            className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white text-[#17645D] border border-gray-200 rounded-[16px] shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:bg-gray-50 text-sm font-semibold transition-all"
-          >
-            Lihat Hasil Sebelumnya <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
+        <label className="uc-label font-semibold">Cara memasukkan TXT/CSV/Excel
+          <select className="uc-input" value={claimMode} disabled={disabled || uploadState === 'parsing'} onChange={event => setClaimMode(event.target.value === 'replace' ? 'replace' : 'append')}>
+            <option value="append">Tambah ke sumber klaim bersama</option>
+            <option value="replace">Ganti seluruh sumber klaim bersama</option>
+          </select>
+        </label>
+      </section>
       {uploadState === 'done' && result ? (
         <div className="bg-white rounded-[24px] border border-green-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="bg-green-50 px-6 py-8 text-center">
@@ -374,27 +376,11 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
               </div>
             )}
 
-            <div className="flex gap-3 justify-center">
-              <button
-                onClick={reset}
-                className="px-6 py-3 border border-gray-200 text-gray-600 rounded-xl hover:bg-gray-50 font-semibold transition-all text-sm"
-              >
-                Upload File Lain
-              </button>
-              {result.txtFiles.length > 0 && (
-                <button
-                  onClick={() => navigate(integrated?'/revisi4/compare':'/comparison')}
-                  className="px-6 py-3 bg-[#17645D] text-white rounded-xl hover:bg-blue-900 font-semibold transition-all shadow-md text-sm flex items-center gap-2"
-                >
-                  Lihat Hasil Kalkulasi <ArrowRight className="w-4 h-4" />
-                </button>
-              )}
-              {result.excelFiles.length > 0 && (
-                <button
-                  onClick={() => navigate(integrated?'/revisi4/costing':'/input-biaya')}
-                  className="px-6 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 font-semibold transition-all shadow-md shadow-teal-500/20 text-sm flex items-center gap-2"
-                >
-                  Cek Input Biaya RS <ArrowRight className="w-4 h-4" />
+            <div className="flex flex-wrap justify-center gap-3">
+              <button onClick={reset} className="uc-secondary">Unggah file lain</button>
+              {(result.excelFiles.length > 0 || result.txtFiles.length > 0) && (
+                <button onClick={() => navigate(integrated ? '/revisi4/costing' : '/costing')} className="uc-primary">
+                  Lanjut ke Biaya & Alokasi <ArrowRight size={16} aria-hidden />
                 </button>
               )}
             </div>
@@ -420,7 +406,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={clsx(
-            'border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 relative overflow-hidden bg-white shadow-sm',
+            'border-2 border-dashed rounded-xl px-5 py-8 text-center transition-colors relative overflow-hidden bg-white sm:px-10 sm:py-10',
             uploadState === 'dragging' 
               ? 'border-teal-500 bg-teal-50' 
               : 'border-gray-200 hover:border-teal-400 hover:bg-gray-50'
@@ -440,10 +426,10 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             </div>
           )}
 
-          <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-gray-100">
-            <Upload className="w-8 h-8 text-teal-600" />
+          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-lg border border-teal-200 bg-teal-50">
+            <Upload className="size-5 text-teal-800" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900">Tarik & Lepas File Di Sini</h2>
+          <h2 className="text-xl font-bold text-gray-900">Pilih atau seret file</h2>
           <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
             Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)
           </p>
@@ -458,16 +444,16 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             disabled={disabled||uploadState==='parsing'}
             accept=".txt,.csv,.xlsx,.xls"
             onChange={handleInputChange}
-            className="hidden"
+            className="peer sr-only"
             id="file-upload"
             ref={fileInputRef}
             multiple
           />
           <label
             htmlFor="file-upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#17645D] text-white rounded-xl hover:bg-[#195C56] font-semibold cursor-pointer transition-all active:scale-95"
+            className="uc-primary cursor-pointer peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-teal-800 peer-disabled:cursor-not-allowed peer-disabled:opacity-50"
           >
-            Pilih File
+            Pilih file
           </label>
         </div>
       )}
@@ -532,5 +518,3 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     </div>
   );
 }
-
-

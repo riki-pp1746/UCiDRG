@@ -372,3 +372,37 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 .uc-cost-editor>fieldset h2 { font-size:16px; }
 .uc-cost-editor>fieldset label { font-size:13px; }
 @media(max-width:700px) { .uc-cost-editor-header { flex-direction:column; align-items:flex-start; padding:20px; }.uc-cost-tabs { padding:0 20px; gap:16px; }.uc-cost-tools { padding:12px 20px; flex-wrap:wrap; }.uc-cost-editor>fieldset { padding:20px; } }
+
+/* Shared workspace surfaces for both analysis rooms. */
+.uc-workspace-shell .uc-panel,
+.uc-workspace-shell .uc-result-toolbar {
+  @apply rounded-xl border border-slate-200 bg-white shadow-none;
+}
+.uc-workspace-shell .uc-primary {
+  @apply rounded-lg bg-teal-800 border-teal-800 shadow-none hover:bg-teal-900;
+}
+.uc-workspace-shell .uc-secondary {
+  @apply rounded-lg border-slate-300 text-teal-900 hover:bg-teal-50;
+}
+.uc-workspace-shell .uc-table-scroll {
+  @apply rounded-lg border-slate-200;
+}
+.uc-workspace-shell .uc-table th {
+  @apply bg-slate-50 text-slate-700;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.75rem !important;
+}
+.uc-workspace-shell .uc-table td {
+  @apply border-slate-100 text-slate-800;
+}
+.uc-workspace-shell .uc-table tbody tr:hover {
+  @apply bg-teal-50;
+}
+@media print {
+  .uc-workspace-frame, .uc-workspace-body, .uc-workspace-shell {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}

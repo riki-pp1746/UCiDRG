@@ -32,6 +32,7 @@ export async function prepareClaimQuality(rows:PatientRecord[],signal?:AbortSign
 export function inputQuality(config:HospitalCostConfig,rows:PatientRecord[],options:Methodology,origin:string):QualityIssue[]{
  const issues=claimQuality(rows);const add=(id:string,severity:QualityIssue['severity'],message:string,source='/costing')=>issues.push({id,severity,message,source,count:1,examples:[]});
  if(origin==='contoh')add('example','error','DATA CONTOH: biaya bawaan belum diganti. Unggah biaya asli atau hapus data contoh.','/upload');
+ if(origin==='simulasi')add('simulation','warning','DATA SIMULASI: biaya sintetis untuk latihan perhitungan.','/upload');
  for(const item of config.importIssues||[])add(item.id,'error',`Sel ${item.sheet}!${item.cell} kosong. Isi nilai atau konfirmasi nol dengan catatan.`, '/costing');
  const centers=[...config.overheadCenters,...config.intermediateCenters,...config.finalCenters];const names=new Set<string>();
  const costs=new Map<string,string>();const ids=new Set<string>();

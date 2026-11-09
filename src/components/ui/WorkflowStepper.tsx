@@ -1,67 +1,64 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Check, ArrowRight } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import clsx from 'clsx';
 import { useWorkflowProgress } from '../../hooks/useWorkflowProgress';
 import { useUiPrefsStore } from '../../stores/uiPrefsStore';
 
-/** Bar langkah kerja: Upload → Input Biaya → Cost per Pasien → Perbandingan → Laporan. */
+const alias: Record<string, string> = {
+  '/input-biaya': '/costing',
+  '/comparison': '/compare',
+  '/report': '/reports',
+};
+const statusLabel = { ready: 'Siap', next: 'Berikutnya', waiting: 'Menunggu', blocked: 'Perlu diperiksa' };
+
 export default function WorkflowStepper() {
-  const { steps, next, doneCount, total } = useWorkflowProgress();
+  const { steps, next, readyCount } = useWorkflowProgress();
   const beginnerMode = useUiPrefsStore(s => s.beginnerMode);
   const { pathname } = useLocation();
-
-  const onWorkflowPage = steps.some(s => pathname === s.path || (s.id === 'compare' && pathname === '/comparison') || (s.id === 'report' && pathname === '/report') || (s.id === 'costing' && pathname === '/input-biaya'));
-  if (!onWorkflowPage) return null;
+  const current = alias[pathname] ?? pathname;
+  if (!steps.some(step => step.path === current)) return null;
 
   return (
-    <nav aria-label="Langkah kerja" className="mb-6 rounded-2xl bg-white border border-[#EAE0D6] shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#965238]">
-          Langkah kerja · {doneCount} dari {total} siap
-        </p>
-        <div className="hidden sm:block w-40 h-1.5 rounded-full bg-[#F5EFE8] overflow-hidden" aria-hidden>
-          <div className="h-full bg-[#568D7E] transition-all" style={{ width: `${(doneCount / total) * 100}%` }} />
-        </div>
+    <nav aria-label="Langkah kerja" className="mb-5 overflow-hidden rounded-lg border border-slate-200 bg-white print:hidden">
+      <div className="flex items-center justify-between gap-3 px-3.5 py-2.5 sm:px-4">
+        <p className="text-sm font-semibold text-teal-950">Alur analisis</p>
+        <p className="text-xs tabular-nums text-slate-600">{readyCount} dari {steps.length} tahap siap</p>
       </div>
-
-      <ol className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        {steps.map((s, i) => {
-          const active = pathname === s.path;
+      <ol className="grid grid-cols-2 border-t border-slate-200 sm:grid-cols-5">
+        {steps.map((step, index) => {
+          const active = current === step.path;
           return (
-            <li key={s.id}>
+            <li key={step.id} className="border-b border-r border-slate-200 sm:border-b-0 sm:last:border-r-0">
               <Link
-                to={s.path}
+                to={step.path}
                 aria-current={active ? 'step' : undefined}
-                title={s.hint}
+                title={step.hint}
                 className={clsx(
-                  'flex items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors border',
-                  active ? 'border-[#17645D] bg-[#17645D] text-white'
-                    : s.status === 'done' ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                    : s.status === 'current' ? 'border-[#568D7E] bg-[#FCF0E5] text-[#17645D] hover:bg-[#F7E5D7]'
-                    : 'border-[#EAE0D6] bg-white text-[#796E64] hover:bg-[#FBF8F3]'
+                  'flex h-full items-center gap-2.5 border-b-2 px-3 py-2.5 transition-colors focus-visible:-outline-offset-2',
+                  active ? 'border-teal-700 bg-teal-50 text-teal-950' : 'border-transparent text-slate-700 hover:bg-slate-50',
                 )}
               >
-                <span className={clsx(
-                  'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
-                  active ? 'bg-[#EFC2A5] text-[#17645D]'
-                    : s.status === 'done' ? 'bg-emerald-600 text-white'
-                    : 'bg-[#EAE0D6] text-[#625850]'
+                <span aria-hidden className={clsx(
+                  'grid size-6 shrink-0 place-items-center rounded-md text-[11px] font-semibold tabular-nums',
+                  step.status === 'ready' ? 'bg-teal-100 text-teal-900' : 'bg-slate-100 text-slate-700',
                 )}>
-                  {s.status === 'done' && !active ? <Check className="w-3 h-3" /> : i + 1}
+                  {step.status === 'ready' ? <Check size={13} /> : String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="font-semibold leading-tight">{s.label}<span className="block text-[10px]">{s.status==='done'?'Siap':s.status==='error'?'Perlu perbaikan':'Belum'}</span></span>
+                <span className="text-xs font-semibold leading-tight">
+                  {step.label}
+                  <span className={clsx('mt-1 block text-[11px] font-normal', step.status === 'blocked' ? 'text-red-800' : 'text-slate-600')}>{statusLabel[step.status]}</span>
+                </span>
               </Link>
             </li>
           );
         })}
       </ol>
-
       {beginnerMode && next && (
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-[#625850]">
-          <span><strong className="text-[#17645D]">Langkah berikutnya:</strong> {next.hint}</span>
-          {pathname !== next.path && (
-            <Link to={next.path} className="inline-flex items-center gap-1 font-semibold text-[#17645D] hover:text-[#965238]">
-              Buka {next.label} <ArrowRight className="w-3.5 h-3.5" />
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-3.5 py-2.5 text-xs sm:px-4">
+          <span className="text-slate-700">{next.status === 'blocked' ? 'Periksa peringatan pada tahap '+next.label+'.' : next.hint}</span>
+          {current !== next.path && (
+            <Link to={next.path} className="inline-flex items-center gap-1.5 font-semibold text-teal-800 hover:underline">
+              Buka {next.label} <ArrowRight size={14} aria-hidden />
             </Link>
           )}
         </div>

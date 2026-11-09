@@ -330,7 +330,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         console.log(`✅ Parse Excel: ${overheadCenters.length} Overhead, ${intermediateCenters.length} Intermediate, ${finalCenters.length} Final`);
-        resolve({ ...parsedInfo,importIssues:[...sourceIssues,...importIssues],sourceOrigin:isSimulationWorkbook(workbook)?'contoh':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
+        resolve({ ...parsedInfo,importIssues:[...sourceIssues,...importIssues],sourceOrigin:isSimulationWorkbook(workbook)?'simulasi':'diunggah',sourceFilename:file.name,sourceAt:new Date().toISOString(), ...(dataDasarSheetName ? { dataDasar: parsedDataDasar } : {}), ...(dataOperasionalSheetName ? { dataLayanan: parsedDataLayanan } : {}), overheadCenters, intermediateCenters, finalCenters });
 
       } catch (err: any) {
         console.error('Parse Excel error:', err);

@@ -1,58 +1,55 @@
 import { useMemo } from 'react';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
-import {useTarifPasienStore} from '../stores/tarifPasienStore';
-import {useMethodologyStore} from '../stores/methodologyStore';
-import {snapshotSourcesMatch} from '../lib/analysisSources';
+import { useTarifPasienStore } from '../stores/tarifPasienStore';
+import { useMethodologyStore } from '../stores/methodologyStore';
+import { snapshotSourcesMatch } from '../lib/analysisSources';
 
-export type StepStatus = 'done' | 'current' | 'todo' | 'error';
+type StepStatus = 'ready' | 'next' | 'waiting' | 'blocked';
 
-export interface WorkflowStep {
-  id: string;
-  label: string;
-  path: string;
-  status: StepStatus;
-  hint: string;
-}
+const stages = [
+  { id: 'upload', label: 'Data sumber', path: '/upload', hint: 'Unggah klaim dan workbook biaya RS.' },
+  { id: 'costing', label: 'Biaya & Alokasi', path: '/costing', hint: 'Periksa pusat biaya, volume, dan dasar alokasi.' },
+  { id: 'patient', label: 'Hasil Pasien', path: '/tarif-pasien', hint: 'Hitung dan periksa biaya per pasien.' },
+  { id: 'compare', label: 'Perbandingan', path: '/compare', hint: 'Bandingkan unit cost dengan tarif klaim.' },
+  { id: 'report', label: 'Laporan', path: '/reports', hint: 'Periksa periode dan asumsi sebelum mengekspor.' },
+];
 
-/** Menghitung progres alur kerja dari data yang sudah ada di store. */
 export function useWorkflowProgress() {
-  const rawCount = useCostingStore(s => s.rawRecords.length);
-  const sessionCount = useCostingStore(s => s.sessions.length);
-
-  const finalCost = useHospitalCostStore(s => s.config.totalFinalCost);
-  const snapshot=useTarifPasienStore(s=>s.snapshot);const local=useTarifPasienStore(s=>s.localCosting);const validation=useTarifPasienStore(s=>s.validationIssues);const revision=useMethodologyStore(s=>s.revision);
-  const raw=useCostingStore(s=>s.rawRecords),config=useHospitalCostStore(s=>s.config),costs=useTarifPasienStore(s=>s.biayaRSMap),jkn=useCostingStore(s=>s.jknProportion),merge=useCostingStore(s=>s.mergeCarePool),period=useCostingStore(s=>s.periodNormalization);
+  const raw = useCostingStore(s => s.rawRecords);
+  const config = useHospitalCostStore(s => s.config);
+  const snapshot = useTarifPasienStore(s => s.snapshot);
+  const local = useTarifPasienStore(s => s.localCosting);
+  const validation = useTarifPasienStore(s => s.validationIssues);
+  const costs = useTarifPasienStore(s => s.biayaRSMap);
+  const revision = useMethodologyStore(s => s.revision);
+  const jkn = useCostingStore(s => s.jknProportion);
+  const merge = useCostingStore(s => s.mergeCarePool);
+  const period = useCostingStore(s => s.periodNormalization);
 
   return useMemo(() => {
-    const uploaded = rawCount > 0 || sessionCount > 0;
-    const costed = (finalCost || 0) > 0;
-    const blocked=validation.some(i=>i.severity==='error')||Boolean(snapshot?.issues.some(i=>i.severity==='error'));
-    const calculated = Boolean(local&&snapshot&&snapshotSourcesMatch(snapshot,raw,costs,config,revision,jkn,merge,period))&&!blocked;
-
-    const flags = [uploaded&&!blocked, costed&&!blocked, calculated, calculated, calculated];
-    const base: Omit<WorkflowStep, 'status'>[] = [
-      { id: 'upload', label: 'Data', path: '/upload', hint: 'Unggah file klaim JKN (.TXT) dan template biaya (.XLSX).' },
-      { id: 'costing', label: 'Biaya & Alokasi', path: '/costing', hint: 'Lengkapi biaya Overhead, Intermediate, dan Pusat Biaya Utama.' },
-      { id: 'patient', label: 'Hasil Pasien', path: '/tarif-pasien', hint: 'Periksa biaya yang terbagi ke tiap pasien.' },
-      { id: 'compare', label: 'Perbandingan', path: '/compare', hint: 'Bandingkan unit cost dengan tarif klaim.' },
-      { id: 'report', label: 'Laporan', path: '/reports', hint: 'Unduh laporan hasil analisis.' },
-    ];
-
-    let currentAssigned = false;
-    const steps: WorkflowStep[] = base.map((s, i) => {
-      let status: StepStatus = flags[i] ? 'done' : 'todo';
-      if(blocked&&(uploaded||costed))status='error';
-      if (!flags[i] && !currentAssigned) {
-        if(status!=='error')status = 'current';
-        currentAssigned = true;
+    const fresh = snapshot && snapshotSourcesMatch(snapshot, raw, costs, config, revision, jkn, merge, period);
+    const blocked = new Set<string>();
+    if (fresh) {
+      for (const issue of snapshot.issues) {
+        if (issue.severity !== 'error') continue;
+        if (issue.source === '/upload') blocked.add('upload');
+        else if (issue.source === '/costing' || issue.source === '/settings') blocked.add('costing');
+        else blocked.add('patient');
       }
-      return { ...s, status };
-    });
+    }
+    if (config.importIssues?.length || config.sourceOrigin === 'contoh') blocked.add('costing');
+    if (period?.dateOutliers?.length && !period.confirmed) blocked.add('upload');
+    if (fresh && validation.some(issue => issue.severity === 'error')) blocked.add('patient');
 
-    const next = steps.find(s => s.status === 'error'||s.status === 'current') || null;
-    const doneCount = steps.filter(s => s.status === 'done').length;
-    return { steps, next, doneCount, total: steps.length };
-  }, [rawCount, sessionCount, finalCost,snapshot,local,validation,revision,raw,config,costs,jkn,merge,period]);
+    const calculated = Boolean(local && fresh && !blocked.size);
+    const ready = [raw.length > 0, config.totalFinalCost > 0, calculated, calculated, calculated];
+    const nextIndex = stages.findIndex((step, index) => blocked.has(step.id) || !ready[index]);
+    const steps = stages.map((step, index) => {
+      const status: StepStatus = blocked.has(step.id) ? 'blocked' : ready[index] ? 'ready' : nextIndex === index ? 'next' : 'waiting';
+      return { ...step, status };
+    });
+    return { steps, next: steps[nextIndex], readyCount: steps.filter(step => step.status === 'ready').length };
+  }, [raw, config, snapshot, local, validation, costs, revision, jkn, merge, period]);
 }
 

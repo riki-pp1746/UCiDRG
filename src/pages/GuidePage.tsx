@@ -115,18 +115,30 @@ const DATA_YANG_DISIAPKAN = [
 // Data: Langkah-langkah Penggunaan Aplikasi
 // ────────────────────────────────────────────────────────────
 export default function GuidePage(){
-  return <div className="space-y-6 max-w-5xl mx-auto">
-    <section className="bg-gradient-to-br from-[#17645D] to-[#A65D43] rounded-2xl p-7 text-white">
-      <p className="flex items-center gap-2 text-[#F7DCC6] text-sm mb-3"><BookOpen size={22}/>Panduan Penggunaan</p>
-      <h1 className="text-3xl font-bold !text-white">Analisis 18 Komponen</h1>
-      <p className="text-white/75 mt-3">Siapkan biaya RS dan klaim, periksa alokasi, lalu telusuri unit cost serta tarif pasien dalam lima tahap kerja.</p>
-      <Link to="/upload" className="uc-secondary mt-5">Mulai dari Data<ArrowRight size={16}/></Link>
-    </section>
-    <section className="uc-panel space-y-3">
-      <h2 className="flex items-center gap-2"><AlertTriangle size={20}/>Pastikan Data yang Digunakan Sudah Diaudit</h2>
-      <p className="text-sm text-slate-600">Gunakan laporan keuangan yang sudah diperiksa atau diaudit sesuai kebijakan RS, bersama data operasional dan klaim pada periode yang dapat dibandingkan. Aplikasi tidak memverifikasi dokumen audit secara otomatis; penanggung jawab tetap perlu memeriksa sumber dan kelengkapan input.</p>
+  return <div className="mx-auto max-w-6xl space-y-5">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.48fr)]">
+        <div className="px-5 py-7 sm:px-8 sm:py-9">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-teal-800"><BookOpen size={17} aria-hidden /> Panduan kerja</p>
+          <h1 className="text-3xl font-bold tracking-tight text-teal-950 sm:text-4xl">Analisis 18 Komponen</h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-700">Mulai dari klaim JKN dan biaya rumah sakit. Periksa alokasi, lihat unit cost pasien, lalu bandingkan hasilnya dengan tarif sebelum menyusun laporan.</p>
+          <Link to="/upload" className="uc-primary mt-5">Buka Data sumber <ArrowRight size={16} aria-hidden /></Link>
+        </div>
+        <div className="border-t border-slate-200 bg-teal-50/65 px-5 py-6 sm:px-7 md:border-l md:border-t-0">
+          <h2 className="text-sm font-semibold text-teal-950">Sebelum mulai</h2>
+          <ul className="mt-3 space-y-3 text-sm leading-5 text-slate-700">
+            <li className="flex gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0 text-teal-800" aria-hidden /> Klaim JKN dari E-Klaim</li>
+            <li className="flex gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0 text-teal-800" aria-hidden /> Workbook biaya dan volume layanan RS</li>
+            <li className="flex gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0 text-teal-800" aria-hidden /> Periode biaya dan klaim yang sepadan</li>
+          </ul>
+        </div>
+      </div>
     </section>
     <AnalysisGuide mode="components"/>
+    <section className="uc-notice">
+      <AlertTriangle size={17} aria-hidden />
+      <p>Untuk analisis RS, gunakan laporan keuangan yang sudah diperiksa atau diaudit sesuai kebijakan RS. Penanggung jawab memeriksa sumber dan kelengkapan data.</p>
+    </section>
     <details className="uc-panel">
       <summary className="cursor-pointer font-semibold">Contoh penyesuaian biaya tahunan terhadap periode klaim</summary>
       <div className="space-y-3 mt-4 text-sm text-slate-600">

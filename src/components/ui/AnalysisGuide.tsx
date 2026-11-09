@@ -97,11 +97,46 @@ export default function AnalysisGuide({mode}:{mode:AnalysisGuideMode}){
   const integrated=mode==='integrated';
   const path=(p:string)=>integrated?'/revisi4'+p:p;
   return <div className="space-y-5">
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white" aria-label="Panduan lima tahap kerja">
+      <header className="border-b border-slate-200 px-5 py-4 sm:px-6">
+        <h2 className="text-lg font-semibold text-teal-950">Lima tahap kerja</h2>
+        <p className="mt-1 text-sm text-slate-600">Buka rincian tahap untuk melihat apa yang perlu diperiksa.</p>
+      </header>
+      <ol className="divide-y divide-slate-200">
+        {stages.map((stage, index) => {
+          const Icon = stage.icon;
+          const content = instructions[mode][index];
+          return (
+            <li key={stage.path} className="px-5 py-4 sm:px-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-0.5 font-mono text-xs font-medium tabular-nums text-teal-800">{String(index + 1).padStart(2, '0')}</span>
+                  <div>
+                    <h3 className="flex items-center gap-2 text-sm font-semibold text-teal-950"><Icon size={16} aria-hidden /> {stage.title}</h3>
+                    <p className="mt-1 text-sm leading-5 text-slate-600">{content.description}</p>
+                  </div>
+                </div>
+                <Link className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-800 hover:underline" to={path(stage.path)}>Buka {stage.title} <ArrowRight size={14} aria-hidden /></Link>
+              </div>
+              <details className="mt-3 pl-7 text-sm text-slate-700">
+                <summary className="w-fit font-medium text-teal-800">Rincian tahap {index + 1}</summary>
+                <ul className="mt-2 list-disc space-y-2 pl-4 leading-6">{content.items.map(item => <li key={item}>{item}</li>)}</ul>
+              </details>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
     <TemplateGuide mode={mode}/>
-    <section className="uc-panel space-y-3"><h2>Pilih ruang analisis sebelum mulai</h2><p className="text-sm text-slate-600">Gunakan pilihan Ruang analisis pada sidebar. Analisis 18 Komponen membagi biaya melalui 18 komponen tagihan. Analisis Biaya Terintegrasi menambahkan pusat biaya, dua metode alokasi, pemisahan JKN, dan rekonsiliasi. Data kedua ruang tersimpan terpisah dan tidak tersinkron otomatis.</p><p className="text-sm text-slate-600">Lima tahap kerja: Data → Biaya &amp; Alokasi → Hasil Pasien → Perbandingan → Laporan. Dashboard dan Pengaturan dapat dibuka kapan diperlukan.</p></section>
-    <section className="uc-panel space-y-3"><h2>Mulai kembali dengan data baru</h2><p className="text-sm text-slate-600">Buka menu Reset Data. Pilih data aktif untuk mengosongkan TXT dan Excel pada ruang ini, atau reset total untuk menghapus kedua ruang termasuk riwayat hasil dan konfigurasi. Buat cadangan terlebih dahulu, lalu ketik RESET untuk mengonfirmasi. Reset hanya berlaku pada browser dan alamat aplikasi ini.</p><Link className="uc-secondary" to={path('/reset')}>Buka Reset Data</Link></section>
-    <section className="space-y-3" aria-label="Panduan lima tahap kerja"><h2 className="text-xl font-bold text-[#17645D]">Langkah penggunaan {integrated?'Analisis Biaya Terintegrasi':'Analisis 18 Komponen'}</h2>{stages.map((stage,i)=>{const Icon=stage.icon;const content=instructions[mode][i];return <section className="uc-panel space-y-3" key={stage.path}><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="flex items-center gap-3 font-semibold"><Icon size={20}/>{i+1}. {stage.title}</h3><Link className="uc-secondary" to={path(stage.path)}>Buka {stage.title}<ArrowRight size={16}/></Link></div><p className="text-sm text-slate-600">{content.description}</p><ul className="list-disc pl-5 space-y-2 text-sm text-slate-600">{content.items.map(item=><li key={item}>{item}</li>)}</ul></section>;})}</section>
-    <section className="uc-panel space-y-3"><h2>Sesi sementara dan cadangan</h2><p className="text-sm text-slate-600">Data, konfigurasi dan snapshot hanya berada di memori selama sesi. Logout, refresh, atau menutup tab mengosongkan data kedua ruang analisis. Aplikasi tidak menyimpan data analisis ke localStorage, sessionStorage atau IndexedDB. Ekspor hasil dan unduh cadangan sebelum keluar jika ingin melanjutkan nanti.</p><p className="text-sm text-slate-600">Cadangan yang Anda unduh tetap berupa berkas di komputer. Pemulihan memuatnya ke sesi berjalan. Cache berkas aplikasi tetap digunakan untuk mempercepat pembukaan halaman.</p></section>
+    <details className="uc-panel">
+      <summary className="font-semibold text-teal-950">Ruang analisis dan reset data</summary>
+      <div className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
+        <p>Gunakan pilihan Ruang analisis di navigasi. Klaim dan workbook biaya menjadi sumber bersama. Pengaturan metode dan hasil perhitungan dikelola di masing-masing ruang.</p>
+        <p>Untuk mengosongkan sumber atau seluruh sesi, buka Reset Data dan periksa cakupan sebelum mengonfirmasi.</p>
+        <Link className="uc-secondary" to={path('/reset')}>Buka Reset Data</Link>
+      </div>
+    </details>
+    <section className="uc-panel space-y-3"><h2>Sesi sementara dan cadangan</h2><p className="text-sm text-slate-600">Data kedua ruang hanya berada di memori selama sesi, termasuk konfigurasi dan hasil analisis. Logout, refresh, atau menutup tab mengosongkan data kedua ruang analisis. Aplikasi tidak menyimpan data analisis ke localStorage, sessionStorage atau IndexedDB. Ekspor hasil dan unduh cadangan sebelum keluar jika ingin melanjutkan nanti.</p><p className="text-sm text-slate-600">Cadangan yang Anda unduh tetap berupa berkas di komputer. Pemulihan memuatnya ke sesi berjalan. Cache berkas aplikasi tetap digunakan untuk mempercepat pembukaan halaman.</p></section>
   </div>;
 }
 

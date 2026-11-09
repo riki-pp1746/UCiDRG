@@ -31,3 +31,30 @@ it('legacy browser cleanup removes only UnitCOSt data',async()=>{
  const storage=(initial:Record<string,string>)=>{const data=new Map(Object.entries(initial));return {get length(){return data.size;},key:(i:number)=>[...data.keys()][i]??null,getItem:(k:string)=>data.get(k)??null,removeItem:(k:string)=>{data.delete(k);},setItem:(k:string,v:string)=>{data.set(k,v);}};};
  const local=storage({'unitcost-costing-store':'old','other-app':'keep'});const session=storage({'unitcost-session':'old','other-tab':'keep'});vi.stubGlobal('localStorage',local);vi.stubGlobal('sessionStorage',session);try{await purgeOldBrowserData();expect(local.getItem('unitcost-costing-store')).toBe(null);expect(session.getItem('unitcost-session')).toBe(null);expect(local.getItem('other-app')).toBe('keep');expect(session.getItem('other-tab')).toBe('keep');}finally{vi.unstubAllGlobals();}
 });
+
+it('a fresh page starts with no login, claims, uploaded costs, or analysis results',async()=>{
+ const w=migrateLegacy({getItem:()=>null});
+ w.input.hospital='Synthetic RS';
+ await writeWorkspace(w);
+ await saveSnapshot({id:'before-reload',at:'2025'} as Snapshot);
+ useAuthStore.setState({isAuthenticated:true});
+ useCostingStore.setState({rawRecords:[{sep:'before-reload'}] as never[]});
+ useHospitalCostStore.getState().addOverhead();
+ useTarifPasienStore.setState({biayaRSMap:{procedure_amt:100}});
+
+ // A reload creates a new module graph without calling the logout handler.
+ vi.resetModules();
+ try{
+  const {useAuthStore:auth}=await import('../src/stores/authStore');
+  const {useCostingStore:costing}=await import('../src/stores/costingStore');
+  const {useHospitalCostStore:hospital}=await import('../src/stores/hospitalCostStore');
+  const {useTarifPasienStore:tariffs}=await import('../src/stores/tarifPasienStore');
+  const {readWorkspace:workspace,listSnapshots:snapshots}=await import('../src/v4/storage');
+  expect(auth.getState().isAuthenticated).toBe(false);
+  expect(costing.getState().rawRecords).toEqual([]);
+  expect(hospital.getState().config).toMatchObject({overheadCenters:[],intermediateCenters:[],finalCenters:[],dataLayanan:[]});
+  expect(tariffs.getState().biayaRSMap).toEqual({});
+  expect(await workspace()).toBeUndefined();
+  expect(await snapshots()).toEqual([]);
+ }finally{useAuthStore.getState().logout();}
+});
