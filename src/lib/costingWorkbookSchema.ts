@@ -20,6 +20,16 @@ export function workbookSourceIssues(book:XLSX.WorkBook){
   if(required&&(v===null||v===undefined||v===''))issues.push({id:`${name}-${address}`,sheet:name,cell:address,message:'Nilai kosong; belum dinyatakan nol.'});
  };
  workbookRows(book,sheet).forEach((r,row)=>{if(/^\d+\.?\d*\)?$/.test(String(r[0]))&&r[1])for(const c of [3,9,10,11,12,13,14,15,16,17])inspect(sheet,row,c,c!==15&&c!==16);});
+ if(costingWorkbookFormat(book)==='workshop-do'){
+  for(const row of [1,2,3,4,...Array.from({length:11},(_,i)=>i+32)])inspect('Data Dasar RS',row,1,true);
+  for(const row of [2,3,4,5,6,7,10,11,12,13,14,15,16,19,20,23,26,27,28,29,30,31,35])inspect('Data LO Lapkeu',row,1,true);
+  for(let row=1;row<=30;row++){
+   const columns=row<=5?[3,4,9,13]:[1,2];
+   for(const column of columns)inspect('Data Operasional',row,column,true);
+  }
+  for(let row=10;row<=21;row++)for(const column of [10,11])inspect('Data Operasional',row,column,true);
+  return issues;
+ }
  for(const name of ['Data Dasar RS','Data LO Lapkeu'])workbookRows(book,name).forEach((r,row)=>{if(!r[0]||/^([IVX]+\.|BEBAN$|PENDAPATAN$|Catatan|Status|LAPORAN OPERASIONAL)/i.test(String(r[0])))return;if(name==='Data Dasar RS'&&(!r[0]||/nama|tipe|kepemilikan|data dasar|catatan/i.test(String(r[0]))))return;inspect(name,row,1,true);});
  workbookRows(book,'Data Operasional').forEach((r,row)=>{if(row===0||!r[0]||/^total|catatan|panduan/i.test(String(r[0])))return;for(const col of [1,2,3,4])inspect('Data Operasional',row,col,true);});
  return issues;

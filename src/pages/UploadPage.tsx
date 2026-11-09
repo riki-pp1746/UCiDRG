@@ -442,9 +442,12 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
             Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)
           </p>
-          <div className="mb-8">
+          <div className="mb-8 flex flex-wrap justify-center gap-x-5 gap-y-2">
             <a href="/Template_Costing_Standard.xlsx" download="Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
               Unduh template costing RS 6 sheet (.XLSX)
+            </a>
+            <a href="/Template_Costing_Demo_RS_ABC_2025_Workshop_DO.xlsx" download className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
+              Unduh contoh RS ABC (.XLSX)
             </a>
           </div>
           

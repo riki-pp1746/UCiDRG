@@ -125,7 +125,8 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         const parsedDataLayanan: DataLayananKelas[] = [];
         if (dataOperasionalSheetName) {
           const operationRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataOperasionalSheetName], { header: 1, defval: null }) as any[][];
-          operationRows.slice(1).forEach(row => {
+          const rows=costingWorkbookFormat(workbook)==='workshop-do'?operationRows.slice(1,31):operationRows.slice(1);
+          rows.forEach(row => {
             const namaUnit = String(row[0] ?? '').trim();
             if (namaUnit&&!/^total\b/i.test(namaUnit)&&row.slice(1,5).every(v=>v==null||v===''||typeof v==='number'||/^[\d.,\s-]+$/.test(String(v)))) parsedDataLayanan.push({ namaUnit, kunjunganJKN: safeFloat(row[1]), kunjunganNonJKN: safeFloat(row[2]), hariRawatJKN: safeFloat(row[3]), hariRawatNonJKN: safeFloat(row[4]) });
           });

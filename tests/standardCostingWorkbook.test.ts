@@ -5,8 +5,18 @@ import {parseExcelTemplate} from '../src/lib/parsers/excelCostingParser';
 import {importWorkbook,templateWorkbook} from '../src/v4/imports';
 import {initialInput,recipientDrivers} from '../src/v4/types';
 import {calculate} from '../src/v4/engine';
-import {costingSheetName,numericCellValue} from '../src/lib/costingWorkbookSchema';
+import {costingSheetName,numericCellValue,workbookSourceIssues} from '../src/lib/costingWorkbookSchema';
 const bytes=()=>readFileSync('tests/fixtures/Template_Costing_Legacy.xlsx');
+it('checks only applicable input cells in the Workshop DO template',()=>{
+ const workbook=XLSX.readFile('public/Template_Costing_Standard.xlsx');
+ const costing=workbook.Sheets['Costing Template'];
+ for(const [address,cell] of Object.entries(costing)){
+  if(/^[PQ]\d+$/.test(address)&&cell.f&&cell.v==='')Object.assign(cell,{t:'n',v:0});
+ }
+ const blanks=workbookSourceIssues(workbook).filter(issue=>issue.sheet==='Data Operasional').map(issue=>issue.cell);
+ expect(blanks).toEqual(expect.arrayContaining(['D2','E2','J2','N2','B7','C7','K11','L11']));
+ for(const cell of ['B2','C2','D7','E7','B34','B40'])expect(blanks).not.toContain(cell);
+});
 it('standard download is masked and has six requested sheets',()=>{
  const b=XLSX.read(bytes(),{type:'buffer'});expect(b.SheetNames).toEqual(['Panduan Pengisian','Data Dasar RS','Data Operasional','Data LO Lapkeu','Costing Template','Rumus Perhitungan']);
  expect(JSON.stringify(b)).not.toMatch(/Hasan|Sadikin|RSHS|Mega Oktaviany|PUSBIKES|Downloads/i);
