@@ -1,6 +1,6 @@
 import {readDelimitedClaims} from '../lib/delimitedClaimsJob';
 import {mergeClaimSources} from '../lib/mergeClaimSources';
-import {shouldAutoAnalyse,MAX_TEXT_FILE_BYTES} from '../lib/largeData';
+import {MAX_TEXT_FILE_BYTES} from '../lib/largeData';
 import {prepareClaimQuality} from '../lib/analysisQuality';
 import {useTarifPasienStore} from '../stores/tarifPasienStore';
 import {prepareIdentities} from '../lib/analysisIdentity';
@@ -179,19 +179,27 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           adjustedCostTotal: Math.round(annualCostTotal * detectedPeriod.factor),
         };
 
-        useTarifPasienStore.setState({patients:[],snapshot:null,localCosting:null,validationIssues:[]});
+        useTarifPasienStore.setState({patients:[],biayaRSMap:{},distribusi:[],snapshot:null,localCosting:null,validationIssues:[]});
         setRawRecords(combinedTxtRecords, session);
         setPeriodNormalization(detectedPeriod);
 
-        // Upload harus langsung menghasilkan distribusi, bukan hanya menyimpan
-        // data TXT. Sinkronkan pasien, petakan biaya RS, lalu kirim sumber biaya
-        // yang sama ke engine Dashboard/Perbandingan/Laporan.
-        setPhase('Menghitung biaya pasien di latar belakang...');
-        if(shouldAutoAnalyse(combinedTxtRecords.length)){
-          try{await calculateAnalysisJob(n=>{if(!abort.signal.aborted)setProgress(88+n*.08);},abort.signal);}catch(error){if(abort.signal.aborted)return;processResult.errors.push('Sumber sudah tersimpan; perhitungan perlu dilengkapi: '+String(error));}
-        }else processResult.errors.push('Mode data besar: seluruh klaim tersimpan. Lengkapi biaya dan gunakan Hitung ulang untuk menghitung di latar belakang; perhitungan otomatis saat unggah dinonaktifkan agar aplikasi tetap ringan.');
       } else if (txtFiles.length > 0 && processResult.totalParsedTxtRows === 0) {
         processResult.errors.push('Tidak ada baris data Klaim JKN (INA-CBG/iDRG) yang valid ditemukan dalam file TXT.');
+      }
+
+      const activeClaims = useCostingStore.getState().rawRecords;
+      const activeCosts = useHospitalCostStore.getState().config;
+      const hasCosts = activeCosts.totalOverheadCost + activeCosts.totalIntermediateCost + activeCosts.totalFinalCost > 0;
+      if (activeClaims.length && hasCosts) {
+        setPhase(`Menghitung ${activeClaims.length.toLocaleString('id-ID')} klaim di latar belakang…`);
+        try {
+          await calculateAnalysisJob(n => {
+            if (!abort.signal.aborted) setProgress(previous => Math.max(previous, 88 + n * .08));
+          }, abort.signal);
+        } catch (error) {
+          if (abort.signal.aborted) return;
+          processResult.errors.push('Sumber sudah tersimpan; perhitungan gagal: ' + String(error));
+        }
       }
 
       if(abort.signal.aborted)return;
@@ -217,8 +225,9 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
 
-    if(!shouldAutoAnalyse(rawRecords.length)){setErrorMsg('Periode diperbarui. Gunakan Hitung ulang untuk menghitung data besar di latar belakang.');return;}
-    void calculateAnalysisJob().catch(error=>setErrorMsg(String(error)));
+    if (sourceCost > 0) void calculateAnalysisJob().catch(error => {
+      if (error?.name !== 'AbortError') setErrorMsg(String(error));
+    });
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {

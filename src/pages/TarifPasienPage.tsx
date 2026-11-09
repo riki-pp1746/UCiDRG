@@ -93,17 +93,15 @@ export default function TarifPasienPage() {
       }));
 
       useTarifPasienStore.getState().setPatients(mapped);
-      // Auto-calculate after sync
-      setTimeout(() => calculateDistribution(), 100);
     }
-  }, [rawRecords, patients.length, calculateDistribution]);
+  }, [rawRecords, patients.length]);
 
   // Recalculate saat tab pindah
   useEffect(() => {
-    if (activeTab !== 'input'&&shouldAutoAnalyse(rawRecords.length)) {
+    if (activeTab !== 'input' && !rawRecords.length) {
       calculateDistribution();
     }
-  }, [activeTab, calculateDistribution,biayaRSMap,periodNormalization?.label]);
+  }, [activeTab, calculateDistribution, rawRecords.length, biayaRSMap, periodNormalization?.label]);
 
   useEffect(() => {
     if(shouldAutoAnalyse(rawRecords.length))validateAgainstHospital(config, periodFactor);
@@ -280,7 +278,12 @@ export default function TarifPasienPage() {
 
 
       {/* Tab 3: Hasil Cost per Pasien */}
-      {activeTab === 'hasil' && (
+      {activeTab === 'hasil' && rawRecords.length > 0 && !localCosting && (
+        <div className="uc-notice" role="status">
+          <p>Unit cost pasien belum tersedia untuk sumber aktif. Gunakan <a href="#hitung-18-komponen" className="font-semibold underline">Hitung 18 komponen</a> setelah biaya RS terisi.</p>
+        </div>
+      )}
+      {activeTab === 'hasil' && (localCosting || !rawRecords.length) && (
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
             <div>

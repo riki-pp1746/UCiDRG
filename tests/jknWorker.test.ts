@@ -1,6 +1,7 @@
 import {it,expect,vi} from 'vitest';
 import {useHospitalCostStore} from '../src/stores/hospitalCostStore';
 import {useCostingStore} from '../src/stores/costingStore';
+import {defaultMethodology} from '../src/stores/methodologyStore';
 import {parseINACBGText} from '../src/lib/parsers/inacbgParser';
 import {makeEmptyPatient} from '../src/types/tarifPasien.types';
 it('worker finishes zero and positive JKN without recursive updates',async()=>{
@@ -24,5 +25,14 @@ it('worker finishes zero and positive JKN without recursive updates',async()=>{
   if(proportion===0)expect(Object.values(result.tarif.biayaRSMap).every(v=>v===0)).toBe(true);
   expect(result.tarif.validationIssues).toEqual([]);
  }
+ // Applying JKN immediately after importing claims can precede patient mapping.
+ useHospitalCostStore.getState().addOverhead();
+ const overhead = useHospitalCostStore.getState().config.overheadCenters[0];
+ useHospitalCostStore.getState().updateOverhead(overhead.id,{biayaPegawai:10000});
+ messages.length=0;
+ ctx.onmessage({data:{...payload,config:useHospitalCostStore.getState().config,patients:[],proportion:85,settings:defaultMethodology(),revision:1}});
+ expect(messages.find(m=>m.error)).toBeUndefined();
+ expect(messages.at(-1).result.tarif.biayaRSMap.procedure_amt).toBe(8500);
+ expect(messages.at(-1).result.tarif.patients[0].totalCostPerPatient).toBe(8500);
  vi.unstubAllGlobals();
 });

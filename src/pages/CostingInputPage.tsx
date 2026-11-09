@@ -1,5 +1,4 @@
-import {shouldAutoAnalyse} from '../lib/largeData';
-import {calculateAnalysisJob} from '../lib/analysisController';
+import {analysisStale, calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
 import RupiahInput from '../components/ui/RupiahInput';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
@@ -262,40 +261,31 @@ export default function CostingInputPage() {
 
   const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
-  const { setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
+  const { rawRecords, setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
   const [centerQuery,setCenterQuery]=useState('');
   const [componentQuery,setComponentQuery]=useState('');
   const [componentFlag,setComponentFlag]=useState('all');
   const periodFactor = periodNormalization?.factor || 1;
 
-  // Recalculate otomatis saat masuk ke tab distribusi18
   useEffect(() => {
-    if (activeTab === 'distribusi18') {
-      if(!shouldAutoAnalyse(useCostingStore.getState().rawRecords.length))return;
-      // 1. Sinkronisasi data TXT E-Klaim terlebih dahulu
-      const rawRecords = useCostingStore.getState().rawRecords;
-      const tarifState = useTarifPasienStore.getState();
-      const hasMappedCosts = Object.keys(tarifState.biayaRSMap).length > 0;
-      if (rawRecords.length > 0 && tarifState.patients.length === 0) {
-        tarifState.syncFromCosting(rawRecords);
-      }
-      // Pulihkan juga sesi lama yang pasiennya sudah ada tetapi mapping biayanya
-      // masih kosong akibat alur upload versi sebelumnya.
-      if (rawRecords.length > 0 && !hasMappedCosts) {
-        const mapped = buildBiayaRSMap(config, useTarifPasienStore.getState().patients, periodFactor, useCostingStore.getState().jknProportion);
-        useTarifPasienStore.setState({ biayaRSMap: mapped });
-        useCostingStore.getState().setRVUGlobalCosts(biayaRSMapToRVU(mapped));
-      }
-
+    if (activeTab !== 'distribusi18') return;
+    if (!rawRecords.length) {
       calculateDistribution();
+      return;
     }
-  }, [activeTab, calculateDistribution, config, periodFactor]);
+    if (!analysisStale()) return;
+    if (config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost <= 0) return;
+    void calculateAnalysisJob().catch(error => {
+      if (error?.name !== 'AbortError') toast.error(String(error));
+    });
+  }, [activeTab, calculateDistribution, config, rawRecords, periodNormalization]);
 
   const totalBiayaTahunan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
   const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
   const totalBiaya18Variabel = Object.values(biayaRSMap).reduce((sum, value) => sum + (value || 0), 0);
   const biayaJKN=totalBiayaLaporan*jknProportion/100;
   const selisihNonJKN = biayaJKN - totalBiaya18Variabel;
+  const pendingAllocation = rawRecords.length > 0 && analysisStale();
   const outlierCount=distribusi.filter(d=>d.outlier).length;
 
   // Validasi sumber data dan dasar alokasi: biaya tidak boleh dialokasikan tanpa volume pemicu.
@@ -327,7 +317,7 @@ export default function CostingInputPage() {
   const hasBiayaGajiError = validation.errors.has('biaya-gaji');
 
   const handleAutoMapBiaya = () => {
-    if(!shouldAutoAnalyse(useCostingStore.getState().rawRecords.length)){void calculateAnalysisJob().catch(e=>toast.error(String(e)));return;}
+    if(rawRecords.length){void calculateAnalysisJob().catch(e=>toast.error(String(e)));return;}
     const state = useTarifPasienStore.getState();
     const totalsEKlaim = ALL_KOMPONEN_KEYS.reduce((acc, key) => {
       acc[key] = state.patients.reduce((sum, patient) => sum + (patient[key] || 0), 0);
@@ -350,6 +340,7 @@ export default function CostingInputPage() {
     if (!periodNormalization) return;
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
+    if (rawRecords.length) return;
     const state = useTarifPasienStore.getState();
     const mapped = buildBiayaRSMap(config, state.patients, updated.factor, useCostingStore.getState().jknProportion);
     useTarifPasienStore.setState({ biayaRSMap: mapped });
@@ -1178,6 +1169,7 @@ export default function CostingInputPage() {
             </div>
             <button
               onClick={handleAutoMapBiaya}
+              disabled={rawRecords.length > 0 && totalBiayaTahunan <= 0}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-semibold text-sm transition-colors whitespace-nowrap"
             >
               <RefreshCw className="w-4 h-4" /> Auto-Map Biaya RS
@@ -1203,6 +1195,11 @@ export default function CostingInputPage() {
           )}
 
           <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><JKNProportionControl/><p className="text-sm">JKN {displayDecimal(String(jknProportion))}%: {formatRupiah(biayaJKN)} · Non-JKN {displayDecimal(String(100-jknProportion))}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
+          {pendingAllocation ? (
+            <div className="uc-notice" role="status">
+              <p>Distribusi belum tersedia untuk sumber aktif. {totalBiayaTahunan > 0 ? <>Gunakan <a href="#hitung-18-komponen" className="font-semibold underline">Hitung 18 komponen</a> untuk memproses semua klaim.</> : 'Unggah workbook costing atau isi biaya RS terlebih dahulu.'}</p>
+            </div>
+          ) : <>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="rounded-xl border border-gray-200 bg-white p-4">
               <p className="text-xs text-gray-500">Total Biaya Tahunan</p>
@@ -1298,6 +1295,7 @@ export default function CostingInputPage() {
               </button>
             </div>
           </div>
+          </>}
         </div>
       )}
 

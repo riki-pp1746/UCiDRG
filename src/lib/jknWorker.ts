@@ -11,10 +11,14 @@ ctx.onmessage=e=>{
   if(settings)useMethodologyStore.setState({settings,revision});useHospitalCostStore.setState({config});
   ctx.postMessage({progress:10});
   useCostingStore.setState({...costing,jknProportion:proportion});
-  const mapped=buildBiayaRSMap(config,patients,settings?.compatibility?1/12:costing.periodNormalization?.factor||1,settings?.compatibility?85:proportion,settings?effectiveMethodology(settings):undefined);
+  let activePatients = patients;
+  if (!activePatients.length && costing.rawRecords.length) {
+    useTarifPasienStore.getState().syncFromCosting(costing.rawRecords);
+    activePatients = useTarifPasienStore.getState().patients;
+  }
+  const mapped=buildBiayaRSMap(config,activePatients,settings?.compatibility?1/12:costing.periodNormalization?.factor||1,settings?.compatibility?85:proportion,settings?effectiveMethodology(settings):undefined);
   const rvuGlobalCosts=biayaRSMapToRVU(mapped);
-  useCostingStore.setState({...costing,jknProportion:proportion});
-  useTarifPasienStore.setState({patients,biayaRSMap:mapped});
+  useTarifPasienStore.setState({patients:activePatients,biayaRSMap:mapped});
   useTarifPasienStore.getState().calculateDistribution();
   ctx.postMessage({progress:60});
   const tarif=useTarifPasienStore.getState();
