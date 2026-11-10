@@ -116,7 +116,7 @@ const DATA_YANG_DISIAPKAN = [
 // ────────────────────────────────────────────────────────────
 export default function GuidePage(){
   return <div className="mx-auto max-w-6xl space-y-5">
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+    <section className="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-teal-700 bg-white">
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.48fr)]">
         <div className="px-5 py-7 sm:px-8 sm:py-9">
           <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-teal-800"><BookOpen size={17} aria-hidden /> Panduan kerja</p>
@@ -151,7 +151,7 @@ export default function GuidePage(){
     <details className="uc-panel">
       <summary className="flex items-center gap-2 cursor-pointer font-semibold"><Database size={20}/>Daftar data yang harus disiapkan</summary>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">
-        {DATA_YANG_DISIAPKAN.map(data=>{const Icon=data.icon;return <section key={data.title} className="border border-[#EAE0D6] rounded-xl p-4 space-y-3"><h3 className="flex items-center gap-2 font-semibold text-sm"><Icon size={18}/>{data.title}</h3><span className={clsx('inline-block text-xs px-2 py-1 rounded-full',data.badgeColor)}>{data.badge}</span><p className="text-xs text-slate-500">{data.source}</p><ul className="space-y-2 text-sm text-slate-600">{data.items.map(item=><li className="flex items-start gap-2" key={item}><CheckCircle size={16} className="flex-none mt-0.5"/>{item}</li>)}</ul></section>;})}
+        {DATA_YANG_DISIAPKAN.map(data=>{const Icon=data.icon;return <section key={data.title} className="border border-slate-200 rounded-xl p-4 space-y-3"><h3 className="flex items-center gap-2 font-semibold text-sm"><Icon size={18}/>{data.title}</h3><span className={clsx('inline-block text-xs px-2 py-1 rounded-full',data.badgeColor)}>{data.badge}</span><p className="text-xs text-slate-500">{data.source}</p><ul className="space-y-2 text-sm text-slate-600">{data.items.map(item=><li className="flex items-start gap-2" key={item}><CheckCircle size={16} className="flex-none mt-0.5"/>{item}</li>)}</ul></section>;})}
       </div>
     </details>
     <p className="text-xs text-slate-500 text-center">UnitCOSt PRO · Panduan ruang Analisis 18 Komponen · Referensi tarif bawaan masih ilustratif sampai diverifikasi.</p>

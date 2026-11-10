@@ -12,15 +12,23 @@ Kesalahan yang memblokir hasil harus diperbaiki sebelum ekspor. Perubahan input 
 
 ## Menjalankan lokal
 
-Jalankan `npm install` lalu `npm run dev`. Kredensial lokal mengikuti `.env.local` atau konfigurasi pengembangan pada authStore.
+Salin `.env.example` ke `.env.local` dan isi `VITE_SUPABASE_PUBLISHABLE_KEY` dengan kunci publik proyek Supabase. Jalankan `npm install` lalu `npm run dev`.
+
+## Akun pengguna
+
+Pengguna masuk dengan email dan sandi dari **Authentication → Users** di proyek Supabase `mwhvjghostrqqoftuhdc`. Pengguna baru masuk langsung setelah pendaftaran berhasil.
+
+Di Supabase, buka **Authentication → Sign In / Providers → Email**, matikan **Confirm email**, lalu simpan. Opsi ini berlaku untuk pendaftaran proyek dan alamat email yang dimasukkan pengguna tidak diverifikasi. [Pengaturan Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration)
+
+Saat menerbitkan ke Vercel, tambahkan `VITE_SUPABASE_PUBLISHABLE_KEY` di pengaturan proyek sebelum build.
 
 ## Penyimpanan dan status
 
-Data kerja dan versi hasil disimpan di IndexedDB pada browser ini. Pengaturan tampilan disimpan lokal. Sesi login menggunakan sessionStorage dan batas tidak aktif. Simpan cadangan dari menu Referensi & cadangan.
+Data kerja, hasil, dan sesi login disimpan sementara di memori tab dan dibersihkan saat logout, refresh, atau tab ditutup. Unduh cadangan sebelum mengakhiri sesi.
 
 Analisis Revisi 4 memiliki data kerja terpisah dari analisis utama. Konfigurasi lama disalin saat penyimpanan Revisi 4 pertama kali dibuat; perubahan berikutnya tidak disinkronkan otomatis. Klaim perlu diunggah ke analisis tambahan. Data sumber lama tidak dihapus.
 
-Mode pengembangan masih aktif: hasil berstatus Draft dan kontrol reviewer disembunyikan. Login/profil lokal belum merupakan autentikasi server; data kerja browser belum dienkripsi. Gunakan data sintetis untuk pengujian.
+Mode pengembangan masih aktif: hasil berstatus Draft dan kontrol reviewer disembunyikan. Gunakan data sintetis untuk pengujian.
 
 ## Verifikasi
 

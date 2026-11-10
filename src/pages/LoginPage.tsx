@@ -1,13 +1,11 @@
 // ============================================================
 // PAGE: LoginPage.tsx
-// Warm ivory login with accessible verification
+// UnitCOSt account access
 // ============================================================
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { Lock, UserRound, ArrowRight, ShieldCheck, BarChart3, Eye, EyeOff, Check, Layers } from 'lucide-react';
-import clsx from 'clsx';
+import { useState, useEffect, type FormEvent } from 'react';
+import { authConfigured, useAuthStore } from '../stores/authStore';
+import { Lock, Mail, UserRound, Building2, ArrowRight, ShieldCheck, ChartNoAxesCombined, Database, Eye, EyeOff, Check, Layers } from 'lucide-react';
 
 // ============================================================
 // COMPONENT: Custom Logo SVG (Professional & Elegant)
@@ -15,144 +13,143 @@ import clsx from 'clsx';
 export function BrandLogo({ className = "w-12 h-12" }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      {/* Background shape */}
-      <rect width="48" height="48" rx="14" fill="#087D76" />
-      
-      {/* U and C intertwined with medical/chart vibe */}
-      <path d="M14 16V28C14 32.4183 17.5817 36 22 36C26.4183 36 30 32.4183 30 28V24" stroke="#EFC2A5" strokeWidth="4" strokeLinecap="round" />
-      <path d="M34 18C34 13.5817 30.4183 10 26 10C21.5817 10 18 13.5817 18 18V20" stroke="#C3D2B5" strokeWidth="4" strokeLinecap="round" />
-      
-      {/* Chart Bars replacing the right side */}
-      <rect x="22" y="24" width="4" height="12" rx="2" fill="#FFFFFF" />
-      <rect x="28" y="18" width="4" height="18" rx="2" fill="#EFC2A5" />
-      <rect x="34" y="12" width="4" height="24" rx="2" fill="#C3D2B5" />
+      <rect width="48" height="48" rx="11" fill="#007D76" />
+      <path d="M11 14v12a8 8 0 0 0 8 8h3" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M27 33v-7m6 7V21m6 12V14" stroke="#D6EA87" strokeWidth="3.5" strokeLinecap="round" />
     </svg>
   );
 }
 
-// ============================================================
-// COMPONENT: Slide to Verify
-// ============================================================
-function SlideToVerify({ onVerify }: { onVerify: (status: boolean) => void }) {
-  const [isVerified, setIsVerified] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [progress,setProgress]=useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const thumbWidth = 48; // px
+export default function LoginPage() {
+ const [mode, setMode] = useState<'login' | 'register'>('login');
+ const [email, setEmail] = useState('');
+ const [password, setPassword] = useState('');
+ const [name, setName] = useState('');
+ const [hospital, setHospital] = useState('');
+ const [showPassword, setShowPassword] = useState(false);
+ const [busy, setBusy] = useState(false);
+ const [error, setError] = useState('');
+ const login = useAuthStore(state => state.login);
+ const register = useAuthStore(state => state.register);
+ const registering = mode === 'register';
 
-  const handleMove = useCallback((clientX: number) => {
-    if (!isDragging || isVerified || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const max = rect.width - thumbWidth - 8; // 8px padding
-    let newX = clientX - rect.left - (thumbWidth / 2);
-    
-    if (newX < 0) newX = 0;
-    if (newX >= max) {
-      newX = max;
-      setIsVerified(true);
-      setIsDragging(false);
-      onVerify(true);
-    }
-    setPosition(newX);
-    setProgress(Math.round(newX/Math.max(1,max)*100));
-  }, [isDragging,isVerified,onVerify]);
+ useEffect(() => {
+  const fragment = new URLSearchParams(window.location.hash.slice(1));
+  if (fragment.has('access_token') || fragment.has('error_code') || fragment.has('error')) {
+   window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
+  }
+ }, []);
 
-  const handleUp = useCallback(() => {
-    if (isVerified) return;
-    setIsDragging(false);
-    // Snap back if not fully swiped
-    setPosition(0);
-    setProgress(0);
-  }, [isVerified]);
+ function changeMode() {
+  setMode(registering ? 'login' : 'register');
+  setPassword('');
+  setShowPassword(false);
+  setError('');
+ }
 
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
-    const onTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX);
-    
-    if (isDragging) {
-      window.addEventListener('mousemove', onMouseMove);
-      window.addEventListener('touchmove', onTouchMove);
-      window.addEventListener('mouseup', handleUp);
-      window.addEventListener('touchend', handleUp);
-    }
+ async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  event.preventDefault();
+  if (busy) return;
+  if (registering && (!name.trim() || !hospital.trim())) {
+   setError('Isi nama lengkap dan nama rumah sakit.');
+   return;
+  }
 
-    return () => {
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('touchmove', onTouchMove);
-      window.removeEventListener('mouseup', handleUp);
-      window.removeEventListener('touchend', handleUp);
-    };
-  }, [isDragging, handleMove, handleUp]);
-
-  return (
-    <div 
-      ref={containerRef}
-      className="relative h-14 bg-gray-50 border border-gray-200 rounded-2xl overflow-hidden select-none"
-    >
-      {/* Background fill when dragging */}
-      <div 
-        className={clsx(
-          "absolute left-0 top-0 bottom-0 transition-colors duration-300",
-          isVerified ? "bg-teal-500/20" : "bg-teal-500/10"
-        )}
-        style={{ width: `${position + (thumbWidth / 2)}px` }}
-      />
-      
-      {/* Text inside */}
-      <div className="absolute inset-0 flex items-center justify-center text-sm font-medium text-gray-400 pointer-events-none">
-        {isVerified ? (
-          <span className="text-teal-600 flex items-center gap-2"><ShieldCheck className="w-5 h-5" /> Verifikasi Berhasil</span>
-        ) : (
-          "Geser untuk verifikasi akses"
-        )}
-      </div>
-
-      {/* Draggable Thumb */}
-      <div
-        role="slider" tabIndex={isVerified ? -1 : 0}
-        aria-label="Verifikasi akses" aria-valuemin={0} aria-valuemax={100}
-        aria-valuenow={isVerified ? 100 : progress}
-        aria-valuetext={isVerified ? 'Terverifikasi' : 'Geser ke kanan atau tekan panah kanan sampai selesai'}
-        onKeyDown={e=>{if(isVerified)return;if(!['ArrowRight','ArrowLeft','Home','End'].includes(e.key))return;e.preventDefault();const max=(containerRef.current?.clientWidth||320)-thumbWidth-8;const next=e.key==='End'?max:e.key==='Home'?0:Math.min(max,Math.max(0,position+(e.key==='ArrowRight'?max/5:-max/5)));setPosition(next);setProgress(Math.round(next/Math.max(1,max)*100));if(next>=max){setIsVerified(true);onVerify(true);}}}
-        className={clsx(
-          "absolute top-1 bottom-1 w-12 rounded-xl flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform shadow-sm",
-          isVerified ? "bg-teal-500 text-white" : "bg-white border border-gray-200 text-gray-400 hover:border-teal-300 hover:text-teal-500",
-          !isDragging && !isVerified && "duration-300 ease-out"
-        )}
-        style={{ transform: `translateX(${position + 4}px)` }}
-        onMouseDown={() => !isVerified && setIsDragging(true)}
-        onTouchStart={() => !isVerified && setIsDragging(true)}
-      >
-        {isVerified ? <ShieldCheck className="w-5 h-5" /> : <ArrowRight className="w-5 h-5" />}
-      </div>
-    </div>
-  );
-}
-
-
-export default function LoginPage(){
- const [username,setUsername]=useState('');const [password,setPassword]=useState('');
- const [showPassword,setShowPassword]=useState(false);const [error,setError]=useState('');
- const [isVerified,setIsVerified]=useState(false);const login=useAuthStore(s=>s.login);const navigate=useNavigate();
- const handleLogin=(e:React.FormEvent)=>{e.preventDefault();if(!isVerified){setError('Selesaikan verifikasi akses sebelum masuk.');return;}if(login(username,password)){navigate('/');}else{setError('Nama pengguna atau sandi tidak sesuai. Periksa kembali lalu coba lagi.');}};
+  setBusy(true);
+  setError('');
+  try {
+   const result = registering ? await register(email, password, name, hospital) : await login(email, password);
+   if (result.status === 'error') {
+    setError(result.message);
+   }
+  } finally {
+   setBusy(false);
+  }
+ }
  return <main className="uc-login">
   <div className="uc-login-shell">
    <section className="uc-login-story" aria-labelledby="login-story-title">
-    <div className="uc-login-brand"><BrandLogo className="w-11 h-11"/><div><strong>UnitCOSt <span>PRO</span></strong><small>Hospital costing workspace</small></div></div>
-    <div className="uc-login-story-content"><span className="uc-login-kicker">DARI DATA, MENJADI PEMAHAMAN</span><h1 id="login-story-title">Pahami biaya. <br/>Ambil keputusan <br/><em>lebih terarah.</em></h1><p>Ruang kerja untuk menelusuri biaya layanan rumah sakit, dari data sumber hingga hasil per pasien.</p>
-    <div className="uc-login-illustration" aria-hidden="true"><div className="uc-login-illustration-heading"><span><BarChart3 size={18}/> Alur costing RS</span><span className="uc-login-pill">Terstruktur</span></div><div className="uc-login-bars">{[36,62,48,85,66,100,78].map((v,i)=><span key={i} style={{height:v+'%'}}/>)}</div><div className="uc-login-illustration-footer"><span>Data sumber</span><ArrowRight size={15}/><span>Alokasi biaya</span><ArrowRight size={15}/><span>Hasil pasien</span></div></div>
-    <div className="uc-login-feature"><Layers size={17}/><span>Dua ruang analisis, satu alur yang jelas</span></div>
-    </div><p className="uc-login-story-footer">Dirancang untuk analisis biaya rumah sakit.</p>
+    <svg className="uc-login-motif" viewBox="0 0 530 480" fill="none" aria-hidden="true">
+     <g stroke="currentColor" strokeWidth="1">
+      <path d="M76 480 400 156h130M134 480 432 182h98M192 480 464 208h66M250 480 496 234h34M308 480 528 260"/>
+      <path d="M318 480 530 268M360 480 530 310M402 480 530 352M444 480 530 394"/>
+      <circle cx="400" cy="156" r="4" fill="currentColor"/>
+     </g>
+    </svg>
+    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>UnitCOSt <span>PRO</span></strong><small>Analisis biaya layanan kesehatan</small></div></div>
+    <div className="uc-login-story-content">
+     <span className="uc-login-kicker">Ruang analisis rumah sakit</span>
+     <h1 id="login-story-title">Costing layanan<br/>rumah sakit</h1>
+     <p>Telusuri biaya per pasien, bandingkan tarif klaim, dan susun laporan untuk evaluasi layanan.</p>
+    </div>
+    <ul className="uc-login-stages" aria-label="Alur analisis">
+     <li><Database size={17} aria-hidden /> Data sumber</li>
+     <li><Layers size={17} aria-hidden /> Alokasi biaya</li>
+     <li><ChartNoAxesCombined size={17} aria-hidden /> Hasil analisis</li>
+    </ul>
    </section>
-   <section className="uc-login-form-panel" aria-labelledby="login-title"><div className="uc-login-form-wrap"><span className="uc-login-kicker">SELAMAT DATANG KEMBALI</span><h2 id="login-title">Masuk ke ruang kerja</h2><p className="uc-login-subtitle">Gunakan akun Anda untuk memulai analisis.</p>
-   <form onSubmit={handleLogin} className="uc-login-form">
-    {error&&<div className="uc-error" role="alert" id="login-error">{error}</div>}
-    <div><label htmlFor="username">Nama pengguna</label><div className="uc-login-field"><UserRound size={18}/><input id="username" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={username} onChange={e=>{setUsername(e.target.value);setError('');}} placeholder="Masukkan nama pengguna" aria-describedby={error?'login-error':undefined}/></div></div>
-    <div><label htmlFor="password">Sandi</label><div className="uc-login-field"><Lock size={18}/><input id="password" name="password" type={showPassword?'text':'password'} autoComplete="current-password" required value={password} onChange={e=>{setPassword(e.target.value);setError('');}} placeholder="Masukkan sandi" aria-describedby={error?'login-error':undefined}/><button type="button" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'Sembunyikan sandi':'Tampilkan sandi'} aria-pressed={showPassword}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></div>
-    <div><label>Verifikasi akses</label><SlideToVerify onVerify={setIsVerified}/><p className="uc-login-help">Geser ke kanan. Dengan keyboard, gunakan Tab lalu panah kanan.</p></div>
-    <button className="uc-login-submit" type="submit" disabled={!isVerified}>Masuk ke ruang kerja <ArrowRight size={18}/></button>
-   </form><div className="uc-login-session"><ShieldCheck size={20}/><p><strong>Sesi analisis sementara</strong><span>Data analisis dihapus saat logout, refresh, atau tab ditutup. Unduh hasil sebelum keluar.</span></p></div>
+   <section className="uc-login-form-panel" aria-labelledby="login-title">
+    <div className="uc-login-form-wrap">
+     <span className="uc-login-kicker">Akses pengguna</span>
+     <h2 id="login-title">{registering ? 'Daftar akun UnitCOSt' : 'Masuk ke ruang kerja'}</h2>
+     <p className="uc-login-subtitle">
+      {registering ? 'Isi profil dan buat sandi untuk membuka ruang kerja.' : 'Gunakan email dan sandi akun Anda untuk memulai analisis.'}
+     </p>
+     <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
+      {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
+      {error && <div className="uc-error" role="alert">{error}</div>}
+      {registering && <>
+       <div>
+        <label htmlFor="name">Nama lengkap</label>
+        <div className="uc-login-field">
+         <UserRound size={18} aria-hidden />
+         <input id="name" name="name" autoComplete="name" required maxLength={120}
+          value={name} onChange={event => setName(event.target.value)} />
+        </div>
+       </div>
+       <div>
+        <label htmlFor="hospital">Nama rumah sakit</label>
+        <div className="uc-login-field">
+         <Building2 size={18} aria-hidden />
+         <input id="hospital" name="hospital" autoComplete="organization" required maxLength={120}
+          value={hospital} onChange={event => setHospital(event.target.value)} />
+        </div>
+       </div>
+      </>}
+      <div>
+       <label htmlFor="email">Email</label>
+       <div className="uc-login-field">
+        <Mail size={18} aria-hidden />
+        <input id="email" name="email" type="email" autoComplete="username" autoCapitalize="none"
+         spellCheck={false} required value={email} onChange={event => setEmail(event.target.value)}
+         placeholder="nama@rumahsakit.id" />
+       </div>
+      </div>
+      <div>
+       <label htmlFor="password">Sandi</label>
+       <div className="uc-login-field">
+        <Lock size={18} aria-hidden />
+        <input id="password" name="password" type={showPassword ? 'text' : 'password'}
+         autoComplete={registering ? 'new-password' : 'current-password'} required
+         minLength={registering ? 6 : undefined} value={password} onChange={event => setPassword(event.target.value)} />
+        <button type="button" onClick={() => setShowPassword(value => !value)}
+         aria-label={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'} aria-pressed={showPassword}>
+         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+       </div>
+      </div>
+      <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured}>
+       {busy ? 'Memproses…' : registering ? 'Buat akun' : 'Masuk ke ruang kerja'} <ArrowRight size={18} aria-hidden />
+      </button>
+      <p className="text-sm text-slate-600">
+       {registering ? 'Sudah punya akun?' : 'Belum punya akun?'}{' '}
+       <button type="button" className="font-semibold text-teal-800 underline underline-offset-4 disabled:opacity-60"
+        disabled={busy} onClick={changeMode}>
+        {registering ? 'Masuk' : 'Daftar akun'}
+       </button>
+      </p>
+     </form>
+     <div className="uc-login-session"><ShieldCheck size={20}/><p><strong>Sesi analisis sementara</strong><span>Data analisis dihapus saat logout, refresh, atau tab ditutup. Unduh hasil sebelum keluar.</span></p></div>
    </div><p className="uc-login-form-footer"><Check size={14}/> Alokasi biaya · Unit cost · CW & HBR RS</p></section>
   </div><p className="uc-login-bottom">UnitCOSt PRO · Ruang analisis biaya rumah sakit</p>
  </main>;

@@ -1,78 +1,122 @@
-// ============================================================
-// STORE: authStore.ts
-// Simple auth store (no backend - env-based credentials)
-// ============================================================
-
+import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import {sessionMemoryStorage} from '../lib/sessionMemory';
-import {clearAnalysisSession} from '../lib/sessionData';
+import { clearAnalysisSession } from '../lib/sessionData';
+
+const supabaseUrl = 'https://mwhvjghostrqqoftuhdc.supabase.co';
+const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+export const authConfigured = Boolean(publishableKey?.startsWith('sb_publishable_'));
+
+type AuthResult =
+  | { status: 'authenticated' }
+  | { status: 'error'; message: string };
 
 interface AuthState {
   isAuthenticated: boolean;
   user: { username: string; namaRS: string } | null;
-  error: string;
   lastActivity: number;
-  touch:()=>void;
-  login: (username: string, password: string) => boolean;
+  touch: () => void;
+  login: (email: string, password: string) => Promise<AuthResult>;
+  register: (email: string, password: string, name: string, hospital: string) => Promise<AuthResult>;
   logout: () => void;
 }
 
-// Credentials from environment variables (set in Vercel dashboard)
-// Default fallback for local dev
-const VALID_USERS = [
-  {
-    username: import.meta.env.VITE_USER1 || 'admin',
-    password: import.meta.env.VITE_PASS1 || 'unitcost2026',
-    namaRS: import.meta.env.VITE_RS_NAME || 'RSUD Demo',
-  },
-  {
-    username: import.meta.env.VITE_USER2 || '',
-    password: import.meta.env.VITE_PASS2 || '',
-    namaRS: import.meta.env.VITE_RS_NAME2 || '',
-  },
-].filter(u => u.username);
+let client: SupabaseClient | undefined;
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      isAuthenticated: false,
-      user: null,
-      error: '',
-      lastActivity:0,
-      touch:()=>set({lastActivity:Date.now()}),
+function clearLocalLogin() {
+  clearAnalysisSession();
+  useAuthStore.setState({ isAuthenticated: false, user: null, lastActivity: 0 });
+}
 
-      login: (username, password) => {
-        const found = VALID_USERS.find(
-          u => u.username === username && u.password === password
-        );
-        if (found) {
-          set({
-            isAuthenticated: true,
-            user: { username: found.username, namaRS: found.namaRS },
-            error: '',
-            lastActivity:Date.now(),
-          });
-          return true;
-        } else {
-          set({ error: 'Username atau password salah', isAuthenticated: false,user:null,lastActivity:0 });
-          return false;
-        }
-      },
+function getClient() {
+  if (!authConfigured || !publishableKey) throw new Error('Koneksi Supabase Auth belum dikonfigurasi.');
+  if (client) return client;
 
-      logout: () => {
-        clearAnalysisSession();
-        set({ isAuthenticated: false, user: null, error: '',lastActivity:0 });
+  const connection = createClient(supabaseUrl, publishableKey, {
+    auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false },
+  });
+  client = connection;
+  connection.auth.onAuthStateChange(event => {
+    if (event === 'SIGNED_OUT' && client === connection && useAuthStore.getState().isAuthenticated) {
+      clearLocalLogin();
+    }
+  });
+  return connection;
+}
+
+function authMessage(code: string | undefined) {
+  switch (code) {
+    case 'email_not_confirmed': return 'Akun ini belum aktif. Hubungi pengelola aplikasi untuk mengaktifkannya.';
+    case 'email_address_not_authorized':
+    case 'over_email_send_rate_limit': return 'Pendaftaran belum siap. Hubungi pengelola aplikasi.';
+    case 'user_already_exists': return 'Email ini sudah terdaftar. Gunakan formulir Masuk.';
+    case 'invalid_credentials': return 'Email atau sandi tidak sesuai.';
+    case 'weak_password': return 'Sandi belum memenuhi persyaratan keamanan proyek.';
+    case 'signup_disabled':
+    case 'email_provider_disabled': return 'Pendaftaran email belum diaktifkan oleh pengelola proyek.';
+    case 'over_request_rate_limit': return 'Terlalu banyak percobaan. Tunggu sebentar sebelum mencoba lagi.';
+    default: return 'Permintaan akun tidak dapat diproses. Periksa koneksi dan coba lagi.';
+  }
+}
+
+type AuthRequest = (connection: SupabaseClient) => Promise<{
+  data: { session: Session | null };
+  error: { code?: string } | null;
+}>;
+
+async function authenticate(request: AuthRequest, registration = false): Promise<AuthResult> {
+  if (!authConfigured) return { status: 'error', message: 'Koneksi Supabase Auth belum dikonfigurasi.' };
+  try {
+    const connection = getClient();
+    const { data, error } = await request(connection);
+    if (client !== connection) return { status: 'error', message: 'Sesi sudah berakhir. Silakan masuk kembali.' };
+    if (error) return { status: 'error', message: authMessage(error.code) };
+    if (!data.session) {
+      return {
+        status: 'error',
+        message: registration ? 'Akun belum aktif. Hubungi pengelola aplikasi.' : authMessage(undefined),
+      };
+    }
+
+    const account = data.session.user;
+    const metadata = account.user_metadata;
+    const displayName = typeof metadata?.display_name === 'string' ? metadata.display_name.trim() : '';
+    const hospital = typeof metadata?.hospital_name === 'string' ? metadata.hospital_name.trim() : '';
+    useAuthStore.setState({
+      isAuthenticated: true,
+      user: { username: displayName || account.email || 'Pengguna', namaRS: hospital },
+      lastActivity: Date.now(),
+    });
+    return { status: 'authenticated' };
+  } catch {
+    return { status: 'error', message: authMessage(undefined) };
+  }
+}
+
+export const useAuthStore = create<AuthState>(set => ({
+  isAuthenticated: false,
+  user: null,
+  lastActivity: 0,
+  touch: () => set({ lastActivity: Date.now() }),
+  login: (email, password) => authenticate(connection =>
+    connection.auth.signInWithPassword({ email: email.trim(), password }),
+  ),
+  register: (email, password, name, hospital) => authenticate(connection =>
+    connection.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { display_name: name.trim(), hospital_name: hospital.trim() },
       },
     }),
-    {
-      name: 'unitcost-session',
-      storage:sessionMemoryStorage,
-      partialize: (state) => ({
-        isAuthenticated: state.isAuthenticated,
-        user: state.user,
-        lastActivity:state.lastActivity,
-      }),
+    true,
+  ),
+  logout: () => {
+    const connection = client;
+    client = undefined;
+    clearLocalLogin();
+    if (connection) {
+      void connection.auth.stopAutoRefresh().catch(() => {});
+      void connection.auth.signOut({ scope: 'local' }).catch(() => {});
     }
-  )
-);
+  },
+}));
