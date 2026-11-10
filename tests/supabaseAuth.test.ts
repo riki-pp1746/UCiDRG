@@ -2,6 +2,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const sdk = vi.hoisted(() => ({
   createClient: vi.fn(),
+  rpc: vi.fn(),
+  maybeSingle: vi.fn(),
   auth: {
     signInWithPassword: vi.fn(),
     signUp: vi.fn(),
@@ -17,7 +19,12 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
-  sdk.createClient.mockReturnValue({ auth: sdk.auth });
+  sdk.rpc.mockReturnValue({ maybeSingle: sdk.maybeSingle });
+  sdk.maybeSingle.mockResolvedValue({
+    data: { role: 'user', status: 'active', expires_at: '2027-02-11T00:00:00Z' },
+    error: null,
+  });
+  sdk.createClient.mockReturnValue({ auth: sdk.auth, rpc: sdk.rpc });
 });
 
 afterEach(() => {
@@ -45,35 +52,51 @@ it('uses a Supabase session to open the workspace and forgets it on logout', asy
   expect(sdk.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
 });
 
-it('opens the workspace immediately when registration returns a session', async () => {
+it('waits for approval even when registration returns a Supabase session', async () => {
+  const user = { user_metadata: { display_name: 'Test User', hospital_name: 'RS ABC', role: 'admin' } };
   sdk.auth.signUp.mockResolvedValueOnce({
-    data: { session: { user: { user_metadata: { display_name: 'Test User', hospital_name: 'RS ABC' } } } },
+    data: { session: { user }, user },
     error: null,
   });
   const { useAuthStore } = await import('../src/stores/authStore');
 
-  await expect(useAuthStore.getState().register('user@example.test', 'test-password', ' Test User ', ' RS ABC '))
-    .resolves.toEqual({ status: 'authenticated' });
+  await expect(useAuthStore.getState().register('user@example.test', 'test-password', ' Test User ', ' RS ABC ', '0812-3456-7890', ' 0012345 '))
+    .resolves.toEqual({ status: 'pending' });
   expect(sdk.auth.signUp).toHaveBeenCalledWith({
     email: 'user@example.test',
     password: 'test-password',
     options: {
-      data: { display_name: 'Test User', hospital_name: 'RS ABC' },
+      data: { display_name: 'Test User', hospital_name: 'RS ABC', hospital_code: '0012345', phone_number: '081234567890' },
     },
   });
-  expect(useAuthStore.getState()).toMatchObject({
-    isAuthenticated: true,
-    user: { username: 'Test User', namaRS: 'RS ABC' },
-  });
-  useAuthStore.getState().logout();
+  expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, user: null });
+  expect(sdk.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
 });
 
-it('keeps the workspace locked if Supabase does not return an active registration session', async () => {
-  sdk.auth.signUp.mockResolvedValueOnce({ data: { session: null }, error: null });
+it.each(['pending', 'expired'])('blocks login for a %s account', async status => {
+  sdk.auth.signInWithPassword.mockResolvedValueOnce({
+    data: { session: { user: { email: 'user@example.test' } } },
+    error: null,
+  });
+  sdk.maybeSingle.mockResolvedValueOnce({ data: { role: 'user', status }, error: null });
   const { useAuthStore } = await import('../src/stores/authStore');
-  await expect(useAuthStore.getState().register('user@example.test', 'test-password', 'Test User', 'RS ABC'))
+  await expect(useAuthStore.getState().login('user@example.test', 'test-password'))
     .resolves.toMatchObject({ status: 'error' });
   expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  expect(sdk.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+});
+
+it('uses the Admin alias and trusts the server role instead of user metadata', async () => {
+  sdk.auth.signInWithPassword.mockResolvedValueOnce({
+    data: { session: { user: { user_metadata: { role: 'admin' } } } },
+    error: null,
+  });
+  const { useAuthStore } = await import('../src/stores/authStore');
+  await expect(useAuthStore.getState().login('Admin', 'test-password'))
+    .resolves.toEqual({ status: 'authenticated' });
+  expect(sdk.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'admin@unitcost.example', password: 'test-password' });
+  expect(useAuthStore.getState().user?.role).toBe('user');
+  useAuthStore.getState().logout();
 });
 
 it('keeps the workspace locked when the public key is absent', async () => {

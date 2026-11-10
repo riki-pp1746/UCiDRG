@@ -12,6 +12,7 @@ import ComparisonPage from './pages/ComparisonPage';
 import ReportPage from './pages/ReportPage';
 import SettingsPage from './pages/SettingsPage';
 import ResetDataPage from './pages/ResetDataPage';
+import UserManagementPage from './pages/UserManagementPage';
 import { V4Page } from './v4/Pages';
 import { SessionGuard } from './components/layout/SessionGuard';
 
@@ -24,6 +25,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function LoginRoute() {
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   return isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />;
+}
+
+function AdminRoute() {
+  const role = useAuthStore(state => state.user?.role);
+  return role === 'admin' ? <UserManagementPage /> : <Navigate to="/" replace />;
 }
 
 export function AppRoutes() {
@@ -51,6 +57,7 @@ export function AppRoutes() {
           <Route path="report" element={<ReportPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="reset" element={<ResetDataPage />} />
+          <Route path="user-management" element={<AdminRoute />} />
           <Route path="revisi4/reset" element={<ResetDataPage />} />
           <Route path="tarif-idrg" element={<Navigate to="/tarif-pasien?tab=tarif" replace />} />
           <Route path="revisi4/" element={<V4Page view="guide" />} />

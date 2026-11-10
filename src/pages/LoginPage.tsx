@@ -5,7 +5,7 @@
 
 import { useState, useEffect, type FormEvent } from 'react';
 import { authConfigured, useAuthStore } from '../stores/authStore';
-import { Lock, Mail, UserRound, Building2, ArrowRight, ShieldCheck, ChartNoAxesCombined, Database, Eye, EyeOff, Check, Layers } from 'lucide-react';
+import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, ShieldCheck, ChartNoAxesCombined, Database, Eye, EyeOff, Check, Layers } from 'lucide-react';
 
 // ============================================================
 // COMPONENT: Custom Logo SVG (Professional & Elegant)
@@ -26,9 +26,12 @@ export default function LoginPage() {
  const [password, setPassword] = useState('');
  const [name, setName] = useState('');
  const [hospital, setHospital] = useState('');
+ const [hospitalCode, setHospitalCode] = useState('');
+ const [phone, setPhone] = useState('');
  const [showPassword, setShowPassword] = useState(false);
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState('');
+ const [notice, setNotice] = useState('');
  const login = useAuthStore(state => state.login);
  const register = useAuthStore(state => state.register);
  const registering = mode === 'register';
@@ -45,6 +48,7 @@ export default function LoginPage() {
   setPassword('');
   setShowPassword(false);
   setError('');
+  setNotice('');
  }
 
  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -57,10 +61,16 @@ export default function LoginPage() {
 
   setBusy(true);
   setError('');
+  setNotice('');
   try {
-   const result = registering ? await register(email, password, name, hospital) : await login(email, password);
+   const result = registering
+    ? await register(email, password, name, hospital, phone, hospitalCode)
+    : await login(email, password);
    if (result.status === 'error') {
     setError(result.message);
+   } else if (result.status === 'pending') {
+    changeMode();
+    setNotice('Pendaftaran berhasil. Akun dapat digunakan setelah disetujui admin.');
    }
   } finally {
    setBusy(false);
@@ -93,11 +103,12 @@ export default function LoginPage() {
      <span className="uc-login-kicker">Akses pengguna</span>
      <h2 id="login-title">{registering ? 'Daftar akun UnitCOSt' : 'Masuk ke ruang kerja'}</h2>
      <p className="uc-login-subtitle">
-      {registering ? 'Isi profil dan buat sandi untuk membuka ruang kerja.' : 'Gunakan email dan sandi akun Anda untuk memulai analisis.'}
+      {registering ? 'Isi profil dan buat sandi. Admin akan meninjau pendaftaran Anda.' : 'Gunakan akun dan sandi Anda untuk memulai analisis.'}
      </p>
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}
+      {notice && <p role="status" className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">{notice}</p>}
       {registering && <>
        <div>
         <label htmlFor="name">Nama lengkap</label>
@@ -108,6 +119,14 @@ export default function LoginPage() {
         </div>
        </div>
        <div>
+        <label htmlFor="phone">Nomor HP</label>
+        <div className="uc-login-field">
+         <Phone size={18} aria-hidden />
+         <input id="phone" name="phone" type="tel" autoComplete="tel" required maxLength={24}
+          value={phone} onChange={event => setPhone(event.target.value)} placeholder="081234567890" />
+        </div>
+       </div>
+       <div>
         <label htmlFor="hospital">Nama rumah sakit</label>
         <div className="uc-login-field">
          <Building2 size={18} aria-hidden />
@@ -115,12 +134,21 @@ export default function LoginPage() {
           value={hospital} onChange={event => setHospital(event.target.value)} />
         </div>
        </div>
+       <div>
+        <label htmlFor="hospital-code">Kode RS</label>
+        <div className="uc-login-field">
+         <Building2 size={18} aria-hidden />
+         <input id="hospital-code" name="hospital-code" required maxLength={32} autoComplete="off"
+          spellCheck={false} value={hospitalCode} onChange={event => setHospitalCode(event.target.value)}
+          placeholder="3372165" />
+        </div>
+       </div>
       </>}
       <div>
-       <label htmlFor="email">Email</label>
+       <label htmlFor="email">{registering ? 'Email' : 'Email atau nama pengguna Admin'}</label>
        <div className="uc-login-field">
         <Mail size={18} aria-hidden />
-        <input id="email" name="email" type="email" autoComplete="username" autoCapitalize="none"
+        <input id="email" name="email" type={registering ? 'email' : 'text'} autoComplete="username" autoCapitalize="none"
          spellCheck={false} required value={email} onChange={event => setEmail(event.target.value)}
          placeholder="nama@rumahsakit.id" />
        </div>

@@ -37,6 +37,8 @@ const aliases: Record<string, string> = {
   '/report': '/reports',
 };
 
+const userManagement = { path: '/user-management', icon: Users, label: 'Manajemen Pengguna' };
+
 export default function AppLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -53,11 +55,15 @@ export default function AppLayout() {
   const integrated = pathname.startsWith('/revisi4');
   const route = (integrated ? pathname.slice('/revisi4'.length) : pathname).replace(/\/$/, '') || '/';
   const current = aliases[route] ?? route;
-  const page = navigation.flatMap(group => group.items).find(item => item.path === current);
+  const groups = navigation.map(group => group.label === 'Administrasi' && user?.role === 'admin'
+    ? { ...group, items: [...group.items, userManagement] }
+    : group);
+  const page = groups.flatMap(group => group.items).find(item => item.path === current);
   const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
   const mode = integrated ? revisionMode : legacyMode;
   const toggleMode = integrated ? revisionToggle : legacyToggle;
-  const pagePath = (path: string, revision = integrated) => revision ? '/revisi4' + (path === '/' ? '' : path) : path;
+  const pagePath = (path: string, revision = integrated) =>
+    revision && path !== userManagement.path ? '/revisi4' + (path === '/' ? '' : path) : path;
   const showMode = ['/dashboard', '/compare', '/reports'].includes(current);
   const readOnly = !integrated && localRole === 'Pembaca' && ['/upload', '/costing', '/tarif-pasien', '/reset'].includes(current);
 
@@ -106,7 +112,10 @@ export default function AppLayout() {
             <span className="relative block">
               <select
                 value={integrated ? 'integrated' : 'components'}
-                onChange={event => { navigate(pagePath(current, event.target.value === 'integrated')); setMenuOpen(false); }}
+                onChange={event => {
+                  navigate(pagePath(current === userManagement.path ? '/' : current, event.target.value === 'integrated'));
+                  setMenuOpen(false);
+                }}
                 className="w-full appearance-none rounded-lg border border-[#51817b] bg-[#154b49] py-2.5 pl-2.5 pr-8 text-xs font-semibold text-white"
               >
                 <option value="components">Analisis 18 Komponen</option>
@@ -116,7 +125,7 @@ export default function AppLayout() {
             </span>
           </label>
           <nav aria-label="Navigasi utama" className="space-y-4">
-            {navigation.map(group => (
+            {groups.map(group => (
               <div key={group.label}>
                 <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-wide text-[#a9cec9]">{group.label}</p>
                 <ul className="space-y-0.5">
@@ -174,7 +183,7 @@ export default function AppLayout() {
             )}
             <div className="hidden text-right sm:block">
               <p className="text-sm font-semibold text-teal-950">{user?.username}</p>
-              <p className="text-xs text-slate-600">{integrated ? 'Ruang terintegrasi' : localRole}</p>
+              <p className="text-xs text-slate-600">{user?.role === 'admin' ? 'Admin' : integrated ? 'Ruang terintegrasi' : localRole}</p>
             </div>
           </div>
         </header>
