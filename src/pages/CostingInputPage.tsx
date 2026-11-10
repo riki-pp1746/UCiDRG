@@ -16,6 +16,7 @@ import PageIntro from '../components/ui/PageIntro';
 // ============================================================
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah } from '../lib/calculations/patientLevelCosting';
@@ -259,18 +260,19 @@ export default function CostingInputPage() {
     resetToDefault,
   } = useHospitalCostStore();
 
-  const { distribusi, biayaRSMap, setBiayaRS, calculateDistribution } = useTarifPasienStore();
+  const { distribusi, biayaRSMap, patients, setBiayaRS, calculateDistribution } = useTarifPasienStore();
 
   const { rawRecords, setOverheadConfig, periodNormalization, setPeriodNormalization, jknProportion,mergeCarePool,setMergeCarePool } = useCostingStore();
   const [centerQuery,setCenterQuery]=useState('');
   const [componentQuery,setComponentQuery]=useState('');
   const [componentFlag,setComponentFlag]=useState('all');
   const periodFactor = periodNormalization?.factor || 1;
+  const hasAllocationRecipients = rawRecords.length > 0 || patients.length > 0;
 
   useEffect(() => {
     if (activeTab !== 'distribusi18') return;
     if (!rawRecords.length) {
-      calculateDistribution();
+      if (hasAllocationRecipients) calculateDistribution();
       return;
     }
     if (!analysisStale()) return;
@@ -278,7 +280,7 @@ export default function CostingInputPage() {
     void calculateAnalysisJob().catch(error => {
       if (error?.name !== 'AbortError') toast.error(String(error));
     });
-  }, [activeTab, calculateDistribution, config, rawRecords, periodNormalization]);
+  }, [activeTab, calculateDistribution, config, hasAllocationRecipients, rawRecords, periodNormalization]);
 
   const totalBiayaTahunan = config.totalOverheadCost + config.totalIntermediateCost + config.totalFinalCost;
   const totalBiayaLaporan = Math.round(totalBiayaTahunan * periodFactor);
@@ -1163,6 +1165,16 @@ export default function CostingInputPage() {
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'distribusi18' && (
         <div className="space-y-4">
+          {!hasAllocationRecipients ? (
+            <section className="uc-panel space-y-3" aria-label="Sumber distribusi">
+              <h2 className="font-semibold">Belum ada klaim aktif untuk distribusi</h2>
+              <p className="text-sm">Biaya RS yang tercatat {formatRupiah(totalBiayaTahunan)}. Distribusi memerlukan tagihan atau hari rawat dari klaim aktif.</p>
+              <Link className="uc-primary" to="/upload">Periksa hasil impor TXT</Link>
+            </section>
+          ) : <>
+          {rawRecords.length > 0 && (
+            <p className="uc-notice" role="status">{rawRecords.length.toLocaleString('id-ID')} klaim aktif sebagai sumber distribusi.</p>
+          )}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800 flex-1">
               <p className="flex items-start gap-2">
@@ -1174,7 +1186,7 @@ export default function CostingInputPage() {
             </div>
             <button
               onClick={handleAutoMapBiaya}
-              disabled={rawRecords.length > 0 && totalBiayaTahunan <= 0}
+              disabled={totalBiayaTahunan <= 0}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl hover:bg-indigo-100 font-semibold text-sm transition-colors whitespace-nowrap"
             >
               <RefreshCw className="w-4 h-4" /> Auto-Map Biaya RS
@@ -1300,6 +1312,7 @@ export default function CostingInputPage() {
               </button>
             </div>
           </div>
+          </>}
           </>}
         </div>
       )}

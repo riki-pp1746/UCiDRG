@@ -289,8 +289,12 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-bold text-green-800">Proses Unggah Berhasil</h2>
-            <p className="text-green-600 mt-1">Semua file Anda telah berhasil dibaca dan diproses oleh sistem.</p>
+            <h2 className="text-xl font-bold text-green-800">Ringkasan impor</h2>
+            <p className="text-green-700 mt-1">
+              {rawRecords.length > 0
+                ? `${rawRecords.length.toLocaleString('id-ID')} klaim aktif di sesi ini.`
+                : 'Belum ada klaim aktif di sesi ini. Periksa hasil pembacaan TXT di bawah.'}
+            </p>
           </div>
           
           <div className="p-6">
