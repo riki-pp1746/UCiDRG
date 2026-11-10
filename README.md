@@ -16,11 +16,11 @@ Salin `.env.example` ke `.env.local` dan isi `VITE_SUPABASE_PUBLISHABLE_KEY` den
 
 ## Akun pengguna
 
-Pengguna masuk dengan email dan sandi dari **Authentication → Users** di proyek Supabase `mwhvjghostrqqoftuhdc`. Pengguna baru masuk langsung setelah pendaftaran berhasil.
+Pengguna masuk dengan email dan sandi dari **Authentication → Users** di proyek Supabase `vowutzxizrrywpwcobth`. Pengguna baru masuk langsung setelah pendaftaran berhasil.
 
 Di Supabase, buka **Authentication → Sign In / Providers → Email**, matikan **Confirm email**, lalu simpan. Opsi ini berlaku untuk pendaftaran proyek dan alamat email yang dimasukkan pengguna tidak diverifikasi. [Pengaturan Supabase Auth](https://supabase.com/docs/guides/auth/general-configuration)
 
-Saat menerbitkan ke Vercel, tambahkan `VITE_SUPABASE_PUBLISHABLE_KEY` di pengaturan proyek sebelum build.
+Build Vercel membaca `NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY` dari integrasi Akun. Jika variabel integrasi belum tersedia, isi `VITE_SUPABASE_PUBLISHABLE_KEY` dengan kunci publik proyek yang sama.
 
 ## Penyimpanan dan status
 

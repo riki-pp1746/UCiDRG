@@ -35,7 +35,7 @@ it('uses a Supabase session to open the workspace and forgets it on logout', asy
   await expect(useAuthStore.getState().login(' user@example.test ', 'test-password'))
     .resolves.toEqual({ status: 'authenticated' });
   expect(sdk.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'user@example.test', password: 'test-password' });
-  expect(sdk.createClient).toHaveBeenCalledWith(expect.any(String), 'sb_publishable_test', {
+  expect(sdk.createClient).toHaveBeenCalledWith('https://vowutzxizrrywpwcobth.supabase.co', 'sb_publishable_test', {
     auth: { persistSession: false, autoRefreshToken: true, detectSessionInUrl: false },
   });
   expect(useAuthStore.getState().user?.username).toBe('user@example.test');

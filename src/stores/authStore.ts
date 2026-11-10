@@ -2,8 +2,9 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { create } from 'zustand';
 import { clearAnalysisSession } from '../lib/sessionData';
 
-const supabaseUrl = 'https://mwhvjghostrqqoftuhdc.supabase.co';
-const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
+const supabaseUrl = 'https://vowutzxizrrywpwcobth.supabase.co';
+const publishableKey = import.meta.env.NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY?.trim()
+  || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY?.trim();
 export const authConfigured = Boolean(publishableKey?.startsWith('sb_publishable_'));
 
 type AuthResult =
