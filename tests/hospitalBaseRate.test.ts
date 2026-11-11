@@ -1,4 +1,5 @@
 import {it,expect} from 'vitest';
+import {defaultMethodology} from '../src/stores/methodologyStore';
 import 'fake-indexeddb/auto';
 import {calculateHospitalBaseRate,hospitalBaseRateSheets} from '../src/lib/calculations/hospitalBaseRate';
 import type {HospitalCostCase} from '../src/lib/calculations/hospitalBaseRate';
@@ -63,13 +64,30 @@ it('18-component page source uses exactly its distribution and invalidates local
  const version=state.calculationVersion;state.updatePatient('1',{procedure_amt:3});expect(store.getState().localCosting).toBe(null);store.getState().calculateDistribution();expect(store.getState().calculationVersion).toBe(version+1);store.getState().setBiayaRS('procedure_amt',0);expect(store.getState().localCosting).toBe(null);
 });
 
-it('retains all JKN cost and outlier cases with inlier-derived CW across two groups',()=>{
+it('uses all cases including costly outliers in both group and population averages',()=>{
  const rows=[...Array.from({length:20},(_,i)=>row('A'+i,'A','100')),row('out','A','10000'),...Array.from({length:20},(_,i)=>row('B'+i,'B','300'))];
  const r=calculateHospitalBaseRate(rows,context);const p=r.pools[0];
- expect(r.schema).toBe(3);expect(p).toMatchObject({count:41,cwCount:40,cwCost:'8000',total:'18000',casemix:'40.5',outlierCost:'10000'});
- expect(r.groups[0]).toMatchObject({count:21,cwCount:20,cw:'0.5',casemix:'10.5',mean:'100',total:'12000'});
- expect(r.patients.find(p=>p.id==='out')).toMatchObject({outlier:true,cw:'0.5',uc:'10000'});
- near(sum(r.groups.map(g=>dec(g.standardCost!).mul(g.count))).toString(),'18000');near(p.hbr!,dec('18000').div('40.5').toString());
+ expect(p).toMatchObject({count:41,cwCount:41,cwCost:'18000',total:'18000',outlierCost:'10000'});
+ near(p.casemix!,'41');near(p.hbr!,dec(18000).div(41).toString());
+ near(r.groups[0].mean,dec(12000).div(21).toString());
+ near(r.groups[0].cw!,dec(12000).div(21).div(dec(18000).div(41)).toString());
+ expect(r.patients.find(p=>p.id==='out')?.outlier).toBe(true);
+ expect(r.patients.find(p=>p.id==='out')?.cw).toBe(r.groups[0].cw);
+ near(sum(r.groups.map(g=>dec(g.standardCost!).mul(g.count))).toString(),'18000');
+});
+it('matches the supplied slide: 4,849,719 / 10,649,483 gives CW 0.46',()=>{
+ const rows=[...Array.from({length:104},(_,i)=>row('A'+i,'1371110','4849719')),...Array.from({length:104},(_,i)=>row('B'+i,'OTHER','16449247'))];
+ const r=calculateHospitalBaseRate(rows,context);
+ expect(r.pools[0].average).toBe('10649483');
+ expect(dec(r.groups[0].cw!).toFixed(2)).toBe('0.46');
+ near(r.groups[0].cw!,dec(4849719).div(10649483).toString());
+});
+it('does not pull CW to one even when legacy stabilization parameters are supplied',()=>{
+ const r=calculateHospitalBaseRate([row('A','A','100'),row('B','B','900')],{...context,options:{...defaultMethodology(),stabilize:true,shrinkage:1000}});
+ expect(r.groups.map(g=>g.cw)).toEqual(['0.2','1.8']);
+ expect(r.groups.map(g=>g.shrinkWeight)).toEqual(['1','1']);
+ const z=calculateHospitalBaseRate([row('A','A','0'),row('B','B','100')],{...context,options:defaultMethodology()});
+ expect(z.pools[0].average).toBe('50');expect(z.groups.map(g=>g.cw)).toEqual(['0','2']);
 });
 it('keeps original per-care JKN pools including reserves and missing-code cost',()=>{
  const r=calculateHospitalBaseRate([row('1','A','100'),row('2','','300'),row('3','B','50','jalan')],{...context,pools:[{care:'inap',total:'1000',reserve:'200',unallocated:'400'},{care:'jalan',total:'150',reserve:'0',unallocated:'100'}]});

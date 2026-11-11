@@ -161,7 +161,7 @@ export default function ReportPage() {
       ...BILLING_EXPORT.map(item => r.patient.billing[item.key] || 0),
       r.unitCostDihitung, viewMode === 'INACBG' ? r.tarifINACBG : r.tarifIDRG,
       viewMode === 'INACBG' ? r.selisihINACBG : r.selisihIDRG,
-      r.unitCostDihitung>0?STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG]:'Tidak tersedia',r.outlier?'Outlier; tidak membentuk CW':'Inlier'
+      r.unitCostDihitung>0?STATUS_LABEL[viewMode === 'INACBG' ? r.statusINACBG : r.statusIDRG]:'Tidak tersedia',r.outlier?'Outlier; tetap membentuk CW':'Inlier'
     ]);
     const ws3 = XLSX.utils.aoa_to_sheet([patHeader, ...patData]);
     XLSX.utils.book_append_sheet(wb, ws3, 'Detail Pasien');
@@ -316,7 +316,7 @@ export default function ReportPage() {
       <AnalysisFilters/><AnalysisReportVersions/><AnalysisReportDetails/><p className="uc-notice">Perbandingan memakai seluruh kasus UC valid pada filter. Pool penuh dipakai hanya untuk ringkasan tanpa filter. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6 print:space-y-4">
-        <p className="uc-notice">Trimming sesuai parameter per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} tidak membentuk CW, tetap masuk biaya dan perbandingan; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
+        <p className="uc-notice">Trimming sesuai parameter per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} tetap membentuk CW dan masuk biaya dan perbandingan; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
 
         {/* Report Header */}
         <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white rounded-2xl p-6 print:rounded-none print:from-blue-800 print:to-blue-800">
@@ -424,7 +424,7 @@ export default function ReportPage() {
           <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside">
             <li><strong>Proporsi Pasien JKN:</strong> {useCostingStore.getState().jknProportion}% (Porsi seragam digunakan hanya pada komponen yang belum memiliki porsi khusus atau data volume).</li>
             <li><strong>Faktor kalender dasar:</strong> {formatNumber(periodFactor * 100,1)}% (Faktor variabel bulanan, indeksasi dan kappa mengikuti Metodologi; tidak selalu sama dengan faktor kalender).</li>
-            <li><strong>Trimming:</strong> metode aktif pada Metodologi dan Asumsi. CW memakai inlier positif; perbandingan memakai seluruh kasus UC valid. Outlier {patientResults.filter(p=>p.outlier).length} kasus / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dicatat terpisah.</li><li><strong>Rumus iDRG:</strong> Tarif pembanding iDRG memakai total_tarif JSON klaim; Tarif RS = CW RS × HBR × Adjustment.</li>
+            <li><strong>Trimming:</strong> metode aktif pada Metodologi dan Asumsi. CW memakai seluruh kasus berkode dengan UC valid; perbandingan memakai seluruh kasus UC valid. Outlier {patientResults.filter(p=>p.outlier).length} kasus / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dicatat terpisah.</li><li><strong>Rumus iDRG:</strong> Tarif pembanding iDRG memakai total_tarif JSON klaim; Tarif RS = CW RS × HBR × Adjustment.</li>
           </ul>
         </div>
 

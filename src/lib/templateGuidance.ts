@@ -11,7 +11,7 @@ export const templateRules=[
  'Masukkan biaya sebagai angka Excel, misalnya 1250000. Tampilan Rupiah boleh memakai format sel; jangan mengetik teks Rp di sel angka.',
  'Isi 0 hanya jika nilai memang nol. Nilai yang belum tersedia perlu dicatat dan diperiksa; kolom biaya kosong ditandai sebagai data belum lengkap. Rumus tanpa hasil tersimpan harus dihitung ulang di Excel lalu disimpan.',
  'CW proxy tagihan RS: cleaning → normalisasi komponen → trimming geometrik ±3 SD → CW. Acuan unggahan lokal, terpisah dari CW biaya RS.',
- 'Trimming hasil biaya RS: di luar rata-rata ±2 SD sampel per iDRG dan jenis rawat. CW memakai inlier; seluruh biaya outlier tetap masuk pool HBR dan kasusnya masuk casemix.',
+ 'Trimming hasil biaya RS: di luar rata-rata ±2 SD sampel per iDRG dan jenis rawat. Outlier hanya penanda peninjauan; seluruh kasus berkode dengan UC valid tetap membentuk CW dan casemix serta masuk pool HBR.',
  'Distribusi Analisis 18 Komponen: Kamar memakai LOS dan ICU memakai hari ICU jika lengkap; cadangan episode diberi peringatan. Rasio biaya/tagihan di luar 0,5–5 (bawaan) perlu ditinjau.',
  'Satu biaya dicatat sekali. Periksa apakah gaji, jasa medis, operasional, dan penyusutan sudah saling terpisah.',
  'Contoh dalam panduan adalah data sintetis. Jangan menyalinnya sebagai data RS sebenarnya.',
