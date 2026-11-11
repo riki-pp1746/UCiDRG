@@ -1,5 +1,6 @@
 import type {PatientRecord,PatientCostResult,CostingSummary,DRGGroupResult,PeriodNormalization} from '../types/costing.types';
 import type {HospitalCostResult} from './calculations/hospitalBaseRate';
+import {sourceWeight} from './calculations/sourceWeightBaseRate';
 import type {Methodology} from '../stores/methodologyStore';
 import {CALC_VERSION} from '../stores/methodologyStore';
 import {aggregateByDRG,generateSummary,formatNumber} from './calculations/patientLevelCosting';
@@ -51,10 +52,12 @@ export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG'
   const bucket=weights[patient.ptd];bucket.cases++;
   const local=localById.get(patient.internalId||patient.sepToken||patient.sep)?.cw;
   if(local!=null){weighted.push(local);bucket.local.push(Number(local));}
-  const total=patient.idrg?.total_cost_weight;
-  const base=patient.idrg?.cost_weight;
-  if(Number.isFinite(total)&&total>0)bucket.source.push(total);
-  else if(Number.isFinite(base)&&base>0){bucket.source.push(base);bucket.sourceBaseCount++;}
+  const code=patient.idrg?.drg_code?.trim().toUpperCase();
+  if(code&&!['N/A','UNKNOWN','-','—'].includes(code)){
+   const weight=sourceWeight({total:patient.idrg.total_cost_weight,base:patient.idrg.cost_weight});
+   if(weight.cw!==null)bucket.source.push(Number(weight.cw));
+   if(weight.basis==='base')bucket.sourceBaseCount++;
+  }
  }
  const weightComparison=([1,2] as const).filter(care=>weights[care].cases>0).map(care=>{
   const {cases,local,source,sourceBaseCount}=weights[care];

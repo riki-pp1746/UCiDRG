@@ -7,25 +7,30 @@ import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {maskSEP} from '../v4/numbers';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
-import PageIntro from '../components/ui/PageIntro';
+import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
+import ReportDataChecks from '../components/reports/ReportDataChecks';
+import {analysisStale} from '../lib/analysisController';
+import {reportChecks} from '../lib/reportChecks';
+import {Link} from 'react-router-dom';
 // ============================================================
 // PAGE: ReportPage.tsx
 // Laporan akhir dengan export PDF & Excel
 // ============================================================
 
-import { useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { useCostingStore } from '../stores/costingStore';
 import { formatRupiah, formatNumber } from '../lib/calculations/patientLevelCosting';
 import { useAuthStore } from '../stores/authStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
-import { Settings2, FileDown, Printer, FileSpreadsheet, Presentation } from 'lucide-react';
+import { Printer, FileSpreadsheet, Presentation, AlertCircle, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import clsx from 'clsx';
 import type { BillingGroup } from '../types/costing.types';
 
 const STATUS_BADGE = {
+  TIDAK_TERSEDIA: 'text-slate-600 bg-slate-100',
   UNTUNG: 'text-green-700 bg-green-50',
   IMPAS: 'text-amber-700 bg-amber-50',
   RUGI: 'text-red-700 bg-red-50',
@@ -60,6 +65,7 @@ const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
 
 export default function ReportPage() {
   const viewMode = useCostingStore(s => s.viewMode);
+  const filterCount=useCostingStore(s=>Number(Boolean(s.filterPTD))+Number(Boolean(s.searchTerm.trim()))+Number(s.filterStatus!=='ALL'));
   const view=useAnalysisView();
   const filteredResults=view.rows;
   const drgResults=view.groups;
@@ -72,7 +78,10 @@ export default function ReportPage() {
   const validationIssues=[...allocationIssues,...(sourceIssues||[]).map(i=>({id:i.id,severity:i.severity==='info'?'warning' as const:i.severity,message:i.message,label:i.message,actual:i.count,expected:0}))];
   const biayaRSMap = useTarifPasienStore(s => s.biayaRSMap);
   const { user } = useAuthStore();
-  const reportRef = useRef<HTMLDivElement>(null);
+  const [section,setSection]=useState<'summary'|'groups'|'checks'|'methods'>('summary');
+  const checks=useMemo(()=>reportChecks([...allocationIssues,...(sourceIssues||[])]),[allocationIssues,sourceIssues]);
+  const blockers=checks.filter(c=>c.severity==='error');
+  const notes=checks.filter(c=>c.severity==='warning');
 
   const snapshot=useTarifPasienStore(s=>s.snapshot);
   const totalBiayaTahunan = snapshot?.mapping?Number(snapshot.mapping.annual):(config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
@@ -86,9 +95,10 @@ export default function ReportPage() {
 
   if (!summary) {
     return (
-      <div className="text-center py-20 text-gray-400">
-        <p className="text-lg">Belum ada data untuk dilaporkan.</p>
-      </div>
+      <section className="uc-panel mx-auto max-w-2xl space-y-4 py-10 text-center">
+        <h1 className="text-2xl font-semibold text-teal-950">Laporan Unit Cost</h1>
+        {snapshot&&!analysisStale()?<><p className="text-slate-600">Tidak ada kasus yang sesuai filter laporan. Ubah atau hapus filter untuk menampilkan hasil.</p><AnalysisFilters/></>:<><p className="text-slate-600">Laporan tersedia setelah data klaim dan biaya RS dihitung. Jika input berubah, hitung ulang untuk memperbarui hasil.</p><Link className="uc-primary inline-flex" to="/costing#hitung-18-komponen">Buka Biaya &amp; Alokasi</Link></>}
+      </section>
     );
   }
 
@@ -117,12 +127,13 @@ export default function ReportPage() {
       ['Total biaya pada populasi ringkasan', summary.totalBiayaRS],
       [`Total Tarif ${viewMode}`, summary.totalTarif],
       ['Total Selisih', summary.totalSelisih],['CRR',summaryMetricText(summary,'crr')],['Status finansial agregat',financialLabel(summary.financialStatus)],['Populasi',summary.populationLabel||''],
-      ['Case Mix Index (CMI)', summaryMetricText(summary,'cmi')],
+      ['Rata-rata CW lokal (normalisasi)', summaryMetricText(summary,'cmi',2)],
       ['Reduction of Variance (ROV)', summaryMetricText(summary,'rov',2)],
       ['Rata-rata CoV DRG', formatNumber(summary.rataCov * 100,2) + '%'],
       ['% DRG Defisit', formatNumber(summary.persenRugi,1) + '%'],
       ['% DRG Profit', formatNumber(summary.persenUntung,1) + '%'],
     ];
+    for(const row of view.weightComparison)summaryData.push([`CMI iDRG TXT — ${row.care===1?'Rawat inap':'Rawat jalan'}`,row.source?.average??'Tidak tersedia'],[`Kasus dengan CW sumber — ${row.care===1?'Inap':'Jalan'}`,`${row.source?.count??0} / ${row.cases}`]);
     summaryData.push(['Trimming','CW memakai metode pada lembar Metodologi; perbandingan memakai seluruh kasus UC valid'],['Kasus outlier pada filter',patientResults.filter(p=>p.outlier).length],['Biaya outlier pada filter',patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0)]);
     const local=useTarifPasienStore.getState().localCosting;if(local)for(const [name,rows] of Object.entries(hospitalBaseRateSheets(local)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
@@ -237,7 +248,7 @@ export default function ReportPage() {
     }
 
     slide = pptx.addSlide(); title(slide, 'Ringkasan Hasil', `Tarif pembanding: ${viewMode}`);
-    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total biaya ringkasan', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI', summaryMetricText(summary,'cmi')], ['ROV', summaryMetricText(summary,'rov')]];
+    const kpis = [['Total Kasus', formatNumber(summary.totalKasus)], ['Total biaya ringkasan', formatRupiah(summary.totalBiayaRS)], [`Total Tarif ${viewMode}`, formatRupiah(summary.totalTarif)], ['Selisih', formatRupiah(summary.totalSelisih)], ['CMI iDRG — TXT', view.weightComparison.map(r=>`${r.care===1?'RI':'RJ'} ${r.source?formatNumber(r.source.average,2):'n/a'}`).join(' · ')||'Tidak tersedia'], ['ROV', summaryMetricText(summary,'rov')]];
     kpis.forEach((item, i) => { const x = 0.7 + (i % 3) * 4.15; const y = 1.55 + Math.floor(i / 3) * 2.05; slide.addShape(pptx.ShapeType.roundRect, { x, y, w: 3.65, h: 1.45, rectRadius: 0.08, fill: { color: light }, line: { color: 'D7E2E8', width: 0.8 } }); slide.addText(item[0], { x: x + 0.25, y: y + 0.28, w: 3.1, h: 0.25, fontFace: 'Aptos', fontSize: 11, color: gray }); slide.addText(item[1], { x: x + 0.25, y: y + 0.67, w: 3.1, h: 0.38, fontFace: 'Aptos Display', fontSize: 20, bold: true, color: navy }); });
     slide.addText(`Status DRG: ${summary.jumlahDRGUntung} profit, ${summary.jumlahDRGImpas} BEP, ${summary.jumlahDRGRugi} defisit.`, { x: 0.75, y: 5.9, w: 11.5, h: 0.3, fontFace: 'Aptos', fontSize: 15, color: gray }); addFooter(slide, 2);
 
@@ -280,241 +291,44 @@ export default function ReportPage() {
   const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
 
   return (
-    <div className="space-y-6">
-      {/* Action Bar */}
-      <PageIntro title="Langkah 5: Unduh laporan" what="Unduh atau cetak hasil analisis dalam bentuk Excel atau PDF untuk dibawa ke rapat manajemen." result="Laporan memuat ringkasan biaya RS, unit cost, tarif klaim, dan status tiap kelompok kasus." />
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Laporan Unit Cost</h1>
-          <p className="text-gray-500 text-sm mt-1">Export atau cetak ringkasan analisis performa klaim</p>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <header className="uc-panel space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-semibold tracking-tight text-teal-950">Laporan Unit Cost</h1><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700" title="Hasil analisis masih untuk ditinjau dan belum ditetapkan sebagai tarif final.">Draf</span>{config.sourceOrigin==='simulasi'&&<span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">Data simulasi</span>}</div><p className="mt-2 text-sm text-slate-600">{config.namaRS||user?.namaRS||'Rumah sakit'} · {summary.periodeData}</p><p className="mt-1 text-xs text-slate-500">Draf adalah hasil untuk ditinjau, belum menjadi tarif final.</p></div>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <button onClick={handlePrint} className="uc-primary"><Printer size={16}/>Unduh PDF</button>
+            <button onClick={exportExcel} className="uc-secondary"><FileSpreadsheet size={16}/>Unduh Excel</button>
+            <button onClick={exportPptx} className="uc-secondary"><Presentation size={16}/>Unduh PowerPoint</button>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={exportExcel}
-            className="flex items-center gap-2 px-5 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl hover:bg-green-100 text-sm font-semibold transition-colors shadow-sm"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            Export to Excel (.xlsx)
-          </button>
-          <button
-            onClick={exportPptx}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-xl hover:bg-orange-100 text-sm font-semibold transition-colors shadow-sm"
-          >
-            <Presentation className="w-4 h-4" />
-            Export to PowerPoint (.pptx)
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#17645D] text-white rounded-xl hover:bg-[#195C56] text-sm font-semibold transition-all shadow-md active:scale-95"
-          >
-            <Printer className="w-4 h-4" />
-            Export Summary Report (PDF)
-          </button>
-        </div>
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500"><span>Pembanding tarif: {viewMode==='INACBG'?'INA-CBG':'iDRG'}</span><span>Hasil dihitung: {snapshot?new Date(snapshot.at).toLocaleString('id-ID'):'Belum tersedia'}</span></div>
+      </header>
+
+      <div className={clsx('flex flex-col items-start justify-between gap-3 rounded-xl border p-4 sm:flex-row',blockers.length?'border-red-200 bg-red-50':notes.length?'border-amber-200 bg-amber-50':'border-teal-200 bg-teal-50')} role="status">
+        <div className="flex min-w-0 flex-1 gap-3">{(blockers.length||notes.length)?<AlertCircle className={clsx("mt-0.5 shrink-0",blockers.length?"text-red-700":"text-amber-700")} size={20}/>:<CheckCircle2 className="mt-0.5 shrink-0 text-teal-700" size={20}/>}<div><p className={clsx('font-semibold',blockers.length?'text-red-900':'text-slate-800')}>{blockers.length?`${blockers.length} pemeriksaan menghambat penggunaan hasil`:notes.length?'Hasil tersedia dengan catatan peninjauan':'Tidak ada temuan pada pemeriksaan yang dijalankan'}</p><p className="mt-1 text-sm text-slate-600">{blockers.length?'Selesaikan masalah alokasi atau data sebelum menggunakan hasil untuk keputusan. ':''}{notes.length>0?`${notes.length.toLocaleString('id-ID')} catatan perlu ditinjau. `:''}Rincian dan tautan perbaikan tersedia di Pemeriksaan Data.</p></div></div>
+        <button className="uc-secondary shrink-0 print:hidden" onClick={()=>setSection('checks')}>Periksa data</button>
       </div>
 
-      <AnalysisFilters/><AnalysisReportVersions/><AnalysisReportDetails/><p className="uc-notice">Perbandingan memakai seluruh kasus UC valid pada filter. Pool penuh dipakai hanya untuk ringkasan tanpa filter. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
-      {/* Report Content */}
-      <div ref={reportRef} className="space-y-6 print:space-y-4">
-        <p className="uc-notice">Trimming sesuai parameter per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} tetap membentuk CW dan masuk biaya dan perbandingan; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>
+      <details className="uc-panel print:hidden"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Filter laporan{filterCount>0&&<span className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-xs text-teal-800">{filterCount} aktif</span>}</summary><div className="mt-3"><AnalysisFilters/></div></details>
+      <nav aria-label="Bagian laporan" className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 print:hidden sm:grid-cols-4">{([{id:'summary',label:'Ringkasan'},{id:'groups',label:'Rincian DRG'},{id:'checks',label:'Pemeriksaan Data'},{id:'methods',label:'Metode'}] as const).map(tab=><button key={tab.id} type="button" aria-pressed={section===tab.id} className={clsx('min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',section===tab.id?'bg-teal-800 text-white':'text-slate-600 hover:bg-slate-50')} onClick={()=>setSection(tab.id)}>{tab.label}</button>)}</nav>
 
-        {/* Report Header */}
-        <div className="bg-gradient-to-r from-blue-700 to-indigo-700 text-white rounded-2xl p-6 print:rounded-none print:from-blue-800 print:to-blue-800">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-              <FileDown className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">LAPORAN UNIT COST</h2>
-              <p className="text-blue-200 text-sm">Patient Level Costing & Perbandingan Tarif {viewMode}</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
-            <div>
-              <p className="text-blue-300 text-xs">Rumah Sakit</p>
-              <p className="font-semibold">{user?.namaRS}</p>
-            </div>
-            <div>
-              <p className="text-blue-300 text-xs">Periode Data</p>
-              <p className="font-semibold">{summary.periodeData}</p>
-            </div>
-            <div>
-              <p className="text-blue-300 text-xs">Tanggal Cetak</p>
-              <p className="font-semibold">{new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
-            </div>
-            <div>
-              <p className="text-blue-300 text-xs">Dicetak Oleh</p>
-              <p className="font-semibold">{user?.username}</p>
-            </div>
-            <div>
-              <p className="text-blue-300 text-xs">Faktor Biaya</p>
-              <p className="font-semibold">{periodNormalization?.effectiveMonths || 12}/12 ({formatNumber(periodFactor * 100,1)}%)</p>
-            </div>
-          </div>
-        </div>
+      {section==='summary'&&<section aria-label="Ringkasan laporan" className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
+          {label:'Jumlah kasus',value:formatNumber(summary.totalKasus),currency:false},
+          {label:'Kelompok DRG',value:formatNumber(drgResults.length),currency:false},
+          {label:'Total biaya',value:formatRupiah(summary.totalBiayaRS),currency:true},
+          {label:`Total tarif ${viewMode==='INACBG'?'INA-CBG':'iDRG'}`,value:formatRupiah(summary.totalTarif),currency:true},
+        ].map(kpi=><div key={kpi.label} className={clsx('uc-panel min-w-0',kpi.currency&&'col-span-2 sm:col-span-1')}><p className="text-sm text-slate-500">{kpi.label}</p><p className={clsx('mt-2 break-words font-semibold tracking-tight text-teal-950',kpi.currency?'text-lg':'text-2xl')}>{kpi.value}</p></div>)}</div>
+        <SourceCaseMixIndex rows={view.weightComparison}/>
+        <section className="uc-panel space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-teal-950">Perbandingan biaya dan tarif</h2><p className="mt-1 text-sm text-slate-600">Tarif klaim dikurangi biaya pada populasi laporan ini.</p></div><span className={clsx('rounded-full px-3 py-1 text-sm font-semibold',STATUS_BADGE[summary.financialStatus||'IMPAS'])}>{financialLabel(summary.financialStatus)}</span></div><p className={clsx('break-words text-3xl font-semibold',summary.totalSelisih<0?'text-red-700':'text-teal-800')}>{summary.totalSelisih>0?'+':''}{formatRupiah(summary.totalSelisih)}</p><div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">{[{label:'DRG defisit',value:summary.jumlahDRGRugi},{label:'DRG impas',value:summary.jumlahDRGImpas},{label:'DRG surplus',value:summary.jumlahDRGUntung}].map(item=><div key={item.label}><p className="text-xl font-semibold text-slate-800">{item.value}</p><p className="text-xs text-slate-500">{item.label}</p></div>)}</div></section>
+        {summary.top10Rugi.length>0&&<section className="uc-panel space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold text-teal-950">Prioritas peninjauan</h2><button className="uc-secondary" onClick={()=>setSection('groups')}>Lihat rincian DRG</button></div><p className="text-sm text-slate-600">Kelompok dengan defisit dan jumlah kasus yang memadai untuk ditinjau lebih lanjut.</p><ul className="divide-y divide-slate-100">{summary.top10Rugi.slice(0,5).map(group=><li key={group.group_code} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="min-w-0 flex-1 text-slate-700">{group.group_description||group.group_code}</span><strong className="text-red-700">{formatRupiah((group.totalTarif||0)-(group.totalBiayaRS||0))}</strong></li>)}</ul></section>}
+        <p className="px-1 text-xs text-slate-500">Filter hanya mengubah ringkasan laporan. Perhitungan CW RS dan HBR memakai populasi awal, termasuk kasus outlier yang memenuhi syarat.</p>
+      </section>}
 
-        {periodNormalization && (periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-            <p className="font-bold">Catatan periode analisis</p>
-            {periodNormalization.yearMismatch && <p className="mt-1">Tahun klaim {periodNormalization.claimYears.join(', ')} berbeda dari Tahun Data biaya {periodNormalization.costYear}; biaya digunakan sebagai baseline/proksi.</p>}
-            {periodNormalization.fallbackCount > 0 && <p className="mt-1">{periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien menggunakan admission_date karena discharge_date tidak valid.</p>}
-            {periodNormalization.invalidDateCount > 0 && <p className="mt-1">{periodNormalization.invalidDateCount.toLocaleString('id-ID')} pasien tidak memiliki discharge_date maupun admission_date yang valid.</p>}
-          </div>
-        )}
-
-        {/* KPI Summary */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Kasus', value: formatNumber(summary.totalKasus), color: 'border-blue-400' },
-            { label: 'Case Mix Index', value: summaryMetricText(summary,'cmi'), color: 'border-violet-400' },
-            { label: 'Total biaya pada populasi ringkasan', value: formatRupiah(summary.totalBiayaRS), color: 'border-indigo-400' },
-            { label: `Total Tarif ${viewMode}`, value: formatRupiah(summary.totalTarif), color: 'border-cyan-400' },
-          ].map(kpi => (
-            <div key={kpi.label} className={clsx('bg-white rounded-xl p-4 border-l-4 shadow-sm', kpi.color)}>
-              <p className="text-xs text-gray-500">{kpi.label}</p>
-              <p className="text-lg font-bold text-gray-900 mt-1 truncate">{kpi.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className={clsx('rounded-xl p-4 border flex items-center justify-between gap-4', validationIssues.length ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200')}>
-          <div>
-            <p className={clsx('font-bold text-sm', validationIssues.length ? 'text-red-800' : 'text-emerald-800')}>{validationIssues.length ? 'Validasi Data Dasar RS perlu penyesuaian' : 'Validasi Data Dasar RS sesuai'}</p>
-            <p className="text-xs text-gray-600 mt-1">{validationIssues.length ? `${validationIssues.length} ketidaksesuaian akan disertakan pada sheet Validasi Data Dasar.` : 'Tidak ada temuan pada pemeriksaan yang dijalankan; tetap periksa kelengkapan sumber dan asumsi.'}</p>
-          </div>
-          <div className="text-right shrink-0"><p className="text-xs text-gray-500">Selisih rekonsiliasi</p><p className={clsx('font-bold', selisihRekonsiliasi === 0 ? 'text-emerald-700' : 'text-amber-700')}>{formatRupiah(selisihRekonsiliasi)}</p></div>
-        </div>
-
-        {/* Selisih Summary */}
-        <div className={clsx(
-          'rounded-xl p-5 border',
-          summary.totalSelisih < 0 ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
-        )}>
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <p className={clsx('text-lg font-bold', summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700')}>
-                {'Status finansial agregat: '+financialLabel(summary.financialStatus)}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                Total selisih: <strong className={summary.totalSelisih < 0 ? 'text-red-700' : 'text-green-700'}>
-                  {summary.totalSelisih >= 0 ? '+' : ''}{formatRupiah(summary.totalSelisih)}
-                </strong>
-              </p>
-            </div>
-            <div className="flex gap-6 text-center">
-              <div>
-                <p className="text-2xl font-bold text-red-600">{summary.jumlahDRGRugi}</p>
-                <p className="text-xs text-gray-500">DRG Defisit</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-600">{summary.jumlahDRGImpas}</p>
-                <p className="text-xs text-gray-500">DRG BEP</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-600">{summary.jumlahDRGUntung}</p>
-                <p className="text-xs text-gray-500">DRG Profit</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-                {/* Catatan Asumsi */}
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm mt-6">
-          <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Settings2 className="w-4 h-4 text-gray-500" /> Asumsi & Parameter Kalkulasi</h3>
-          <ul className="text-sm text-gray-600 space-y-2 list-disc list-inside">
-            <li><strong>Proporsi Pasien JKN:</strong> {useCostingStore.getState().jknProportion}% (Porsi seragam digunakan hanya pada komponen yang belum memiliki porsi khusus atau data volume).</li>
-            <li><strong>Faktor kalender dasar:</strong> {formatNumber(periodFactor * 100,1)}% (Faktor variabel bulanan, indeksasi dan kappa mengikuti Metodologi; tidak selalu sama dengan faktor kalender).</li>
-            <li><strong>Trimming:</strong> metode aktif pada Metodologi dan Asumsi. CW memakai seluruh kasus berkode dengan UC valid; perbandingan memakai seluruh kasus UC valid. Outlier {patientResults.filter(p=>p.outlier).length} kasus / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} dicatat terpisah.</li><li><strong>Rumus iDRG:</strong> Tarif pembanding iDRG memakai total_tarif JSON klaim; Tarif RS = CW RS × HBR × Adjustment.</li>
-          </ul>
-        </div>
-
-        {/* DRG Comparison Table */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h3 className="font-bold text-gray-800">Perbandingan Per DRG Group</h3>
-            <p className="text-xs text-gray-400 mt-0.5">Menampilkan semua {drgResults.length} DRG</p>
-          </div>
-          <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
-            <table className="w-full text-xs">
-              <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Kode</th>
-                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Nama {viewMode}</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">Kasus</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">Unit Cost</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">Tarif {viewMode}</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">Selisih</th>
-                  <th className="px-3 py-2 text-right font-semibold text-gray-600">%</th>
-                  <th className="px-3 py-2 text-center font-semibold text-gray-600">Status / Kepastian</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {drgResults.map((drg, i) => (
-                  <tr key={i} className={clsx('hover:bg-gray-50', i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50')}>
-                    <td className="px-3 py-2 font-mono font-semibold text-blue-600 whitespace-nowrap">{drg.group_code}</td>
-                    <td className="px-3 py-2 max-w-[200px]">
-                      <p className="truncate text-gray-800">{drg.group_description}</p>
-                      <p className="text-gray-400 truncate">MDC {drg.mdc_number}</p>
-                    </td>
-                    <td className="px-3 py-2 text-center text-gray-700 font-medium">{drg.jumlahKasus}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700 whitespace-nowrap">{formatRupiah(drg.rataTarif)}</td>
-                    <td className={clsx('px-3 py-2 text-right font-mono font-semibold whitespace-nowrap', drg.selisih < 0 ? 'text-red-600' : 'text-green-600')}>
-                      {drg.selisih >= 0 ? '+' : ''}{formatRupiah(drg.selisih)}
-                    </td>
-                    <td className={clsx('px-3 py-2 text-right font-mono whitespace-nowrap', drg.selisihPersen < 0 ? 'text-red-500' : 'text-green-500')}>
-                      {drg.selisihPersen >= 0 ? '+' : ''}{formatNumber(drg.selisihPersen,1)}%
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className={clsx('inline-block px-2 py-0.5 rounded-full font-semibold', STATUS_BADGE[drg.status])}>
-                        {statusLabel(drg)}
-                      </span>
-                      <p className="text-xs mt-1">{drg.statisticalLabel}; CI 95% {drg.ci?formatRupiah(drg.ci.low)+' s.d. '+formatRupiah(drg.ci.high):'Tidak tersedia'}</p>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Recommendations */}
-        {summary.top10Rugi.length > 0 && (
-          <div className="bg-amber-50 rounded-2xl p-5 border border-amber-200">
-            <h3 className="font-bold text-amber-800 mb-3">⚠️ Rekomendasi Tindak Lanjut</h3>
-            <ul className="space-y-2 text-sm text-amber-700">
-              <li>• Prioritas tinjau: {summary.top10Rugi.length} kelompok memenuhi jumlah kasus minimum, berstatus Rugi, dan interval selisih seluruhnya di bawah nol.</li>
-              <li>• {viewMode} dengan defisit terbesar: <strong>{summary.top10Rugi[0]?.group_description}</strong> ({formatRupiah((summary.top10Rugi[0]?.totalTarif||0)-(summary.top10Rugi[0]?.totalBiayaRS||0))} total)</li>
-              <li>• Telusuri pusat biaya dan komponen terbesar pada tabel struktur biaya; periksa pemetaan, volume, dan sumber pembayaran sebelum mengambil keputusan.</li>
-              <li>• Kelompok kecil dan interval yang melintasi nol memerlukan data tambahan. Status finansial tetap ditampilkan, dengan kepastian statistik terpisah.</li>
-              <li>• Hasil pembagian biaya belum membuktikan penyebab klinis atau kebutuhan perubahan tarif.</li>
-            </ul>
-          </div>
-        )}
-
-        {/* Footer */}
-        <div className="text-center text-xs text-gray-400 py-4 border-t border-gray-100">
-          Laporan dihasilkan oleh UnitCOSt PRO — Patient Level Costing System · {new Date().toLocaleString('id-ID')}
-        </div>
-      </div>
-
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          body > * { display: none !important; }
-          #root { display: block !important; }
-          .print\\:hidden { display: none !important; }
-          header, aside, button { display: none !important; }
-        }
-      `}</style>
+      {section==='groups'&&<section className="uc-panel space-y-4" aria-label="Rincian DRG laporan"><div><h2 className="text-lg font-semibold text-teal-950">Rincian kelompok DRG</h2><p className="mt-1 text-sm text-slate-600">{drgResults.length.toLocaleString('id-ID')} kelompok sesuai filter. Unit cost dan tarif ditampilkan sebagai rata-rata per kasus.</p></div><div className="uc-table-scroll max-h-[640px] overflow-y-auto"><table className="uc-table min-w-[800px]"><thead className="sticky top-0 bg-slate-50"><tr>{['Kode','Kelompok kasus','Kasus','Unit cost','Tarif pembanding','Selisih per kasus','Status'].map(label=><th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{drgResults.map((drg,i)=><tr key={drg.group_code+'|'+i}><td className="font-mono font-semibold text-teal-800">{drg.group_code}</td><td className="min-w-48 max-w-72">{drg.group_description}</td><td>{formatNumber(drg.jumlahKasus)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataTarif)}</td><td className={drg.selisih<0?'text-red-700':'text-teal-800'}>{formatRupiah(drg.selisih)}<span className="mt-1 block text-xs">{formatNumber(drg.selisihPersen,1)}%</span></td><td><span className={clsx('inline-block rounded-full px-2 py-1 text-xs font-semibold',STATUS_BADGE[drg.status])}>{statusLabel(drg)}</span><details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Kepastian data</summary><p className="mt-2">{drg.statisticalLabel}; interval selisih 95%: {drg.ci?formatRupiah(drg.ci.low)+' sampai '+formatRupiah(drg.ci.high):'Belum tersedia'}.</p></details></td></tr>)}</tbody></table></div>{!drgResults.length&&<p className="text-sm text-slate-500">Tidak ada kelompok yang sesuai filter laporan.</p>}</section>}
+      {section==='checks'&&<ReportDataChecks checks={checks}/>}
+      {section==='methods'&&<div className="space-y-4"><AnalysisReportDetails/><AnalysisReportVersions/></div>}
+      <footer className="border-t border-slate-200 py-3 text-xs text-slate-500">UnitCOSt PRO · Laporan analisis biaya RS</footer>
     </div>
   );
 }
-
-
-
-
-
-
-
-

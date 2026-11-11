@@ -24,7 +24,7 @@ export function validateNBR(r:Reference){
 }
 export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[],date:string):BaseRateComparison[]{
  return (['inap','jalan'] as const).map(care=>{
-  const value=result?.pools.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
+  const value=(result?.sourceWeights?.pools??result?.pools)?.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
   const row:BaseRateComparison={care,hbr,nbr:null,difference:null,percent:null,ratio:null,status:'NBR belum tersedia',reference:null};
   if(!validComparisonDate(date))return {...row,status:'Pilih tanggal pembanding yang sah'};
   const candidates=refs.filter(r=>r.kind==='base'&&(r.care===care||r.care==='semua'));
@@ -40,5 +40,5 @@ export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[]
  });
 }
 export function baseRateComparisonRows(result:HospitalCostResult,refs:Reference[],date:string):unknown[][]{
- return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan','Perbandingan tingkat base rate; CW lokal dan nasional dapat berbeda. Bukan ukuran profit/defisit atau tarif resmi.'],['Rawat','HBR lokal','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi'],...compareBaseRates(result,refs,date).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false])];
+ return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan',result.sourceWeights?'HBR memakai CW klaim dari TXT. Cakupan bobot tersedia pada lembar HBR_CW_TXT.':'Perbandingan memakai HBR lokal dari biaya RS.'],['Rawat',result.sourceWeights?'HBR berbasis CW TXT':'HBR lokal','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi'],...compareBaseRates(result,refs,date).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false])];
 }

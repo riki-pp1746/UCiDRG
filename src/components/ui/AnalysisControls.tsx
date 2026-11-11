@@ -14,6 +14,7 @@ import {useAnalysisView} from '../../hooks/useAnalysisView';
 import {createAnalysisBackup,previewAnalysisBackup,applyAnalysisBackup,validateMethodology} from '../../lib/analysisBackup';
 import type {BackupPayload} from '../../lib/analysisBackup';
 import {methodologyRows} from '../../lib/analysisExport';
+import {cmiReferences} from '../../lib/analysisFormulas';
 import {formatNumber} from '../../lib/calculations/patientLevelCosting';
 import {money} from '../../v4/numbers';
 import {maskSEP} from '../../v4/numbers';
@@ -171,13 +172,35 @@ export function AnalysisReportVersions(){
   <div className="mt-3 flex flex-wrap gap-2">{(['Draft','Review','Final'] as const).map(state=><button key={state} className="uc-secondary" onClick={()=>save(state)}>Simpan {state}</button>)}</div>
   <p className="mt-2 text-xs text-slate-600">Periode dengan parameter atau populasi berbeda tidak langsung sebanding.</p>
   {error&&<p role="alert" className="uc-error">{error}</p>}
-  {history.entries.length>0&&<div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>CMI</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td></tr>)}</tbody></table></div>}
+  {history.entries.length>0&&<div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>Rata-rata CW lokal</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td></tr>)}</tbody></table></div>}
  </details>;
 }
 
-export function AnalysisReportDetails(){const snapshot=useTarifPasienStore(s=>s.snapshot);const view=useAnalysisView();if(!snapshot)return null;return <><AnalysisCostDetails/><section className="uc-panel space-y-3"><h2 className="font-semibold">DRAFT · Metodologi dan asumsi</h2><p className="text-sm">Hasil analisis bukan tarif final. Kelompok kecil memerlukan data tambahan. {view.summary?.populationLabel}. {snapshot.version} · {new Date(snapshot.at).toLocaleString('id-ID')}</p><div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Rawat</th><th>Pool JKN penuh</th><th>Pool HBR aktif</th><th>Dikecualikan</th><th>Casemix</th><th>HBR</th><th>Selisih identitas</th></tr></thead><tbody>{snapshot.local.pools.map(p=><tr key={p.care}><td>{p.care}</td><td>{money(p.total)}</td><td>{money(p.hbrPool??p.total)}</td><td>{money(p.policyExcluded||'0')}</td><td>{p.casemix===null?'Tidak tersedia':formatNumber(Number(p.casemix),3)}</td><td>{money(p.hbr)}</td><td>{p.identityDelta==='Tidak tersedia'?'Tidak tersedia':money(p.identityDelta||'0')}</td></tr>)}</tbody></table></div><p className="text-sm">ROV skala ln(UC positif): mentah {view.summary?.rov?.raw==null?'Tidak tersedia':formatNumber(view.summary.rov.raw*100,1)+'%'}; adjusted {view.summary?.rov?.adjusted==null?'Tidak tersedia':formatNumber(view.summary.rov.adjusted*100,1)+'%'}; validasi silang {view.summary?.rov?.crossValidated==null?'Tidak tersedia':formatNumber(view.summary.rov.crossValidated*100,1)+'%'}. {view.summary?.rov?.reason}. n={view.summary?.rov?.n}, k={view.summary?.rov?.k}, singleton={view.summary?.rov?.singletons}, dikeluarkan={view.summary?.rov?.excluded}.</p><details><summary>Seluruh parameter dan sumber</summary><table className="uc-table"><tbody>{methodologyRows().slice(1).map(([key,value])=><tr key={key}><th>{key}</th><td className="break-all">{value}</td></tr>)}</tbody></table></details><ul className="text-sm">{snapshot.issues.map(i=><li key={i.id}>{i.severity==='error'?'Blokir':'Peringatan'}: {i.count} · {i.message}</li>)}</ul><p className="text-xs">Komponen biaya terbesar menjelaskan struktur biaya, bukan bukti sebab defisit. Tarif paket tidak dibagi ke komponen tanpa asumsi eksplisit.</p><div className="grid sm:grid-cols-3 gap-3 text-sm"><p>Disusun: __________<br/>Tanggal: __________</p><p>Diperiksa: __________<br/>Tanggal: __________</p><p>Disetujui: __________<br/>Tanggal: __________</p></div></section></>;}
-
-
-
-
-
+export function AnalysisReportDetails(){
+ const snapshot=useTarifPasienStore(s=>s.snapshot);const view=useAnalysisView();
+ if(!snapshot)return null;
+ const rov=view.summary?.rov;
+ return <div className="space-y-4">
+  <section className="uc-panel space-y-4"><h2 className="text-lg font-semibold text-teal-950">Metode dan cakupan laporan</h2>
+   <dl className="grid gap-4 sm:grid-cols-2"><div><dt className="text-xs text-slate-500">Metode biaya</dt><dd className="mt-1 text-sm font-medium text-slate-800">{snapshot.local.method}</dd></div><div><dt className="text-xs text-slate-500">Periode</dt><dd className="mt-1 text-sm font-medium text-slate-800">{snapshot.local.period}</dd></div><div><dt className="text-xs text-slate-500">Dasar CW</dt><dd className="mt-1 text-sm text-slate-700">Rata-rata biaya kelompok dibagi rata-rata biaya seluruh kasus pembentuk, terpisah menurut jenis rawat. Outlier tetap dihitung.</dd></div><div><dt className="text-xs text-slate-500">Dasar ICU</dt><dd className="mt-1 text-sm text-slate-700">{snapshot.options.intensiveBasis==='billing'?'Proporsi tagihan ICU pasien inap (asumsi latihan).':'Hari perawatan sesuai dasar alokasi komponen.'}</dd></div></dl>
+   <p className="text-sm text-slate-600">CW lokal dinormalisasi terhadap rata-rata biaya RS. Rata-rata tertimbang seluruh kasus pembentuk bernilai 1; nilai per kelompok tetap bervariasi. CMI dari bobot TXT memakai nilai sumber yang terpisah.</p>
+    <p className="text-sm text-slate-600">Ringkasan mengikuti filter laporan. Perhitungan CW dan HBR tetap memakai populasi pembentuk pada hasil yang sama.</p>
+    <details className="border-t border-slate-200 pt-3">
+      <summary className="cursor-pointer font-semibold text-teal-950">Referensi Case Mix Index (CMI)</summary>
+      <div className="mt-3 space-y-3 text-sm text-slate-600">
+        <p>CMI dihitung dengan membagi casemix dengan jumlah kasus pada populasi yang sama. Studi Nurwahyuni dan Setiawan menghitung indikator ini secara terpisah untuk rawat inap dan rawat jalan dalam sistem INA-CBG. Aplikasi menerapkan rumus tersebut pada klaim dengan CW iDRG yang tersedia di TXT dan menampilkan cakupannya.</p>
+        <ul className="list-disc space-y-2 pl-5">
+          {cmiReferences.map(ref=><li key={ref.doi}>
+            {ref.authors}. {ref.journal}.{' '}
+            <a className="text-teal-800 underline underline-offset-2" href={ref.url} target="_blank" rel="noopener noreferrer" title={ref.title}>Baca artikel di Scholar Hub UI</a>.
+          </li>)}
+        </ul>
+      </div>
+    </details>
+  </section>
+  <details className="uc-panel"><summary className="cursor-pointer font-semibold text-teal-950">Rekonsiliasi biaya dan HBR</summary><div className="uc-table-scroll mt-4"><table className="uc-table"><thead><tr>{['Jenis rawat','Pool JKN','Pool HBR aktif','Biaya dikecualikan','Casemix','HBR','Selisih rekonsiliasi'].map(label=><th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{snapshot.local.pools.map(p=><tr key={p.care}><td>{p.care==='inap'?'Rawat inap':'Rawat jalan'}</td><td>{money(p.total)}</td><td>{money(p.hbrPool??p.total)}</td><td>{money(p.policyExcluded||'0')}</td><td>{p.casemix===null?'Tidak tersedia':formatNumber(Number(p.casemix),2)}</td><td>{money(p.hbr)}</td><td>{p.identityDelta==='Tidak tersedia'?'Tidak tersedia':money(p.identityDelta||'0')}</td></tr>)}</tbody></table></div><p className="mt-3 text-xs text-slate-500">Selisih nol menunjukkan keseimbangan total; tetap tinjau pembagi dan kelengkapan data pada Pemeriksaan Data.</p></details>
+  <details className="uc-panel"><summary className="cursor-pointer font-semibold text-teal-950">Struktur biaya dan sensitivitas</summary><div className="mt-4"><AnalysisCostDetails/></div></details>
+  <details className="uc-panel"><summary className="cursor-pointer font-semibold text-teal-950">Variasi biaya dalam kelompok (ROV)</summary><div className="mt-4 space-y-3 text-sm text-slate-600"><div className="grid gap-3 sm:grid-cols-3">{[{label:'ROV mentah',value:rov?.raw},{label:'ROV disesuaikan',value:rov?.adjusted},{label:'Validasi silang',value:rov?.crossValidated}].map(item=><div key={item.label}><p className="text-xs">{item.label}</p><p className="mt-1 font-semibold text-slate-800">{item.value==null?'Tidak tersedia':formatNumber(item.value*100,1)+'%'}</p></div>)}</div>{rov?.reason&&<p>{rov.reason}</p>}<p className="text-xs">Skala logaritma biaya positif; {formatNumber(rov?.n||0)} kasus, {formatNumber(rov?.k||0)} kelompok, {formatNumber(rov?.excluded||0)} kasus tidak masuk ukuran variasi ini. Nilai ROV tidak menunjukkan keuntungan atau kerugian RS.</p></div></details>
+  <details className="uc-panel"><summary className="cursor-pointer font-semibold text-teal-950">Parameter dan sumber lengkap</summary><p className="mt-3 text-xs text-slate-500">Versi perhitungan {snapshot.version} · {new Date(snapshot.at).toLocaleString('id-ID')}</p><div className="uc-table-scroll mt-3"><table className="uc-table"><tbody>{methodologyRows().slice(1).filter(([key])=>!key.startsWith('Referensi CMI')).map(([key,value])=><tr key={key}><th scope="row">{key}</th><td className="break-words">{value}</td></tr>)}</tbody></table></div></details>
+ </div>;
+}

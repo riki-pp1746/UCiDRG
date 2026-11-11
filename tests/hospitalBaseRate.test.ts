@@ -2,6 +2,7 @@ import {it,expect} from 'vitest';
 import {defaultMethodology} from '../src/stores/methodologyStore';
 import 'fake-indexeddb/auto';
 import {calculateHospitalBaseRate,hospitalBaseRateSheets} from '../src/lib/calculations/hospitalBaseRate';
+import {compareBaseRates} from '../src/lib/calculations/baseRateComparison';
 import type {HospitalCostCase} from '../src/lib/calculations/hospitalBaseRate';
 import {dec,sum,rounded} from '../src/v4/numbers';
 import {initialInput,newCenter,emptyBill} from '../src/v4/types';
@@ -15,6 +16,21 @@ const context={method:'M2',period:'2025-01'};
 const row=(id:string,code:string,uc:string|null,care:'inap'|'jalan'='inap'):HospitalCostCase=>({id,sep:'SYNTHETIC-SEP-'+id,code,uc,care});
 const cases=[...Array.from({length:10},(_,i)=>row('A'+i,'A','100000')),...Array.from({length:30},(_,i)=>row('B'+i,'B','300000'))];
 const near=(a:string,b:string)=>expect(dec(a).minus(b).abs().lt('1e-30')).toBe(true);
+
+it('uses source weights for the simulation without replacing the local CW formula',()=>{
+ const result=calculateHospitalBaseRate([
+  {...row('1','A','100'),sourceWeight:{total:1.25,base:1}},
+  {...row('2','A','300'),sourceWeight:{total:2.5,base:1}},
+  {...row('3','B','800'),sourceWeight:{total:0,base:0.25}},
+  row('4','B','400'),
+ ],{...context,method:'18 Komponen'});
+ expect(result.groups.map(g=>g.cw)).toEqual(['0.5','1.5']);
+ expect(result.sourceWeights?.pools[0]).toMatchObject({casemix:'4',cmi:'1.333333333333333333333333333333333333333',hbr:'400',count:3,missing:1,baseCount:1});
+ expect(result.sourceWeights?.patients.map(p=>p.standardCost)).toEqual(['500','1000','100',null]);
+ expect(result.sourceWeights?.groups[0]).toMatchObject({count:2,cw:'1.875',standardCost:'750'});
+ expect(compareBaseRates(result,[],'2025-01-01').map(p=>p.hbr)).toEqual(['400',null]);
+ expect(hospitalBaseRateSheets(result).HBR_CW_TXT[1][8]).toBe('400');
+});
 function fixture(){const input=initialInput();input.settings={...input.settings,lkStart:'2025-01-01',lkEnd:'2025-01-31',costMonths:'1',claimMonths:'1',costType:'periode',methods:'keduanya'};const center=newCenter('final');center.care='inap';center.costs.pegawai='10000000';center.jknVolume='40';center.totalVolume='40';center.driverUnit='hari rawat';center.coveredVolume='40';center.coverageTotal='40';input.centers=[center];input.claims=cases.map((p,i)=>({id:p.id,sep:p.sep,code:p.code,inacbg:'INA-'+p.code,description:'Contoh',mdc:'M',care:p.care,admission:'2025-01-01',discharge:'2025-01-31',bill:{...emptyBill(),procedure_amt:p.uc!},tariffINA:'900000',tariffIDRG:'800000',pending:false,disputed:false,file:'synthetic.txt',row:i+1} as Claim));return input;}
 
 it('implements 10+30 case example using weighted population average and casemix denominator',()=>{

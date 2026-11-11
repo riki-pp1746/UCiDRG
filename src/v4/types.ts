@@ -24,6 +24,7 @@ export function recipientDrivers(donor:Center,centers:Center[]):Record<string,st
   return donor.staffAllocation?Object.fromEntries(centers.filter(c=>donor.group==='overhead'?c.group!=='overhead':c.group==='final').map(c=>[c.id,c.sourceMetrics?.staff||'0'])):donor.recipients;
 }
 export interface Claim {
+  sourceWeight?:{total?:number;base?:number};
   proxy?:import('../lib/calculations/proxyCostWeight').ProxyClaim;
   id: string; sep: string; code: string; inacbg: string; description: string; mdc: string;
   care: Care; admission: string; discharge: string; bill: Record<Key,Money>;

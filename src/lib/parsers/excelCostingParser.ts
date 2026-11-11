@@ -332,6 +332,12 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         }
 
         const simulation = isSimulationWorkbook(workbook);
+        if(simulation&&parsedInfo.workbookSource&&workbook.Sheets['Ringkasan Dummy']){
+          const settings=XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets['Ringkasan Dummy'],{header:1});
+          const basis=settings.find(row=>row[0]==='Dasar alokasi ICU')?.[1];
+          if(basis!==undefined&&basis!=='Tagihan ICU (simulasi)')throw new Error('Dasar alokasi ICU pada ringkasan demo tidak didukung.');
+          if(basis==='Tagihan ICU (simulasi)')parsedInfo.workbookSource.demoIntensiveBasis='billing';
+        }
         const demoSheet = workbook.Sheets['Matriks 18 Demo'];
         if (simulation && demoSheet && parsedInfo.workbookSource) {
           const [header,...rows] = XLSX.utils.sheet_to_json<unknown[]>(demoSheet,{header:1,blankrows:false});

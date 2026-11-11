@@ -23,7 +23,7 @@ export function claimFromRow(cols:string[],file:string,row:number):Claim {
   if(!code&&!cols[19])throw new Error('Kode DRG dan INA-CBG kosong.');
   const flags=cols.slice(93).join(' ').toLowerCase();
   const sourceRecord=parseRow(cols);
-  return {proxy:sourceRecord?proxyFromPatient(sourceRecord,row-1):undefined,id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:code?(cols[83]||String(json.drg_description||'')):(cols[26]||''),mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
+  return {sourceWeight:sourceRecord?{total:sourceRecord.idrg?.total_cost_weight,base:sourceRecord.idrg?.cost_weight}:undefined,proxy:sourceRecord?proxyFromPatient(sourceRecord,row-1):undefined,id:crypto.randomUUID(),sep:cols[50]||'',code,inacbg:cols[19]||'',description:code?(cols[83]||String(json.drg_description||'')):(cols[26]||''),mdc:cols[80]||'',care,admission:date(cols[5]),discharge:date(cols[6]),bill,tariffINA:num(cols[38]||cols[27]),tariffIDRG:num(cols[90]||json.total_tarif),pending:flags.includes('pending'),disputed:flags.includes('dispute'),file,row};
 }
 export function parseClaimsText(text:string,file:string) {
   const claims:Claim[]=[];const issues:Issue[]=[];const rows=Papa.parse<string[]>(text,{delimiter:claimsDelimiter(text),skipEmptyLines:true}).data;

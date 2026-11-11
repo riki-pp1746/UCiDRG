@@ -234,7 +234,7 @@ export function calculate(input:Input,onProgress:(value:number)=>void=()=>{}): R
       if(inliers.length<s.sampleSize)issue('V10',`${pop[0].code}: kurang dari ${s.sampleSize} kasus inlier.`,'warning',method);
       groups.push({code:pop[0].code,care:pop[0].care,count:inliers.length,mean:sum(inliers.map(p=>p.uc)).div(inliers.length).toString(),median:median.toString(),lowSample:inliers.length<s.sampleSize});
     }
-    const localCosting=calculateHospitalBaseRate(patients.map(p=>({id:p.id,sep:p.sep,code:p.code,description:p.description,care:p.care,uc:p.uc})),{method,period:`LK ${s.lkStart}–${s.lkEnd}; klaim ${effective} bulan (${months.join(', ')})`,pools});
+    const localCosting=calculateHospitalBaseRate(patients.map(p=>({id:p.id,sep:p.sep,code:p.code,description:p.description,care:p.care,uc:p.uc,sourceWeight:claimMap.get(p.id)?.sourceWeight})),{method,period:`LK ${s.lkStart}–${s.lkEnd}; klaim ${effective} bulan (${months.join(', ')})`,pools});
     results.push({method,blocked:issues.some(i=>i.severity==='error'&&(!i.method||i.method===method)),total:sum(pools.map(p=>p.total)).toString(),pools,patients,traces,groups,localCosting});
   }
   // Set lookup per patient above should be linear, even with large populations.

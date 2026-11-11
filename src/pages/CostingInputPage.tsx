@@ -1245,7 +1245,7 @@ export default function CostingInputPage() {
 
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
             <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
-            <p className="text-[11px] text-cyan-700 mt-1">Rasio biaya/tagihan adalah indikator kewajaran (batas peninjauan {ratioBounds}), bukan batas harga. Kamar memakai LOS; ICU memakai hari ICU bila lengkap. Komponen lain memakai tagihan, atau cadangan episode penerima bila rasio tidak wajar. Tarif per hari tidak diuji dengan batas rasio rupiah/rupiah.</p>
+            <p className="text-[11px] text-cyan-700 mt-1">Rasio biaya/tagihan adalah indikator kewajaran (batas peninjauan {ratioBounds}), bukan batas harga. Kamar memakai LOS; ICU mengikuti dasar alokasi yang tercantum pada baris komponen. Komponen lain memakai tagihan, atau cadangan episode penerima bila rasio tidak wajar. Tarif per hari tidak diuji dengan batas rasio rupiah/rupiah.</p>
           </div>
 
           <div className={`uc-panel ${outlierCount?'text-red-700':'text-slate-700'}`} role="status"><strong>{outlierCount} komponen dengan rasio di luar batas {ratioBounds}</strong><p className="text-sm">Rekonsiliasi Rp0 tidak memastikan pembagi benar. Cadangan: {distribusi.filter(d=>d.metodeAlokasi.includes('Cadangan')).length} komponen · belum teralokasi: {formatRupiah(distribusi.reduce((v,d)=>v+Number(d.unallocated||0),0))}.</p></div>

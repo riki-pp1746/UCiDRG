@@ -10,6 +10,8 @@ export default function BaseRateComparisonPanel({result=null,references,editable
  const state=useBaseRateComparisonStore();const [draft,setDraft]=useState({care:'inap',value:'',source:'',version:'',from:'',until:'',verified:false});const [error,setError]=useState('');
  const refs=references??state.references,rows=compareBaseRates(result,refs,state.date);
  const simulation=compareSimulationBaseRates(rows);
+ const source=result?.sourceWeights;
+ const hbrLabel=source?'HBR berbasis CW TXT':'HBR lokal';
  const save=()=>{try{const r:Reference={...draft,id:crypto.randomUUID(),kind:'base',care:draft.care as Reference['care'],value:parseNumber(draft.value),code:''};validateNBR(r);state.add(r);setDraft({...draft,value:'',verified:false});setError('');}catch(e){setError(e instanceof Error?e.message:String(e));}};
  const exportData=()=>{
   if(!result||!exportAllowed)return;
@@ -19,7 +21,7 @@ export default function BaseRateComparisonPanel({result=null,references,editable
    ['Status acuan','Rancangan NBR iDRG untuk simulasi'],
    ['Sumber',SIMULATION_NBR_SOURCE.label,SIMULATION_NBR_SOURCE.url],
    ['Periode HBR',result.period],
-   ['Rawat','HBR lokal (Rp)','Rancangan NBR iDRG (Rp)','Selisih (Rp)','Selisih (%)'],
+   ['Rawat',`${hbrLabel} (Rp)`,'Rancangan NBR iDRG (Rp)','Selisih (Rp)','Selisih (%)'],
    ...simulation.map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent]),
    ]),'Rancangan NBR iDRG');
   XLSX.writeFile(formatCostingWorkbook(wb),'Perbandingan-HBR-NBR.xlsx');
@@ -32,10 +34,11 @@ export default function BaseRateComparisonPanel({result=null,references,editable
    return <article key={r.care} className="uc-inset space-y-3">
     <h3 className="font-semibold">{r.care==='inap'?'Rawat inap':'Rawat jalan'}</h3>
     <div className="grid grid-cols-2 gap-3">
-     <div><p className="text-xs">HBR lokal</p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
+     <div><p className="text-xs">{hbrLabel}</p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
      <div><p className="text-xs">Rancangan NBR iDRG</p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
     </div>
-    {r.percent===null?<p>HBR belum tersedia. Hitung biaya RS untuk melihat selisih.</p>:<p>Selisih {money(r.difference)} ({displayDecimal(r.percent)}%)</p>}
+    {source&&<p className="text-xs text-slate-600">{source.pools.find(p=>p.care===r.care)?.count.toLocaleString('id-ID')} dari {source.pools.find(p=>p.care===r.care)?.cases.toLocaleString('id-ID')} kasus memiliki CW yang dapat dipakai.</p>}
+    {r.percent===null?<p>{source?'HBR belum tersedia. Periksa CW iDRG pada TXT klaim.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {money(r.difference)} ({displayDecimal(r.percent)}%)</p>}
 
    </article>;
   })}

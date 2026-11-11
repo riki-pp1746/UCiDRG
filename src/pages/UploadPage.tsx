@@ -447,7 +447,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             <a href="/Template_Costing_Standard.xlsx" download="Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
               Unduh template costing RS 6 sheet (.XLSX)
             </a>
-            <a href="/Template_Costing_Demo_RS_ABC_2025_Workshop_DO.xlsx" download className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
+            <a href="/Template_Costing_Demo_RS_ABC_2025_Workshop_DO.xlsx" download="Template_Costing_RS_ABC_Pasangan_Tagihan_Sumber_2025.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
               Unduh contoh RS ABC (.XLSX)
             </a>
           </div>

@@ -1,6 +1,7 @@
 import {financialLabel,summaryMetricText} from '../lib/analysisSnapshot';
 import {useAnalysisView} from '../hooks/useAnalysisView';
 import {rankFinancialImpact} from '../lib/calculations/financialImpact';
+import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
 import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
@@ -159,12 +160,7 @@ export default function DashboardPage() {
         {/* CMI & Total Pasien */}
         <div className="md:col-span-2 lg:col-span-2 grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="w-5 h-5 text-amber-500" />
-              <p className="text-sm font-medium text-gray-500">Case Mix Index lokal</p>
-            </div>
-            <p className="text-3xl font-bold text-gray-900 truncate">{summaryMetricText(summary,'cmi')}</p>
-            <p className="text-xs text-gray-500 mt-1">Rata-rata CW hasil costing RS</p>
+            <SourceCaseMixIndex rows={view.weightComparison} compact/>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>
@@ -213,11 +209,11 @@ export default function DashboardPage() {
       </div>
 
       {view.weightComparison.length > 0 && (
-        <section className="uc-panel space-y-3" aria-labelledby="dashboard-cw-title">
-          <h2 id="dashboard-cw-title" className="font-semibold text-teal-950">Cost Weight RS dan bobot iDRG dari TXT</h2>
+        <details className="uc-panel space-y-3">
+          <summary className="cursor-pointer font-semibold text-teal-950">Rincian CW lokal dan bobot iDRG dari TXT</summary>
           <p className="text-sm text-slate-600">
             CW lokal membagi rata-rata biaya kelompok dengan rata-rata biaya acuan RS untuk jenis rawat yang sama.
-            Karena skala ini, rata-ratanya dapat mendekati 1 meskipun CW antar kelompok berbeda.
+            Pada seluruh populasi pembentuk, rata-rata tertimbang CW lokal bernilai 1 secara matematis. CW masing-masing kelompok tetap dapat berbeda. CMI dari bobot TXT ditampilkan terpisah di atas.
           </p>
           <div className="uc-table-scroll">
             <table className="uc-table">
@@ -244,7 +240,7 @@ export default function DashboardPage() {
           </div>
           <p className="text-xs text-slate-600">Kolom TXT memakai total CW iDRG jika tersedia. Kasus dengan total CW kosong dapat memakai CW dasar dari TXT yang sama.</p>
           <Link className="inline-block text-sm font-semibold text-teal-800 underline" to="/tarif-pasien?tab=tarif">Lihat CW lokal per kelompok iDRG</Link>
-        </section>
+        </details>
       )}
 
       <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi ln(UC) dalam kelompok ÷ variasi ln(UC) seluruh kasus positif. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik memakai UC seluruh kasus valid pada skala rupiah, sehingga skalanya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>

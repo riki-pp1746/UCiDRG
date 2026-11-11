@@ -2,14 +2,17 @@ import {twoSDFlags,logIQRFlags} from './trimming';
 import type {Methodology} from '../../stores/methodologyStore';
 import {dec,sum,maskSEP,money} from '../../v4/numbers';
 
+import {calculateSourceWeightBaseRate} from './sourceWeightBaseRate';
+import type {SourceWeightResult} from './sourceWeightBaseRate';
+
 export type HospitalCare = 'inap'|'jalan';
-export interface HospitalCostCase {id:string;sep:string;code:string;description?:string;care:HospitalCare;uc:string|null;cwEligible?:boolean}
+export interface HospitalCostCase {id:string;sep:string;code:string;description?:string;care:HospitalCare;uc:string|null;cwEligible?:boolean;sourceWeight?:{total?:number;base?:number}}
 export interface HospitalCostGroup {code:string;description?:string;care:HospitalCare;count:number;cwCount?:number;cwCost?:string;total:string;mean:string;cw:string|null;rawCW?:string|null;shrinkWeight?:string;confidence?:string;casemix:string|null;hbr:string|null;standardCost:string|null}
 export interface HospitalCostPool {care:HospitalCare;count:number;cwCount?:number;cwCost?:string;beforeHbr?:string|null;unassignedShare?:string;poolBasis?:string;hbrPool?:string;policyExcluded?:string;identityDelta?:string;total:string;average:string|null;casemix:string|null;hbr:string|null;excludedCount:number;excludedCost:string;outlierCount:number;outlierCost:string;invalidCount:number;allocated:string;reserve:string;unallocated:string}
 export interface HospitalCostResult {
   schema:2|3|4;cwBasis?:'all-cases';trimming:string;source:'Costing RS';method:string;period:string;adjustment:string;unassignedUnallocated:string;
   trimStatistics:{care:HospitalCare;code:string;count:number;mean:string;sd:string;lower:string;upper:string}[];
-  pools:HospitalCostPool[];groups:HospitalCostGroup[];
+  pools:HospitalCostPool[];groups:HospitalCostGroup[];sourceWeights?:SourceWeightResult;
   patients:(HospitalCostCase&{sep:string;groupCount:number;groupMean:string|null;cw:string|null;casemix:string|null;hbr:string|null;standardCost:string|null;reason:string|null;outlier:boolean})[];
 }
 const codeAvailable=(code:string)=>Boolean(code.trim())&&!['N/A','UNKNOWN','-','—'].includes(code.trim().toUpperCase());
@@ -21,7 +24,7 @@ function outlierExplanation(p:HospitalCostCase,bounds:{lower:string;upper:string
  return `Biaya pasien ${money(p.uc)} ${below?'di bawah batas bawah':'di atas batas atas'} kelompok ${money(below?bounds.lower:bounds.upper)}. Rentang biaya kelompok iDRG ${p.code.trim()} (rawat ${p.care}): ${money(bounds.lower)}–${money(bounds.upper)}. Kasus tetap dihitung dalam CW, biaya JKN dan casemix.`;
 }
 
-/** Local weights use allocated patient costs only; no external weights or tariff parameters. */
+/** Calculate local CW from allocated costs, with a separate simulation using source weights. */
 export function calculateHospitalBaseRate(cases:HospitalCostCase[],context:{method:string;period:string;options?:Methodology;unassignedUnallocated?:string;pools?:{care:HospitalCare;total?:string;reserve:string;unallocated:string}[]}):HospitalCostResult {
  const options=context.options;const robust=options?.trimming==='log-iqr';
  const trimRows=cases.map(p=>({group:validCost(p.uc)&&codeAvailable(p.code)&&(!options||dec(p.uc!).gt(0))?p.care+'|'+p.code.trim():'',value:validCost(p.uc)?p.uc!:'0'}));
@@ -56,15 +59,25 @@ export function calculateHospitalBaseRate(cases:HospitalCostCase[],context:{meth
   for(const group of careGroups){group.hbr=hbr?.toString()??null;group.standardCost=hbr&&group.cw!==null?dec(group.cw).mul(hbr).mul(options?.adjustment??1).toString():null;groups.push(group);lookup.set(care+'|'+group.code,group);}
   pools.push({care,count:coded.length,cwCount:included.length,cwCost:cwCost.toString(),...(options?{hbrPool:hbrPool.toString(),policyExcluded:policyExcluded.toString(),identityDelta:hbr&&casemix?hbrPool.minus(casemix.mul(hbr)).toString():'Tidak tersedia'}:{}),beforeHbr:beforeHbr?.toString()??null,unassignedShare:share.toString(),poolBasis:pool?.total!==undefined?'Pool JKN hasil alokasi per jenis rawat':unassigned.gt(0)?'Pool JKN 18 komponen; sisa bersama dibagi menurut biaya pasien, cadangan jumlah kasus bila biaya nol':'Pool JKN 18 komponen',total:total.toString(),average:average?.toString()??null,casemix:casemix?.toString()??null,hbr:hbr?.toString()??null,outlierCount:coded.filter(p=>outliers.has(p)).length,outlierCost:sum(coded.filter(p=>outliers.has(p)).map(p=>p.uc!)).toString(),excludedCount:excluded.length,excludedCost:sum(excluded.map(p=>p.uc!)).toString(),invalidCount:population.length-valid.length,allocated:allocated.toString(),reserve:pool?.reserve??'0',unallocated:pool?.unallocated??'0'});
  }
- return {schema:options?4:3,cwBasis:'all-cases',trimming:robust?'ln(UC positif), IQR per care/iDRG; one pass':'mean ±2 sample SD per care/iDRG; one pass',source:'Costing RS',method:context.method,period:context.period,adjustment:String(options?.adjustment??1),unassignedUnallocated:context.unassignedUnallocated??'0',trimStatistics:Array.from(trimming.statistics,([key,stats])=>({care:key.split('|')[0] as HospitalCare,code:key.slice(key.indexOf('|')+1),...stats})),pools,groups,patients:cases.map(p=>{const group=lookup.get(p.care+'|'+p.code.trim());const valid=validCost(p.uc);const outlier=outliers.has(p);return {...p,sep:maskSEP(p.sep),uc:valid?p.uc:null,outlier,groupCount:group?.count??0,groupMean:valid?group?.mean??null:null,cw:valid?group?.cw??null:null,casemix:valid?group?.casemix??null:null,hbr:valid?group?.hbr??null:null,standardCost:valid?group?.standardCost??null:null,reason:outlier?outlierExplanation(p,trimming.statistics.get(p.care+'|'+p.code.trim())):!valid?'Unit cost belum tersedia atau tidak valid':!codeAvailable(p.code)?'Kode iDRG tidak tersedia; biaya masuk pool JKN, kasus belum membentuk casemix':!group?.hbr?'HBR tidak dapat dihitung':null};})};
+ const adjustment=String(options?.adjustment??1);
+ const sourceWeights=context.method==='18 Komponen'||cases.some(p=>p.sourceWeight)
+  ?calculateSourceWeightBaseRate(cases,pools,adjustment,options?.hbrPolicy==='exclude')
+  :undefined;
+ return {schema:options?4:3,sourceWeights,cwBasis:'all-cases',trimming:robust?'ln(UC positif), IQR per care/iDRG; one pass':'mean ±2 sample SD per care/iDRG; one pass',source:'Costing RS',method:context.method,period:context.period,adjustment:String(options?.adjustment??1),unassignedUnallocated:context.unassignedUnallocated??'0',trimStatistics:Array.from(trimming.statistics,([key,stats])=>({care:key.split('|')[0] as HospitalCare,code:key.slice(key.indexOf('|')+1),...stats})),pools,groups,patients:cases.map(p=>{const group=lookup.get(p.care+'|'+p.code.trim());const valid=validCost(p.uc);const outlier=outliers.has(p);return {...p,sep:maskSEP(p.sep),uc:valid?p.uc:null,outlier,groupCount:group?.count??0,groupMean:valid?group?.mean??null:null,cw:valid?group?.cw??null:null,casemix:valid?group?.casemix??null:null,hbr:valid?group?.hbr??null:null,standardCost:valid?group?.standardCost??null:null,reason:outlier?outlierExplanation(p,trimming.statistics.get(p.care+'|'+p.code.trim())):!valid?'Unit cost belum tersedia atau tidak valid':!codeAvailable(p.code)?'Kode iDRG tidak tersedia; biaya masuk pool JKN, kasus belum membentuk casemix':!group?.hbr?'HBR tidak dapat dihitung':null};})};
 }
 
 export function hospitalBaseRateSheets(result:HospitalCostResult){
   const unavailable='Tidak dapat dihitung';
   const current=Number(result.schema)>=3;
   const allCases=result.cwBasis==='all-cases';
+  const source=result.sourceWeights;
   return {
     ...(result.schema===4?{Kebijakan_HBR:[['Rawat','Pool penuh','Pool HBR aktif','Biaya dikecualikan','Selisih identitas sebelum Adjustment'],...result.pools.map(p=>[p.care,p.total,p.hbrPool??p.total,p.policyExcluded??'0',p.identityDelta??unavailable])],[allCases?'Perhitungan_CW':'Stabilisasi_CW']:[['Rawat','iDRG','CW mentah','CW aktif','Bobot stabilisasi','Kasus semua',allCases?'Kasus pembentuk CW':'Kasus inlier','Kepastian CW'],...result.groups.map(g=>[g.care,g.code,g.rawCW??unavailable,g.cw??unavailable,g.shrinkWeight??'1',g.count,g.cwCount??0,g.confidence??unavailable])]}:{}),
+    ...(source?{
+      HBR_CW_TXT:[['Rawat','Kasus','Kasus dengan CW','CW dasar','Kasus tanpa CW','Casemix TXT','CMI TXT','Pool HBR','HBR berbasis CW TXT'],...source.pools.map(p=>[p.care,p.cases,p.count,p.baseCount,p.missing,p.casemix,p.cmi??unavailable,p.hbrPool,p.hbr??unavailable])],
+      Kelompok_CW_TXT:[['Rawat','iDRG','Kasus dengan CW','Rata-rata CW TXT','Casemix TXT','HBR berbasis CW TXT','Rata-rata tarif simulasi'],...source.groups.map(g=>[g.care,g.code,g.count,g.cw??unavailable,g.casemix,g.hbr??unavailable,g.standardCost??unavailable])],
+      Pasien_CW_TXT:[['SEP masking','Rawat','iDRG','CW TXT','Sumber CW','HBR berbasis CW TXT','Tarif simulasi'],...source.patients.map((p,i)=>[result.patients[i].sep,p.care,p.code,p.cw??unavailable,p.basis==='total'?'CW total':p.basis==='base'?'CW dasar':unavailable,p.hbr??unavailable,p.standardCost??unavailable])],
+    }:{}),
     HBR_RS:[['Rawat','Kasus populasi',current?'Pool biaya JKN penuh':'Biaya populasi rumus lama',allCases?'Rata-rata UC seluruh kasus pembentuk CW':'Rata-rata UC inlier pembentuk CW','Total casemix','HBR','Kasus tanpa kode','Biaya tanpa kode','Kasus UC tidak valid','Biaya teralokasi','Cadangan cakupan','Belum teralokasi','Kasus outlier','Biaya outlier',allCases?'Kasus pembentuk CW':'Kasus inlier pembentuk CW',allCases?'Biaya pembentuk CW':'Biaya inlier pembentuk CW','Sisa bersama masuk pool','Dasar pool JKN'],...result.pools.map(p=>[p.care,p.count,p.total,p.average??unavailable,p.casemix??unavailable,p.hbr??unavailable,p.excludedCount,p.excludedCost,p.invalidCount,p.allocated,p.reserve,p.unallocated,p.outlierCount,p.outlierCost,p.cwCount??unavailable,p.cwCost??unavailable,p.unassignedShare??unavailable,p.poolBasis??'Rumus lama'])],
     CW_Kelompok:[['Rawat','iDRG','Deskripsi iDRG','Kasus','Total biaya',allCases?'Rata-rata biaya kelompok':'Rata-rata biaya inlier','CW RS','Casemix kelompok','HBR','Tarif RS (standar kelompok)',allCases?'Kasus pembentuk CW':'Kasus inlier pembentuk CW',allCases?'Biaya pembentuk CW':'Biaya inlier pembentuk CW'],...result.groups.map(g=>[g.care,g.code,g.description||'Tidak tersedia',g.count,g.total,g.mean,g.cw??unavailable,g.casemix??unavailable,g.hbr??unavailable,g.standardCost??unavailable,g.cwCount??unavailable,g.cwCost??unavailable])],
     Pasien_RS:[['SEP masking','Rawat','iDRG','Deskripsi iDRG','Unit cost pasien','Kasus kelompok','Rata-rata biaya kelompok','CW RS','Casemix kelompok','HBR','Tarif RS (standar kelompok)','Penanda'],...result.patients.map(p=>[p.sep,p.care,p.code||'Tidak tersedia',p.description||'Tidak tersedia',p.uc??unavailable,p.groupCount,p.groupMean??unavailable,p.cw??unavailable,p.casemix??unavailable,p.hbr??unavailable,p.standardCost??unavailable,p.reason??''])],

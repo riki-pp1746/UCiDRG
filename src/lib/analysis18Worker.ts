@@ -14,4 +14,4 @@ installBatchedWorker(self as any,(raw,meta,progress)=>{
  const views=Object.fromEntries((['INACBG','IDRG'] as const).map(mode=>{const {rows:_,...view}=analysisView(s.snapshot!,mode);return [mode,view];}));
  const snapshot={...s.snapshot,local:null};
  return {period:useCostingStore.getState().periodNormalization,views,result:{patients:s.patients,biayaRSMap:s.biayaRSMap,localCosting:s.localCosting,distribusi:s.distribusi,validationIssues:useTarifPasienStore.getState().validationIssues,snapshot}};
-},['result.patients','result.localCosting.patients','result.snapshot.rows'],(path,rows)=>path==='result.snapshot.rows'?rows.map(r=>({...r,patient:undefined,sourceIndex:sourceIndices.get(r.patient)})):rows);
+},['result.patients','result.localCosting.patients','result.localCosting.sourceWeights.patients','result.snapshot.rows'],(path,rows)=>path==='result.snapshot.rows'?rows.map(r=>({...r,patient:undefined,sourceIndex:sourceIndices.get(r.patient)})):rows);

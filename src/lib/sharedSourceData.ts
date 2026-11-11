@@ -14,7 +14,7 @@ export function sharedClaims(records:PatientRecord[],file='Data sumber bersama',
  const rows:Claim[]=[];
  records.forEach((r,index)=>{
   if(r.ptd!==1&&r.ptd!==2){issues.push({code:'V12',severity:'warning',file,row:index+1,message:'Jenis rawat sumber bukan PTD 1/2; baris tidak dipindahkan dengan jenis rawat buatan.'});return;}
-  rows.push({proxy:proxyFromPatient(r,index+offset),id:`shared-${index+offset}-${r.sep}`,sep:r.sep,code:r.idrg?.drg_code||'',inacbg:r.inacbg,description:r.idrg?.drg_description||r.deskripsi_inacbg||'',mdc:String(r.idrg?.mdc_number??''),care:r.ptd===1?'inap':'jalan',admission:r.admission_date,discharge:r.discharge_date,bill:Object.fromEntries(KEYS.map(k=>[k,String(r.billing[k]??0)])) as Claim['bill'],tariffINA:String(r.total_tarif||r.tarif_inacbg||0),tariffIDRG:String(r.idrg?.total_tarif||0),pending:r.pending??false,disputed:r.disputed??false,file:r.sourceFile||file,row:r.sourceRow||index+offset+1});
+  rows.push({sourceWeight:{total:r.idrg?.total_cost_weight,base:r.idrg?.cost_weight},proxy:proxyFromPatient(r,index+offset),id:`shared-${index+offset}-${r.sep}`,sep:r.sep,code:r.idrg?.drg_code||'',inacbg:r.inacbg,description:r.idrg?.drg_description||r.deskripsi_inacbg||'',mdc:String(r.idrg?.mdc_number??''),care:r.ptd===1?'inap':'jalan',admission:r.admission_date,discharge:r.discharge_date,bill:Object.fromEntries(KEYS.map(k=>[k,String(r.billing[k]??0)])) as Claim['bill'],tariffINA:String(r.total_tarif||r.tarif_inacbg||0),tariffIDRG:String(r.idrg?.total_tarif||0),pending:r.pending??false,disputed:r.disputed??false,file:r.sourceFile||file,row:r.sourceRow||index+offset+1});
  });
  return appendClaims([],rows,issues);
 }

@@ -42,9 +42,10 @@ function allocateRevised(patients:AllocationPatient[],costs:Record<string,number
  const eligible=patients.map(p=>Object.values(p.billing).every(v=>Number.isFinite(v)&&v>=0)&&Object.values(p.billing).some(v=>v>0));
  for(const [key,amount] of Object.entries(costs)){
   if(!Number.isFinite(amount)||amount<0)throw new Error('Biaya komponen tidak valid: '+key);
-  const cost=Math.round(amount);const billing=sum(patients.map((p,i)=>eligible[i]?p.billing[key]||0:0));
-  const days=key==='room_amt'||key==='intensive_amt'||(merge&&['room_amt','intensive_amt','nursing_amt'].includes(key));
-  const weights=patients.map((p,i)=>{if(!eligible[i])return 0;if(!days)return p.billing[key]||0;if(!p.inpatient)return 0;const v=key==='intensive_amt'&&!merge?p.icuDays:p.los;return Number.isFinite(v)&&v!>0&&(key!=='intensive_amt'||merge||v!<=p.los)?v!:0;});
+  const icuBilling=key==='intensive_amt'&&!merge&&options.intensiveBasis==='billing';
+  const cost=Math.round(amount);const billing=sum(patients.map((p,i)=>eligible[i]&&(!icuBilling||p.inpatient)?p.billing[key]||0:0));
+  const days=key==='room_amt'||(key==='intensive_amt'&&!icuBilling)||(merge&&['room_amt','intensive_amt','nursing_amt'].includes(key));
+  const weights=patients.map((p,i)=>{if(!eligible[i])return 0;if(!days)return !icuBilling||p.inpatient?p.billing[key]||0:0;if(!p.inpatient)return 0;const v=key==='intensive_amt'&&!merge?p.icuDays:p.los;return Number.isFinite(v)&&v!>0&&(key!=='intensive_amt'||merge||v!<=p.los)?v!:0;});
   const candidates=patients.map((p,i)=>eligible[i]&&weights[i]===0&&(p.billing[key]||0)>0&&options.confirmedEpisodes.includes(p.id||String(i)));
   const reserve=options.episodeReserves[key]??0;if(!Number.isFinite(reserve)||reserve<0||reserve>cost)throw new Error('Cadangan episode harus berada antara 0 dan pool komponen.');
   if(reserve>0&&!candidates.some(Boolean))throw new Error('Cadangan memerlukan penerima episode yang telah dikonfirmasi.');
@@ -55,12 +56,13 @@ function allocateRevised(patients:AllocationPatient[],costs:Record<string,number
   const billingRatio=days?null:billing.gt(0)?dec(cost).div(billing).toNumber():null;
   const outlier=billingRatio!==null&&cost>0&&(billingRatio<options.ratioMin||billingRatio>options.ratioMax);
   const warnings:string[]=[];
+  if(days&&cost>0&&!patients.some((p,i)=>eligible[i]&&p.inpatient))warnings.push('Tidak ada pasien inap penerima biaya komponen ini. Tinjau jenis layanan dan pemetaan biaya.');
   if(days&&denominator.gt(0)&&billing.div(denominator).lt(1000))warnings.push('Tagihan akomodasi/ICU rendah; kemungkinan tertanam di Keperawatan. Telusuri sumber sebelum menggabungkan pool.');
-  if(cost>0&&patients.some((p,i)=>eligible[i]&&weights[i]===0&&(p.billing[key]||0)>0&&!candidates[i])&&days)warnings.push('Driver nol atau jenis rawat meragukan. Tinjau sumber; cadangan episode memerlukan konfirmasi.');
+  if(cost>0&&patients.some((p,i)=>eligible[i]&&p.inpatient&&weights[i]===0&&(p.billing[key]||0)>0&&!candidates[i])&&days)warnings.push('Hari perawatan pasien inap belum tersedia atau tidak valid. Tinjau sumber; cadangan episode memerlukan konfirmasi.');
   if(cost>0&&allocated.lt(cost))warnings.push('Pembagi belum tersedia. Biaya tetap terlihat sebagai sisa; lengkapi driver atau cadangan terkonfirmasi.');
   if(outlier)warnings.push(`Rasio di luar ${options.ratioMin.toLocaleString('id-ID')}–${options.ratioMax.toLocaleString('id-ID')}; periksa biaya dan tagihan.`);
   if(merge&&days)warnings.push('Pool gabungan disetujui pengguna; biaya ICU ikut tersebar menurut LOS inap.');
-  traces.push({key,billing:billing.toNumber(),cost,billingRatio,outlier,basis:days?(key==='intensive_amt'&&!merge?'Hari ICU':'Hari rawat (LOS)'):'Tagihan E-Klaim',unit:days?'hari':'rupiah',denominator:denominator.toNumber(),rate:denominator.gt(0)?dec(cost-reserve).div(denominator).toNumber():null,warning:warnings.join(' '),unallocated:dec(cost).minus(allocated).toString(),episodeReserve:String(reserve)});
+  traces.push({key,billing:billing.toNumber(),cost,billingRatio,outlier,basis:days?(key==='intensive_amt'&&!merge?'Hari ICU':'Hari rawat (LOS)'):icuBilling?'Tagihan ICU (simulasi)':'Tagihan E-Klaim',unit:days?'hari':'rupiah',denominator:denominator.toNumber(),rate:denominator.gt(0)?dec(cost-reserve).div(denominator).toNumber():null,warning:warnings.join(' '),unallocated:dec(cost).minus(allocated).toString(),episodeReserve:String(reserve)});
  }
  return {values,traces};
 }
