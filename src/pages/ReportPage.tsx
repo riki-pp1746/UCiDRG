@@ -1,5 +1,6 @@
 import {AnalysisReportDetails,AnalysisReportVersions} from '../components/ui/AnalysisControls';
 import {analysisPdf} from '../lib/analysisPdf';
+import {cmiStudyReport} from '../lib/cmiStudyReport';
 import {ensureAnalysisExport,appendAnalysisSheets,methodologyRows} from '../lib/analysisExport';
 import {statusLabel,summaryMetricText,financialLabel} from '../lib/analysisSnapshot';
 import {useAnalysisView} from '../hooks/useAnalysisView';
@@ -139,6 +140,12 @@ export default function ReportPage() {
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+    if(user?.hospitalClass){
+      const study=cmiStudyReport(view,user.hospitalClass);
+      const sheet=XLSX.utils.aoa_to_sheet([[study.title],[study.result],study.headers,...study.rows,[],[study.note],[study.source]]);
+      sheet['!cols']=[{wch:21},{wch:14},{wch:20},{wch:20}];
+      XLSX.utils.book_append_sheet(wb,sheet,'CMI menurut kelas RS');
+    }
 
     // Sheet 2: DRG Comparison
     const drgHeader = [
@@ -283,12 +290,19 @@ export default function ReportPage() {
     recommendations.forEach((text, i) => { const y = 1.55 + i * 1.2; slide.addShape(pptx.ShapeType.ellipse, { x: 0.85, y: y + 0.05, w: 0.32, h: 0.32, fill: { color: teal }, line: { color: teal } }); slide.addText(String(i + 1), { x: 0.85, y: y + 0.08, w: 0.32, h: 0.15, fontFace: 'Aptos', fontSize: 9, bold: true, color: 'FFFFFF', align: 'center' }); slide.addText(text, { x: 1.4, y, w: 10.7, h: 0.65, fontFace: 'Aptos', fontSize: 16, color: navy, breakLine: false }); }); addFooter(slide, 6);
     const snapshot=useTarifPasienStore.getState().snapshot;
     for(let page=0;page<Math.ceil((methodologyRows().length-1)/15);page++){const rows=methodologyRows().slice(1+page*15,1+(page+1)*15);if(!rows.length)continue;const assumptions=pptx.addSlide();title(assumptions,'DRAFT — Metodologi dan asumsi',snapshot?.version);assumptions.addTable([['Parameter','Nilai'],...rows].map(row=>row.map(text=>({text}))),{x:.6,y:1.4,w:12,h:5.1,fontSize:9,colW:[3,9],border:{type:'solid',color:'D9D9D9',pt:.5},autoPage:true});}
+    if(user?.hospitalClass){
+      const study=cmiStudyReport(view,user.hospitalClass);
+      const comparison=pptx.addSlide();
+      title(comparison,study.title,study.result);
+      comparison.addTable([study.headers,...study.rows].map(row=>row.map(text=>({text}))),{x:.7,y:1.3,w:11.8,fontSize:12,rowH:.32,border:{type:'solid',color:'D9D9D9',pt:.5}});
+      comparison.addText(`${study.note}\n${study.source}`,{x:.7,y:5.6,w:11.8,h:.8,fontSize:10,color:gray});
+    }
     const warnings=pptx.addSlide();title(warnings,'DRAFT — Validasi dan batas hasil','Hasil analisis bukan tarif final; kelompok kecil memerlukan data tambahan');warnings.addText((snapshot?.issues||[]).map(i=>`${i.severity}: ${i.count} — ${i.message}`).join('\n')||'Periksa seluruh asumsi sebelum keputusan manajemen.',{x:.7,y:1.5,w:12,h:5.2,fontSize:12,breakLine:false});
     await pptx.writeFile({ fileName: `Presentasi_UnitCost_${(config.namaRS || 'RS').replace(/\s/g, '_')}.pptx` });
   };
 
   // Print / PDF
-  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
+  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">

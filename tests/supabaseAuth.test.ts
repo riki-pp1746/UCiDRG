@@ -7,6 +7,7 @@ const sdk = vi.hoisted(() => ({
   auth: {
     signInWithPassword: vi.fn(),
     signUp: vi.fn(),
+    updateUser: vi.fn(),
     onAuthStateChange: vi.fn(),
     stopAutoRefresh: vi.fn().mockResolvedValue(undefined),
     signOut: vi.fn().mockResolvedValue({ error: null }),
@@ -106,4 +107,27 @@ it('keeps the workspace locked when the public key is absent', async () => {
     .resolves.toMatchObject({ status: 'error' });
   expect(sdk.createClient).not.toHaveBeenCalled();
   expect(useAuthStore.getState().isAuthenticated).toBe(false);
+});
+
+it('saves the selected hospital class to the signed-in profile and reads it at the next login', async () => {
+  let userMetadata = { hospital_class: 'B', hospital_name: 'RS ABC' };
+  sdk.auth.signInWithPassword.mockImplementation(async () => ({
+    data: { session: { user: { email: 'user@example.test', user_metadata: userMetadata } } },
+    error: null,
+  }));
+  sdk.auth.updateUser.mockImplementationOnce(async ({ data }) => {
+    userMetadata = { ...userMetadata, ...data };
+    return { data: { user: { user_metadata: userMetadata } }, error: null };
+  });
+  const { useAuthStore, saveHospitalClass } = await import('../src/stores/authStore');
+  const login = () => useAuthStore.getState().login('user@example.test', 'test-password');
+  await login();
+  expect(useAuthStore.getState().user?.hospitalClass).toBe('B');
+  await saveHospitalClass('C');
+  expect(sdk.auth.updateUser).toHaveBeenCalledWith({ data: { hospital_class: 'C' } });
+  expect(useAuthStore.getState().user).toMatchObject({ hospitalClass: 'C', namaRS: 'RS ABC', role: 'user' });
+  useAuthStore.getState().logout();
+  await login();
+  expect(useAuthStore.getState().user?.hospitalClass).toBe('C');
+  useAuthStore.getState().logout();
 });

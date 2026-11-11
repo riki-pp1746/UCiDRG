@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, BookOpen, Calculator, ChevronDown, FileText, LayoutDashboard,
-  LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, Users, X,
+  LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, UserRound, Users, X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
@@ -23,6 +23,7 @@ const navigation = [
     { path: '/reports', icon: FileText, label: 'Laporan' },
   ] },
   { label: 'Administrasi', items: [
+    { path: '/profile', icon: UserRound, label: 'Profil Pengguna' },
     { path: '/settings', icon: Settings, label: 'Pengaturan' },
   ] },
 ];
@@ -57,7 +58,7 @@ export default function AppLayout() {
   const pageLabel = current === '/reset' ? 'Reset Data' : groups.flatMap(group => group.items).find(item => item.path === current)?.label;
   const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
   const pagePath = (path: string, revision = integrated) =>
-    revision && path !== userManagement.path ? '/revisi4' + (path === '/' ? '' : path) : path;
+    revision && ![userManagement.path, '/profile'].includes(path) ? '/revisi4' + (path === '/' ? '' : path) : path;
   const showMode = !integrated && ['/dashboard', '/compare', '/reports'].includes(current);
   const readOnly = !integrated && localRole === 'Pembaca' && ['/upload', '/costing', '/tarif-pasien', '/reset'].includes(current);
 

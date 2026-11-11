@@ -1,6 +1,7 @@
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { clearAnalysisSession } from '../lib/sessionData';
+import { isHospitalClass, type HospitalClass } from '../types/hospitalClass';
 
 const supabaseUrl = 'https://vowutzxizrrywpwcobth.supabase.co';
 const publishableKey = import.meta.env.NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY?.trim()
@@ -34,7 +35,7 @@ type AuthResult =
 
 interface AuthState {
   isAuthenticated: boolean;
-  user: { username: string; namaRS: string; role: AccountRole; expiresAt: string | null } | null;
+  user: { username: string; namaRS: string; role: AccountRole; expiresAt: string | null; hospitalClass?: HospitalClass } | null;
   lastActivity: number;
   touch: () => void;
   login: (email: string, password: string) => Promise<AuthResult>;
@@ -120,6 +121,7 @@ async function authenticate(request: AuthRequest, registration = false): Promise
       user: {
         username: displayName || (access.role === 'admin' ? 'Admin' : account.email || 'Pengguna'),
         namaRS: hospital,
+        hospitalClass: isHospitalClass(metadata?.hospital_class) ? metadata.hospital_class : undefined,
         role: access.role, expiresAt: access.expires_at,
       },
       lastActivity: Date.now(),
@@ -179,6 +181,18 @@ export async function listManagedAccounts(): Promise<ManagedAccount[]> {
   const { data, error } = await getClient().rpc('unitcost_list_users');
   if (error || !Array.isArray(data)) throw new Error('Daftar akun tidak dapat dimuat. Pastikan akses admin masih aktif.');
   return data;
+}
+
+export async function saveHospitalClass(hospitalClass: HospitalClass) {
+  if (!isHospitalClass(hospitalClass)) throw new Error('Pilih kelas RS A, B, C, atau D.');
+  if (!useAuthStore.getState().isAuthenticated || !client) throw new Error('Silakan masuk kembali untuk menyimpan profil.');
+  const connection = client;
+  const { data, error } = await connection.auth.updateUser({ data: { hospital_class: hospitalClass } });
+  if (connection !== client || !useAuthStore.getState().user) throw new Error('Sesi sudah berakhir. Silakan masuk kembali.');
+  if (error || data.user?.user_metadata?.hospital_class !== hospitalClass) {
+    throw new Error('Kelas RS belum tersimpan. Coba lagi.');
+  }
+  useAuthStore.setState(state => ({ user: state.user && { ...state.user, hospitalClass } }));
 }
 
 export async function updateManagedAccount(account: ManagedAccount, action: 'approve' | 'extend') {

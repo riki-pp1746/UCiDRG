@@ -13,6 +13,7 @@ import ReportPage from './pages/ReportPage';
 import SettingsPage from './pages/SettingsPage';
 import ResetDataPage from './pages/ResetDataPage';
 import UserManagementPage from './pages/UserManagementPage';
+import UserProfilePage from './pages/UserProfilePage';
 import { V4Page } from './v4/Pages';
 import { SessionGuard } from './components/layout/SessionGuard';
 
@@ -58,6 +59,7 @@ export function AppRoutes() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="reset" element={<ResetDataPage />} />
           <Route path="user-management" element={<AdminRoute />} />
+          <Route path="profile" element={<UserProfilePage />} />
           <Route path="revisi4/reset" element={<ResetDataPage />} />
           <Route path="tarif-idrg" element={<Navigate to="/tarif-pasien?tab=tarif" replace />} />
           <Route path="revisi4/" element={<V4Page view="guide" />} />

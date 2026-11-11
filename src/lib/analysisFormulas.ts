@@ -1,7 +1,41 @@
+import {hospitalClasses, type HospitalClass} from '../types/hospitalClass';
+
 export const cmiReferences = [
  {authors:'Nurwahyuni & Setiawan (2019)',title:'Kinerja Rumah Sakit Swasta dengan Pembayaran INA CBGs di Era Jaminan Kesehatan Nasional: Casemix, Casemix Index, Hospital Base Rate',journal:'Jurnal Ekonomi Kesehatan Indonesia, 4(2), artikel 4',doi:'10.7454/eki.v4i2.3822',url:'https://scholarhub.ui.ac.id/eki/vol4/iss2/4/'},
  {authors:'Ambarita & Nurwahyuni (2023)',title:'Analisis Case Mix Index Pelayanan Rawat Inap Rumah Sakit yang Bekerja Sama dengan BPJS Kesehatan Tahun 2019–2020',journal:'Jurnal Ekonomi Kesehatan Indonesia, 8(2), artikel 2',doi:'10.7454/eki.v8i2.6883',url:'https://scholarhub.ui.ac.id/eki/vol8/iss2/2/'},
 ] as const;
+
+// Tables 3 and 4 list each ownership group in class order A, B, C, D.
+// Cells where the study had no hospital in that category are represented as null.
+const regionalCmiByYear = {
+ 2019: [
+  {government:[1.311,1.164,0.955,0.771],private:[2.133,1.206,1.019,0.959]},
+  {government:[1.246,1.091,0.917,0.785],private:[null,1.415,1.112,0.866]},
+  {government:[1.344,1.094,0.892,0.745],private:[null,1.182,0.912,0.812]},
+  {government:[0.955,1.151,0.897,0.706],private:[null,0.981,0.845,1.062]},
+  {government:[null,1.024,0.959,0.831],private:[null,1.721,0.997,0.792]},
+ ],
+ 2020: [
+  {government:[1.788,1.033,0.944,0.794],private:[2.642,1.182,0.974,0.912]},
+  {government:[1.206,1.024,0.900,0.713],private:[null,1.521,1.184,0.883]},
+  {government:[1.485,1.028,0.882,0.775],private:[null,1.236,0.939,0.862]},
+  {government:[1.127,1.066,0.893,0.643],private:[null,1.348,0.819,0.853]},
+  {government:[null,0.911,0.886,0.768],private:[null,1.370,0.968,0.790]},
+ ],
+} as const;
+
+export const inpatientCmiStudy = {
+ reference: cmiReferences[1],
+ years: [2019,2020],
+ tables: {2019:3,2020:4},
+ scope: 'Sampel klaim rawat inap BPJS Kesehatan, era INA-CBG',
+ note: 'Perbandingan bersifat deskriptif. Periode, komposisi kasus, dan sistem bobot INA-CBG pada penelitian berbeda dari bobot iDRG pada TXT RS. Studi ini hanya mencakup rawat inap.',
+} as const;
+
+export function inpatientCmiStudyRows(hospitalClass:HospitalClass,year:typeof inpatientCmiStudy.years[number]) {
+ const index=hospitalClasses.indexOf(hospitalClass);
+ return regionalCmiByYear[year].map((row,i)=>({region:i+1,government:row.government[index],private:row.private[index]}));
+}
 
 /** Shared formula descriptions carried into reports and every export format. */
 export const analysisFormulaRows:string[][]=[
