@@ -1,10 +1,32 @@
+import toast from 'react-hot-toast';
+import {useCostingStore} from '../../stores/costingStore';
+import {useTarifPasienStore} from '../../stores/tarifPasienStore';
+import {useMethodologyStore} from '../../stores/methodologyStore';
 import {useEffect,useState} from 'react';
 import {useAuthStore} from '../../stores/authStore';
 import {useV4Store} from '../../v4/store';
 import {sessionExpired} from '../../v4/sessionPolicy';
 import {purgeOldBrowserData} from '../../lib/sessionData';
 import {IDLE_LIMIT} from '../../v4/sessionPolicy';
+function useAnalysisBackupReminder(){
+ const count=useCostingStore(s=>s.rawRecords.length);
+ const at=useTarifPasienStore(s=>s.snapshot?.at);
+ const lastBackup=useMethodologyStore(s=>s.lastBackup);
+ const minutes=useMethodologyStore(s=>s.settings.reminderMinutes);
+ const dirty=count>0&&(!lastBackup||Boolean(at&&Date.parse(at)>lastBackup));
+ useEffect(()=>{
+  if(!dirty)return;
+  const leave=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};
+  window.addEventListener('beforeunload',leave);
+  const timer=window.setTimeout(()=>{
+   toast('Simpan cadangan di Pengaturan sebelum mengakhiri sesi.',{id:'analysis-backup-reminder'});
+  },minutes*60000);
+  return ()=>{window.removeEventListener('beforeunload',leave);window.clearTimeout(timer);toast.dismiss('analysis-backup-reminder');};
+ },[dirty,minutes]);
+}
+
 export function SessionGuard(){
+  useAnalysisBackupReminder();
   const [cleanupError,setCleanupError]=useState('');
   const [idleWarning,setIdleWarning]=useState(false);
   useEffect(()=>{void purgeOldBrowserData().catch(e=>setCleanupError(e instanceof Error?e.message:String(e)));},[]);

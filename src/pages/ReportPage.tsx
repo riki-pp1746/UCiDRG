@@ -1,4 +1,4 @@
-import {AnalysisReportDetails} from '../components/ui/AnalysisControls';
+import {AnalysisReportDetails,AnalysisReportVersions} from '../components/ui/AnalysisControls';
 import {analysisPdf} from '../lib/analysisPdf';
 import {ensureAnalysisExport,appendAnalysisSheets,methodologyRows} from '../lib/analysisExport';
 import {statusLabel,summaryMetricText,financialLabel} from '../lib/analysisSnapshot';
@@ -313,7 +313,7 @@ export default function ReportPage() {
         </div>
       </div>
 
-      <AnalysisFilters/><AnalysisReportDetails/><p className="uc-notice">Perbandingan memakai seluruh kasus UC valid pada filter. Pool penuh dipakai hanya untuk ringkasan tanpa filter. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
+      <AnalysisFilters/><AnalysisReportVersions/><AnalysisReportDetails/><p className="uc-notice">Perbandingan memakai seluruh kasus UC valid pada filter. Pool penuh dipakai hanya untuk ringkasan tanpa filter. Outlier tidak membentuk CW, tetapi biaya tetap masuk pool HBR dan kasus berkodenya masuk casemix.</p>
       {/* Report Content */}
       <div ref={reportRef} className="space-y-6 print:space-y-4">
         <p className="uc-notice">Trimming sesuai parameter per iDRG/rawat: {patientResults.filter(p=>p.outlier).length} outlier / {formatRupiah(patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0))} tidak membentuk CW, tetap masuk biaya dan perbandingan; pool JKN {jknProportion}% dan Non-JKN {100-jknProportion}% terpisah.</p>

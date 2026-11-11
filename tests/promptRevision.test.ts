@@ -47,6 +47,24 @@ describe('Prompt revisi — golden cases',()=>{
  it('TC-4 does not double the period for one stray date',()=>{const rows=Array.from({length:20226},(_,i)=>({...raw(i),discharge_date:i===0?'2026-08-01':'2026-09-01'}));const r=detectPeriodNormalization(rows,2025);expect(r.factor).toBe(1/12);expect(r.dateOutliers).toEqual(['2026-08']);expect(r.yearMismatch).toBe(true);});
  it('TC-5 reconciles full and excluded HBR policies and no-code populations',()=>{const rows=[...cases(10,'100'),...cases(1,'500','')];const full=calculateHospitalBaseRate(rows,context());expect(full.pools[0].hbr).toBe('150');const excluded=calculateHospitalBaseRate(rows,{...context(),options:{...options(),hbrPolicy:'exclude'}});expect(excluded.pools[0]).toMatchObject({total:'1500',hbrPool:'1000',policyExcluded:'500',hbr:'100'});expect(calculateHospitalBaseRate(cases(10,'100',''),context()).pools[0].hbr).toBeNull();});
  it('TC-6 all views use one snapshot and local CMI, with filters not charged the full pool',async()=>{await setup();const snapshot=useTarifPasienStore.getState().snapshot!;const a=analysisView(snapshot,'INACBG'),b=analysisView(snapshot,'INACBG');expect(a).toBe(b);expect(a.summary?.cmi).toBe(1);expect(a.summary?.totalBiayaRS).toBe(1200);expect(a.summary?.totalTarif).toBe(1080);expect(a.groups[0].decisionStatus).toBe('RUGI');expect(a.groups[0].ci?.high).toBe(-10);expect(a.summary?.cmi).not.toBe(777);useMethodologyStore.getState().update({bep:.1});expect(analysisStale()).toBe(true);});
+ it('shows the local CW range separately from positive TXT weights and their coverage',async()=>{
+  await setup();
+  const snapshot=useTarifPasienStore.getState().snapshot!;
+  const rows=snapshot.rows.slice(0,3).map((row,index)=>({
+   ...row,
+   patient:{...row.patient,idrg:{...row.patient.idrg,total_cost_weight:index===0?4:0,cost_weight:index===1?2:0}},
+  }));
+  const local={...snapshot.local,patients:snapshot.local.patients.slice(0,3).map((patient,index)=>({
+   ...patient,cw:['0.5','1.5','1'][index],
+  }))};
+  const view=analysisView({...snapshot,local,rows},'IDRG',{care:'2'});
+  expect(view.summary?.cmi).toBe(1);
+  expect(view.weightComparison).toEqual([{
+   care:2,cases:3,local:{count:3,average:1,min:.5,max:1.5},
+   source:{count:2,average:3,min:2,max:4},sourceBaseCount:1,
+  }]);
+  expect(analysisView({...snapshot,rows:rows.slice(2)},'IDRG').weightComparison[0].source).toBeNull();
+ });
  it('TC-7 encrypted restore preserves numbers; corruption fails before mutation',async()=>{await setup();const original=analysisView(useTarifPasienStore.getState().snapshot,'INACBG').summary!;const text=await createAnalysisBackup('synthetic-pass-2026');const payload=await previewAnalysisBackup(text,'synthetic-pass-2026');expect(payload.raw[0].nama_pasien).toBe('');expect(payload.raw[0].sep).not.toContain('PRIVATE');useTarifPasienStore.setState({snapshot:null});applyAnalysisBackup(payload);expect(analysisView(useTarifPasienStore.getState().snapshot,'INACBG').summary?.totalBiayaRS).toBe(original.totalBiayaRS);const before=useCostingStore.getState().rawRecords;const bad=JSON.parse(text);bad.data=bad.data.substring(0,20)+'AA'+bad.data.substring(22);await expect(previewAnalysisBackup(JSON.stringify(bad),'synthetic-pass-2026')).rejects.toThrow();expect(useCostingStore.getState().rawRecords).toBe(before);await expect(previewAnalysisBackup(text,'wrong-password')).rejects.toThrow();});
  it('TC-8 example provenance is a blocking quality condition',async()=>{await setup();useHospitalCostStore.setState(s=>({config:{...s.config,sourceOrigin:'contoh'}}));recalculateAnalysis();expect(useTarifPasienStore.getState().snapshot?.issues.some(i=>i.id==='example'&&i.severity==='error')).toBe(true);});
  it('TC-9 unresolved blank cells survive into validation, deliberate zeros do not',async()=>{await setup();useHospitalCostStore.setState(s=>({config:{...s.config,importIssues:[{id:'blank',sheet:'Costing',cell:'J12',message:'Kosong'}]}}));recalculateAnalysis();expect(useTarifPasienStore.getState().snapshot?.issues.some(i=>i.id==='blank')).toBe(true);useHospitalCostStore.setState(s=>({config:{...s.config,importIssues:[]}}));recalculateAnalysis();expect(useTarifPasienStore.getState().snapshot?.issues.some(i=>i.id==='blank')).toBe(false);});

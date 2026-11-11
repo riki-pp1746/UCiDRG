@@ -16,18 +16,50 @@ export function buildAnalysisSnapshot(raw:PatientRecord[],local:HospitalCostResu
  }).filter((r):r is PatientCostResult=>r!==null);
  return {version:CALC_VERSION,at:new Date().toISOString(),revision,options:structuredClone(options),local,rows,issues,period,pool:sum(local.pools.map(p=>p.total)).toNumber(),annual:0,origin,inputSignature};
 }
-export interface AnalysisView {rows:PatientCostResult[];groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number}
+interface WeightStats {count:number;average:number;min:number;max:number}
+interface WeightComparison {
+  care:1|2;
+  cases:number;
+  local:WeightStats|null;
+  source:WeightStats|null;
+  sourceBaseCount:number;
+}
+
+function weightStats(values:number[]):WeightStats|null {
+  if(!values.length)return null;
+  let min=values[0],max=values[0];
+  for(const value of values){min=Math.min(min,value);max=Math.max(max,value);}
+  return {count:values.length,average:sum(values).div(values.length).toNumber(),min,max};
+}
+
+export interface AnalysisView {rows:PatientCostResult[];groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number;weightComparison:WeightComparison[]}
 const cache=new WeakMap<AnalysisSnapshot,Map<string,AnalysisView>>();
-export function primeFullAnalysisViews(snapshot:AnalysisSnapshot,views:Record<string,{groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number}>){
+export function primeFullAnalysisViews(snapshot:AnalysisSnapshot,views:Record<string,Omit<AnalysisView,'rows'>>){
  const memo=new Map<string,AnalysisView>();for(const [mode,v]of Object.entries(views))memo.set(JSON.stringify([mode,'','','ALL']),{...v,rows:snapshot.rows});cache.set(snapshot,memo);
 }
 export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG',filter:{care?:string;search?:string;status?:string}={}):AnalysisView {
- if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0};const key=JSON.stringify([mode,filter.care||'',(filter.search||'').toLowerCase(),filter.status||'ALL']);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
+ if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0,weightComparison:[]};const key=JSON.stringify([mode,filter.care||'',(filter.search||'').toLowerCase(),filter.status||'ALL']);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
  const q=(filter.search||'').toLowerCase();let rows=snapshot.rows.filter(r=>(!filter.care||String(r.patient.ptd)===filter.care)&&(!q||`${r.patient.inacbg} ${r.patient.deskripsi_inacbg} ${r.patient.idrg?.drg_code} ${r.patient.idrg?.drg_description}`.toLowerCase().includes(q)));
  const build=(rows:PatientCostResult[])=>{const aggregate=aggregateByDRG(rows,snapshot.options);return mode==='INACBG'?aggregate.inacbg:aggregate.idrg;};let groups=build(rows);
  if(filter.status&&filter.status!=='ALL'){const keys=new Set(groups.filter(g=>filter.status==='DATA_TIDAK_CUKUP'?g.statisticalLabel==='Data tidak cukup':(g.decisionStatus||g.status)===filter.status).map(g=>g.ptd+'|'+g.group_code));rows=rows.filter(r=>keys.has(r.patient.ptd+'|'+(mode==='INACBG'?r.patient.inacbg:r.patient.idrg?.drg_code)));groups=build(rows);}
  const full=!filter.care&&!q&&(!filter.status||filter.status==='ALL');const summary=generateSummary(rows,groups,mode,snapshot.period,snapshot.annual,0,full?snapshot.pool:undefined);
- const localById=new Map(snapshot.local.patients.map(p=>[p.id,p]));const weighted=rows.map(r=>localById.get(r.patient.internalId||r.patient.sepToken||r.patient.sep)?.cw).filter((v):v is string=>v!==undefined&&v!==null);
+ const localById=new Map(snapshot.local.patients.map(p=>[p.id,p]));
+ const weights={1:{cases:0,local:[] as number[],source:[] as number[],sourceBaseCount:0},2:{cases:0,local:[] as number[],source:[] as number[],sourceBaseCount:0}};
+ const weighted:string[]=[];
+ for(const {patient} of rows){
+  if(patient.ptd!==1&&patient.ptd!==2)continue;
+  const bucket=weights[patient.ptd];bucket.cases++;
+  const local=localById.get(patient.internalId||patient.sepToken||patient.sep)?.cw;
+  if(local!=null){weighted.push(local);bucket.local.push(Number(local));}
+  const total=patient.idrg?.total_cost_weight;
+  const base=patient.idrg?.cost_weight;
+  if(Number.isFinite(total)&&total>0)bucket.source.push(total);
+  else if(Number.isFinite(base)&&base>0){bucket.source.push(base);bucket.sourceBaseCount++;}
+ }
+ const weightComparison=([1,2] as const).filter(care=>weights[care].cases>0).map(care=>{
+  const {cases,local,source,sourceBaseCount}=weights[care];
+  return {care,cases,local:weightStats(local),source:weightStats(source),sourceBaseCount};
+ });
  summary.cmi=weighted.length?sum(weighted).div(weighted.length).toNumber():0;summary.cmiAvailable=weighted.length>0;summary.crrAvailable=summary.totalBiayaRS>0;summary.populationLabel=full?'Pool JKN penuh; tarif seluruh kasus UC valid':'Kasus UC valid pada filter; biaya teralokasi';
  summary.rov=rovMetrics(rows.map((r,i)=>({id:r.patient.internalId||r.patient.sepToken||String(i),group:mode==='INACBG'?r.patient.inacbg:r.patient.idrg?.drg_code||'',care:String(r.patient.ptd),uc:r.unitCostDihitung})));summary.riv=summary.rov.raw??0;summary.jumlahDRGUntung=groups.filter(g=>g.decisionStatus==='UNTUNG').length;summary.jumlahDRGImpas=groups.filter(g=>g.decisionStatus==='IMPAS').length;summary.jumlahDRGRugi=groups.filter(g=>g.decisionStatus==='RUGI').length;
  if(full){summary.totalBiayaRS=snapshot.pool;summary.totalSelisih=summary.totalTarif-snapshot.pool;summary.crr=snapshot.pool>0?summary.totalTarif/snapshot.pool*100:0;summary.crrAvailable=snapshot.pool>0;}
@@ -35,7 +67,7 @@ export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG'
  summary.persenRugi=groups.length?summary.jumlahDRGRugi/groups.length*100:0;summary.persenUntung=groups.length?summary.jumlahDRGUntung/groups.length*100:0;
  summary.top10Rugi=groups.filter(g=>g.decisionEligible&&g.decisionStatus==='RUGI'&&g.ci&&g.ci.high<0).sort((a,b)=>(a.totalTarif-a.totalBiayaRS)-(b.totalTarif-b.totalBiayaRS)).slice(0,10);
  summary.top10Untung=groups.filter(g=>g.decisionEligible&&g.decisionStatus==='UNTUNG'&&g.ci&&g.ci.low>0).sort((a,b)=>(b.totalTarif-b.totalBiayaRS)-(a.totalTarif-a.totalBiayaRS)).slice(0,10);
- const view={rows,groups,summary,unavailable:snapshot.local.patients.length-snapshot.rows.length};memo.set(key,view);return view;
+ const view={rows,groups,summary,unavailable:snapshot.local.patients.length-snapshot.rows.length,weightComparison};memo.set(key,view);return view;
 }
 export function statusLabel(g:DRGGroupResult){return g.decisionStatus==='DATA_TIDAK_CUKUP'?'Data tidak cukup':g.decisionStatus==='TIDAK_TERSEDIA'?'Tidak tersedia':({UNTUNG:'Untung',IMPAS:'Impas',RUGI:'Rugi'})[g.status];}
 export const safeRatio=(a:number,b:number)=>b>0?dec(a).div(b).toNumber():null;

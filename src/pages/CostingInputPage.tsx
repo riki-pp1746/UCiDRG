@@ -1,13 +1,14 @@
+import {useMethodologyStore} from '../stores/methodologyStore';
 import {analysisStale, calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
 import RupiahInput from '../components/ui/RupiahInput';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadStandardCostingTemplate} from '../lib/costingWorkbookSchema';
-import TemplateGuide from '../components/ui/TemplateGuide';
 import toast from 'react-hot-toast';
 import HelpTip from '../components/ui/HelpTip';
 import PageIntro from '../components/ui/PageIntro';
+import { AnalysisCalculationPanel } from '../components/ui/AnalysisControls';
 // ============================================================
 // PAGE: CostingInputPage.tsx
 // Form input biaya RS — distribusi langsung ke 18 variabel E-Klaim
@@ -266,6 +267,8 @@ export default function CostingInputPage() {
   const [centerQuery,setCenterQuery]=useState('');
   const [componentQuery,setComponentQuery]=useState('');
   const [componentFlag,setComponentFlag]=useState('all');
+  const settings=useMethodologyStore(s=>s.settings);
+  const ratioBounds=settings.ratioMin.toLocaleString('id-ID')+'–'+settings.ratioMax.toLocaleString('id-ID');
   const periodFactor = periodNormalization?.factor || 1;
   const hasAllocationRecipients = rawRecords.length > 0 || patients.length > 0;
 
@@ -439,7 +442,6 @@ export default function CostingInputPage() {
       {/* Header */}
       <label className="uc-label">Cari pusat biaya<input className="uc-input" value={centerQuery} onChange={e=>setCenterQuery(e.target.value)}/></label>
       <PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Periksa biaya Penunjang Umum (Overhead), Penunjang Medis (Intermediate), dan Pusat Biaya Utama. Pada ruang ini biaya penunjang dibagikan langsung ke 18 komponen tagihan pasien." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>
-      <TemplateGuide mode="components" compact/>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-[#17645D] tracking-tight flex items-center gap-2">
@@ -462,14 +464,17 @@ export default function CostingInputPage() {
           >
             <UploadIcon className="w-4 h-4" /> Import Excel
           </button>
-          <button
-            onClick={() => { if (window.confirm('Reset semua data ke template default?')) resetToDefault(); }}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white text-gray-500 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-semibold transition-all"
-          >
-            <RotateCcw className="w-4 h-4" /> Reset
-          </button>
+          <details className="text-sm text-slate-600">
+            <summary className="cursor-pointer font-medium">Opsi biaya</summary>
+            <button type="button" className="uc-secondary mt-2"
+              onClick={() => { if (window.confirm('Reset semua data ke template default?')) resetToDefault(); }}>
+              <RotateCcw size={16} aria-hidden /> Reset input biaya
+            </button>
+          </details>
         </div>
       </div>
+
+      <AnalysisCalculationPanel />
 
       {/* Status kalkulasi — selalu tampil */}
       <div className={clsx(
@@ -1180,7 +1185,7 @@ export default function CostingInputPage() {
               <p className="flex items-start gap-2">
                 <Info className="w-5 h-5 flex-shrink-0 text-blue-600 mt-0.5" />
                 <span>
-                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya layanan umum/rawat jalan dibagi mengikuti komposisi tagihan layanan, bukan seluruhnya ke non-bedah. Kamar, ICU, dan bedah tetap memakai pemetaan layanan khusus. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim. Rasio di luar 0,2–5 menjadi peringatan dan tidak mengubah bobot tagihan menjadi pembagian rata. Untuk mapping lama, jalankan Auto-map lalu sinkronkan hasil ke perhitungan pasien.
+                  <strong>Step 3 — Distribusi 18 Variabel Billing E-Klaim:</strong> biaya layanan umum/rawat jalan dibagi mengikuti komposisi tagihan layanan, bukan seluruhnya ke non-bedah. Kamar, ICU, dan bedah tetap memakai pemetaan layanan khusus. Total Overhead + Intermediate dibagikan langsung ke 18 variabel mengikuti proporsi nilai tagihan pada TXT E-Klaim. Rasio di luar {ratioBounds} menjadi peringatan dan tidak mengubah bobot tagihan menjadi pembagian rata. Untuk mapping lama, jalankan Auto-map lalu sinkronkan hasil ke perhitungan pasien.
                 </span>
               </p>
             </div>
@@ -1244,10 +1249,10 @@ export default function CostingInputPage() {
 
           <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
             <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1"><HelpCircle className="w-3.5 h-3.5" /> Apa itu Rasio Distribusi?</p>
-            <p className="text-[11px] text-cyan-700 mt-1">Rasio biaya/tagihan adalah indikator kewajaran (batas peninjauan 0,2–5), bukan batas harga. Kamar memakai LOS; ICU memakai hari ICU bila lengkap. Komponen lain memakai tagihan, atau cadangan episode penerima bila rasio tidak wajar. Tarif per hari tidak diuji dengan batas rasio rupiah/rupiah.</p>
+            <p className="text-[11px] text-cyan-700 mt-1">Rasio biaya/tagihan adalah indikator kewajaran (batas peninjauan {ratioBounds}), bukan batas harga. Kamar memakai LOS; ICU memakai hari ICU bila lengkap. Komponen lain memakai tagihan, atau cadangan episode penerima bila rasio tidak wajar. Tarif per hari tidak diuji dengan batas rasio rupiah/rupiah.</p>
           </div>
 
-          <div className={`uc-panel ${outlierCount?'text-red-700':'text-slate-700'}`} role="status"><strong>{outlierCount} komponen dengan rasio di luar batas 0,2–5</strong><p className="text-sm">Rekonsiliasi Rp0 tidak memastikan pembagi benar. Cadangan: {distribusi.filter(d=>d.metodeAlokasi.includes('Cadangan')).length} komponen · belum teralokasi: {formatRupiah(distribusi.reduce((v,d)=>v+Number(d.unallocated||0),0))}.</p></div>
+          <div className={`uc-panel ${outlierCount?'text-red-700':'text-slate-700'}`} role="status"><strong>{outlierCount} komponen dengan rasio di luar batas {ratioBounds}</strong><p className="text-sm">Rekonsiliasi Rp0 tidak memastikan pembagi benar. Cadangan: {distribusi.filter(d=>d.metodeAlokasi.includes('Cadangan')).length} komponen · belum teralokasi: {formatRupiah(distribusi.reduce((v,d)=>v+Number(d.unallocated||0),0))}.</p></div>
           <div className="flex gap-3 flex-wrap"><label className="uc-label">Cari komponen<input className="uc-input" value={componentQuery} onChange={e=>setComponentQuery(e.target.value)}/></label><label className="uc-label">Filter validasi<select className="uc-input" value={componentFlag} onChange={e=>setComponentFlag(e.target.value)}><option value="all">Semua</option><option value="outlier">Rasio di luar batas</option><option value="warning">Dengan peringatan</option></select></label></div>
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">

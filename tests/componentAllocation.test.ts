@@ -1,5 +1,6 @@
 import {it,expect} from 'vitest';
 import {allocateComponents} from '../src/lib/calculations/componentAllocation';
+import {defaultMethodology} from '../src/stores/methodologyStore';
 import {twoSDFlags} from '../src/lib/calculations/trimming';
 import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
 import {buildBiayaRSMap} from '../src/stores/tarifPasienStore';
@@ -7,6 +8,15 @@ import {dec,sum,displayDecimal} from '../src/v4/numbers';
 import {makeEmptyPatient} from '../src/types/tarifPasien.types';
 import {useHospitalCostStore} from '../src/stores/hospitalCostStore';
 const row=(los:number,billing:Record<string,number>,icuDays?:number)=>({inpatient:true,los,billing,icuDays});
+it.each([undefined,defaultMethodology(),{...defaultMethodology(),compatibility:true}])('uses inclusive 0.5 to 5 ratio bounds across allocation modes',options=>{
+ for(const ratio of [.5,1.75,2.25,5]){
+  const result=allocateComponents([row(1,{procedure_amt:100})],{procedure_amt:ratio*100},false,options);
+  expect(result.traces[0]).toMatchObject({billingRatio:ratio,outlier:false,warning:''});
+ }
+ for(const ratio of [.49,5.01]){
+  expect(allocateComponents([row(1,{procedure_amt:100})],{procedure_amt:ratio*100},false,options).traces[0].outlier).toBe(true);
+ }
+});
 it('uses LOS instead of tiny room billing and excludes outpatient recipients',()=>{const r=allocateComponents([row(2,{room_amt:1}),row(6,{room_amt:100}),{...row(10,{room_amt:200}),inpatient:false}],{room_amt:800});expect(r.values.map(v=>v.room_amt)).toEqual(['200','600','0']);expect(r.traces[0]).toMatchObject({unit:'hari',denominator:8,outlier:false});});
 it('uses complete ICU days, never equates general LOS with ICU days',()=>{const patients=[row(10,{intensive_amt:1},1),row(10,{intensive_amt:9},3),row(10,{room_amt:1})];const r=allocateComponents(patients,{intensive_amt:8000});expect(r.values.map(v=>v.intensive_amt)).toEqual(['2000','6000','0']);expect(r.traces[0]).toMatchObject({outlier:true,unit:'hari ICU'});delete patients[1].icuDays;const fallback=allocateComponents(patients,{intensive_amt:8000});expect(fallback.values.map(v=>v.intensive_amt)).toEqual(['4000','4000','0']);expect(fallback.traces[0].warning).toContain('Hari ICU tidak lengkap');});
 it('outlier ratio warns without replacing billing weights or leaking to nonrecipients',()=>{const r=allocateComponents([row(1,{procedure_amt:1}),row(1,{procedure_amt:9}),row(1,{room_amt:20})],{procedure_amt:10000});expect(r.values.map(v=>v.procedure_amt)).toEqual(['1000','9000','0']);expect(r.traces[0]).toMatchObject({outlier:true,unit:'rupiah',denominator:10});expect(r.traces[0].warning).toContain('Bobot alokasi tetap');});

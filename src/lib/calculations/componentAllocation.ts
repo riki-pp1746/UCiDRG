@@ -1,5 +1,5 @@
 import {dec,sum} from '../../v4/numbers';
-import type {Methodology} from '../../stores/methodologyStore';
+import {defaultMethodology, type Methodology} from '../../stores/methodologyStore';
 import {largestRemainder} from './revisionMath';
 
 export interface AllocationPatient {id?:string;inpatient:boolean;los:number;icuDays?:number;billing:Record<string,number>}
@@ -7,11 +7,12 @@ export interface AllocationTrace {key:string;billing:number;cost:number;billingR
 /** Shared by patient detail, dashboard and reports. Ratios are diagnostics, never caps. */
 export function allocateComponents(patients:AllocationPatient[],costs:Record<string,number>,mergeCarePool=false,options?:Methodology){
  if(options&&!options.compatibility)return allocateRevised(patients,costs,mergeCarePool,options);
+ const {ratioMin,ratioMax}=options??defaultMethodology();
  const eligible=patients.map(p=>Object.values(p.billing).every(v=>Number.isFinite(v)&&v>=0)&&sum(Object.values(p.billing).filter(v=>typeof v==='number'&&Number.isFinite(v))).gt(0));
  const values:Record<string,string>[] = patients.map(()=>({}));const traces:AllocationTrace[]=[];
  for(const [key,amount] of Object.entries(costs)){
   const billing=sum(patients.map((p,i)=>eligible[i]?Math.max(0,p.billing[key]||0):0));const cost=dec(amount);const diagnostic=billing.gt(0)?cost.div(billing):null;const billingRatio=diagnostic?.toNumber()??null;
-  const outlier=cost.gt(0)&&diagnostic!==null&&(diagnostic.gt(5)||diagnostic.lt(0.2));
+  const outlier=cost.gt(0)&&diagnostic!==null&&(diagnostic.gt(ratioMax)||diagnostic.lt(ratioMin));
   let weights=patients.map((p,i)=>eligible[i]?Math.max(0,p.billing[key]||0):0);let basis='Tagihan E-Klaim';let unit='rupiah';let warning='';
   const carePool=mergeCarePool&&['room_amt','intensive_amt','nursing_amt'].includes(key);
   if(key==='room_amt'||carePool){
@@ -25,7 +26,7 @@ export function allocateComponents(patients:AllocationPatient[],costs:Record<str
    weights=patients.map((p,i)=>recipients[i]?(complete?p.icuDays!:1):0);basis=complete?'Hari ICU':'Cadangan: episode dengan layanan ICU';unit=complete?'hari ICU':'episode ICU';
    if(!complete)warning='Hari ICU tidak lengkap/valid. Cadangan jumlah episode ICU digunakan; LOS umum tidak dianggap sebagai hari ICU.';
   }
-  if(outlier&& !warning)warning='Rasio biaya/tagihan di luar 0,2–5. Bobot alokasi tetap mengikuti dasar komponen; periksa pemetaan biaya dan data layanan.';
+  if(outlier&& !warning)warning=`Rasio biaya/tagihan di luar ${ratioMin.toLocaleString("id-ID")}–${ratioMax.toLocaleString("id-ID")}. Bobot alokasi tetap mengikuti dasar komponen; periksa pemetaan biaya dan data layanan.`;
   const denominator=sum(weights);let allocated=dec(0);
   patients.forEach((_,i)=>{const allocation=denominator.gt(0)&&cost.gte(0)?cost.mul(weights[i]).div(denominator):dec(0);values[i][key]=allocation.toString();allocated=allocated.plus(allocation);});
   if(cost.gt(0)&&!denominator.gt(0))warning+=' Tidak ada penerima/pembagi valid; biaya menjadi sisa belum teralokasi.';

@@ -45,7 +45,7 @@ const instructions:Record<AnalysisGuideMode,{description:string;items:string[]}[
       'Menu Laporan menyediakan Excel, PowerPoint, dan cetak / simpan PDF.',
       'Periksa ringkasan biaya, faktor periode, sumber tarif, dan peringatan sebelum membagikan hasil.',
       'Rincian lokal memiliki ekspor Excel tersendiri pada tab CW, Casemix & HBR RS.',
-      'Simpan versi Draft–Review–Final melalui panel kualitas. Profil pemeriksa lokal dapat mengesahkan Final setelah validasi, referensi, dan hitungan terkini tersedia. Cadangan lengkap wajib terenkripsi.',
+      'Simpan versi Draft, Review, atau Final di menu Laporan. Unduh cadangan terenkripsi melalui Pengaturan.',
     ]},
   ],
   integrated:[
@@ -127,7 +127,7 @@ export default function AnalysisGuide({mode}:{mode:AnalysisGuideMode}){
         })}
       </ol>
     </section>
-    <TemplateGuide mode={mode}/>
+    <TemplateGuide mode={mode} compact/>
     <details className="uc-panel">
       <summary className="font-semibold text-teal-950">Ruang analisis dan reset data</summary>
       <div className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
@@ -136,7 +136,10 @@ export default function AnalysisGuide({mode}:{mode:AnalysisGuideMode}){
         <Link className="uc-secondary" to={path('/reset')}>Buka Reset Data</Link>
       </div>
     </details>
-    <section className="uc-panel space-y-3"><h2>Sesi sementara dan cadangan</h2><p className="text-sm text-slate-600">Data kedua ruang hanya berada di memori selama sesi, termasuk konfigurasi dan hasil analisis. Logout, refresh, atau menutup tab mengosongkan data kedua ruang analisis. Aplikasi tidak menyimpan data analisis ke localStorage, sessionStorage atau IndexedDB. Ekspor hasil dan unduh cadangan sebelum keluar jika ingin melanjutkan nanti.</p><p className="text-sm text-slate-600">Cadangan yang Anda unduh tetap berupa berkas di komputer. Pemulihan memuatnya ke sesi berjalan. Cache berkas aplikasi tetap digunakan untuk mempercepat pembukaan halaman.</p></section>
+    <details className="uc-panel">
+      <summary className="cursor-pointer font-semibold text-teal-950">Sesi sementara dan cadangan</summary>
+      <p className="mt-3 text-sm text-slate-600">Data kedua ruang hanya berada di memori. Logout, refresh, atau menutup tab mengosongkan data. Ekspor laporan atau unduh cadangan dari Pengaturan sebelum mengakhiri sesi.</p>
+    </details>
   </div>;
 }
 

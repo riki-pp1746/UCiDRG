@@ -11,7 +11,7 @@ installBatchedWorker(self as any,(raw,meta,progress)=>{
  useCostingStore.setState({rawRecords:raw,periodNormalization:period,jknProportion:jkn,mergeCarePool:merge});useHospitalCostStore.setState({config});useMethodologyStore.setState({settings,revision,role:'Penginput'});
  progress(25);recalculateAnalysis();progress(65);const s=useTarifPasienStore.getState();if(!s.snapshot)throw Error('Hasil belum tersedia.');
  s.validateAgainstHospital(config,useCostingStore.getState().periodNormalization?.factor||1);
- const views=Object.fromEntries((['INACBG','IDRG'] as const).map(mode=>{const v=analysisView(s.snapshot!,mode);return [mode,{groups:v.groups,summary:v.summary,unavailable:v.unavailable}];}));
+ const views=Object.fromEntries((['INACBG','IDRG'] as const).map(mode=>{const {rows:_,...view}=analysisView(s.snapshot!,mode);return [mode,view];}));
  const snapshot={...s.snapshot,local:null};
  return {period:useCostingStore.getState().periodNormalization,views,result:{patients:s.patients,biayaRSMap:s.biayaRSMap,localCosting:s.localCosting,distribusi:s.distribusi,validationIssues:useTarifPasienStore.getState().validationIssues,snapshot}};
 },['result.patients','result.localCosting.patients','result.snapshot.rows'],(path,rows)=>path==='result.snapshot.rows'?rows.map(r=>({...r,patient:undefined,sourceIndex:sourceIndices.get(r.patient)})):rows);

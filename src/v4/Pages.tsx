@@ -1,11 +1,11 @@
 import {useCostingStore} from '../stores/costingStore';
+import {useHospitalCostStore} from '../stores/hospitalCostStore';
 import {parseRupiahInput} from '../lib/rupiahInput';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
-import {proxyFromClaim} from '../lib/calculations/proxyCostWeight';
 import SharedUploadPage from '../pages/UploadPage';
 import {shareSourceData} from '../lib/sharedSourceData';
 import {displayDecimal} from './numbers';
-import { useEffect,useState,useMemo } from 'react';
+import { useEffect,useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Link } from './Navigation';
@@ -20,7 +20,6 @@ import { LOGIC_DEVELOPMENT,workingProfile,workflowSteps } from './workflow';
 import { BackupPanel } from './BackupPanel';
 import {WorkspaceIntro,StartGuide} from './WorkspaceIntro';
 import HospitalBaseRateResults from '../components/costing/HospitalBaseRateResults';
-import TemplateGuide from '../components/ui/TemplateGuide';
 import {downloadTemplateWorkbook} from '../lib/templateWorkbookExport';
 import {downloadStandardCostingTemplate} from '../lib/costingWorkbookSchema';
 import {Calculator,CheckCircle2,AlertTriangle,Database,ArrowRight} from 'lucide-react';
@@ -40,16 +39,42 @@ function Grid({children}:{children:ReactNode}){return <div className="grid grid-
 function Table({headers,rows}:{headers:string[];rows:ReactNode[][]}){const [query,setQuery]=useState('');const filtered=rows.filter(row=>row.some(v=>String(v??'').toLowerCase().includes(query.toLowerCase())));return <><label className="uc-label print:hidden">Cari isi tabel<input className="uc-input" value={query} onChange={e=>setQuery(e.target.value)}/></label><div className="uc-table-scroll" tabIndex={0} role="region" aria-label={`Tabel ${headers[0]}`}><table className="uc-table"><thead><tr>{headers.map((h,i)=><th scope="col" key={i}>{h}</th>)}</tr></thead><tbody>{filtered.length?filtered.map((row,i)=><tr key={i}>{row.map((v,j)=><td key={j}>{typeof v==='string'&&['PROFIT','DEFISIT','BEP','Sampel rendah'].includes(v)?<span className={`uc-badge ${v==='PROFIT'?'success':v==='DEFISIT'?'error':'warning'}`}>{v}</span>:v}</td>)}</tr>):<tr><td className="uc-empty" colSpan={headers.length}>Belum ada data untuk ditampilkan.</td></tr>}</tbody></table></div><p className="text-xs text-slate-500">{filtered.length} / {rows.length} baris pada tabel ini. Filter tabel berlaku pada halaman yang ditampilkan.</p></>;}
 function useActions(){const state=useV4Store();const w=state.workspace;const profile=w?workingProfile(w):undefined;const editable=Boolean(profile&&canEdit(profile.role));const [message,setMessage]=useState('');const act=async(fn:()=>void|Promise<void>)=>{try{setMessage('');await fn();}catch(e){setMessage(e instanceof Error?e.message:String(e));}};return {state,w,profile,editable,message,act};}
 
-export function V4Header(){
+export function V4Header({dashboard=false}:{dashboard?:boolean}={}){
   const navigate=useNavigate();const {pathname}=useLocation();
   const {state,w,profile,editable,message,act}=useActions();const snap=activeSnapshot(state);
   if(!w)return <p>Memuat data lokal…</p>;
   const stale=snap&&!snap.sensitivity&&snap.inputVersion!==w.version;
-  const canCalculate=w.input.claims.length>0&&w.input.centers.some(c=>c.group==='final');
+  const finalCount=w.input.centers.filter(c=>c.group==='final').length;
+  const hasClaims=w.input.claims.length>0;
+  const canCalculate=hasClaims&&finalCount>0;
+  const calculate=()=>void act(async()=>{
+    const before=useV4Store.getState().selected;
+    await state.calculate();
+    const after=useV4Store.getState();
+    if(after.error)throw new Error(after.error);
+    if(!dashboard&&after.selected!==before)navigate(pathname.startsWith('/revisi4')?'/revisi4/dashboard':'/dashboard');
+  });
+  const calculationButton=<button type="button" className={btn} disabled={!editable||state.busy||state.saving||!canCalculate} onClick={calculate}><Calculator size={17}/>{state.busy?'Sedang menghitung…':dashboard&&snap?'Hitung ulang':'Hitung unit cost'}</button>;
+  const progress=state.busy&&<><progress aria-label="Kemajuan proses" max="100" value={state.progress}/><span role="status" className="text-xs">Memproses {state.progress}%</span><button type="button" className={secondary} onClick={state.cancel}>Batalkan</button></>;
+  if(dashboard){
+    return <Panel title="Perhitungan terintegrasi">
+      <p className="text-sm text-slate-700">{w.input.claims.length.toLocaleString('id-ID')} klaim · {finalCount.toLocaleString('id-ID')} pusat layanan final</p>
+      <p className="text-sm text-slate-600">
+        {!hasClaims?(finalCount?'Biaya RS sudah tersedia. Unggah klaim di Data sumber.':'Unggah klaim dan workbook biaya RS di Data sumber.'):!finalCount?'Klaim sudah tersedia. Lengkapi biaya RS dan pusat layanan final.':stale?'Perlu dihitung ulang karena input berubah.':snap?'Periksa validasi dan biaya jika hasil belum dapat digunakan.':'Data sumber tersedia. Hitung untuk menampilkan hasil di dashboard ini.'}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        {!hasClaims?<Link className={btn} to="/upload">Buka Data sumber</Link>
+          :!finalCount?<><Link className={btn} to="/costing">Lengkapi biaya RS</Link><Link className={secondary} to="/upload">Unggah Excel</Link></>
+          :<>{calculationButton}<Link className={secondary} to="/costing">Periksa Biaya &amp; Alokasi</Link></>}
+        {progress}
+      </div>
+      {(state.error||message)&&<p className="uc-error" role="alert">{message||state.error}</p>}
+    </Panel>;
+  }
   return <div className="space-y-3 print:hidden uc-result-toolbar">
     <div className="flex flex-wrap gap-3 items-center justify-between"><div className="flex items-center gap-3"><Database size={19} className="text-teal-700"/><div><p className="text-xs font-semibold">{w.input.hospital||'Identitas RS belum diisi'}</p><p className="text-[11px] text-slate-500">{w.input.centers.length} pusat biaya · {w.input.claims.length.toLocaleString('id-ID')} klaim</p></div><span role="status" className={`uc-badge ${state.saving||state.error?.startsWith('Data sesi gagal')?'warning':'success'}`}>{state.saving?'Menyiapkan sesi…':state.error?.startsWith('Data sesi gagal')?'Data sesi bermasalah':'Sesi sementara'}</span></div>
       {!LOGIC_DEVELOPMENT&&<select aria-label="Profil lokal aktif" className="border rounded-lg p-2 text-sm max-w-full" value={w.activeProfile} disabled={state.busy} onChange={e=>void act(()=>state.selectProfile(e.target.value))}>{w.profiles.map(p=><option key={p.id} value={p.id}>{p.name} — {p.role}</option>)}</select>}</div>
-    <div className="flex flex-wrap gap-3 items-center"><button className={btn} disabled={!editable||state.busy||!canCalculate} title={!canCalculate?'Unggah klaim dan tambahkan layanan final terlebih dahulu.':'Hitung dan simpan versi hasil baru'} onClick={()=>void act(async()=>{const before=useV4Store.getState().selected;await state.calculate();const after=useV4Store.getState();if(after.error)throw new Error(after.error);if(after.selected!==before)navigate(pathname.startsWith('/revisi4')?'/revisi4/dashboard':'/dashboard');})}><Calculator size={17}/>Hitung unit cost</button>{state.busy&&<><progress aria-label="Kemajuan proses" max="100" value={state.progress}/><span role="status" className="text-xs">Memproses {state.progress}%</span><button className={secondary} onClick={state.cancel}>Batalkan</button></>}
+    <div className="flex flex-wrap gap-3 items-center">{calculationButton}{progress}
       <details><summary className="text-xs text-slate-500">Historis hasil</summary><label className="flex items-center gap-2 text-xs text-slate-500">Versi hasil<select aria-label="Versi hasil perhitungan" className="uc-input max-w-[300px]" value={state.selected||''} disabled={state.busy} onChange={e=>state.selectSnapshot(e.target.value)}><option value="">Belum ada hasil</option>{state.snapshots.filter(s=>!s.sensitivity).map(s=><option key={s.id} value={s.id}>{s.state} · {new Date(s.at).toLocaleString('id-ID')} · {s.id.slice(0,6)}</option>)}</select></label></details>
       {snap&&<span className={`uc-badge ${stale?'warning':snap.result.methods.some(m=>m.blocked)?'error':'neutral'}`}>{stale?<AlertTriangle size={13}/>:<CheckCircle2 size={13}/>} {stale?'Perlu dihitung ulang':snap.state}{snap.result.methods.some(m=>m.blocked)?' · Perlu perbaikan':''}</span>}
     </div>
@@ -60,11 +85,50 @@ export function V4Header(){
   </div>;
 }
 export function V4Page({view}:{view:string}){
-  const state=useV4Store();const initialize=state.initialize;const [sharing,setSharing]=useState(!state.workspace||(!state.workspace.input.claims.length&&useCostingStore.getState().rawRecords.length>=50000));useEffect(()=>{let active=true;void initialize().then(()=>shareSourceData({onlyEmpty:true})).catch(error=>{if(active)useV4Store.setState({error:String(error)});}).finally(()=>{if(active)setSharing(false);});return()=>{active=false;};},[initialize]);
-  if(sharing)return <p role="status">Menyiapkan data sumber bersama…</p>;
-  if(!state.workspace)return <div className="space-y-3"><p>{state.error||'Memuat penyimpanan lokal…'}</p>{state.error&&<button className={btn} onClick={()=>void state.initialize().then(()=>shareSourceData({onlyEmpty:true}))}>Coba lagi</button>}</div>;
-  const step=workflowSteps.findIndex(s=>s.view===view);const next=view==='upload'?workflowSteps[1]:undefined;
-  return <div className="space-y-6"><WorkspaceIntro view={view}/>{view!=='guide'&&<V4Header/>}{view==='guide'?<StartGuide/>:view==='input'?<CostInput/>:view==='upload'?<Upload/>:view==='settings'?<Settings/>:view==='reports'?<Reports/>:<Analysis view={view}/>} {step>=0&&next&&<div className="print:hidden flex justify-end"><Link className={btn} to={next.path}>Lanjut ke {next.label}<ArrowRight size={16}/></Link></div>}</div>;
+  const state=useV4Store();
+  const initialize=state.initialize;
+  const [sharing,setSharing]=useState(()=>{
+    const input=state.workspace?.input;
+    const config=useHospitalCostStore.getState().config;
+    return !input||(!input.claims.length&&useCostingStore.getState().rawRecords.length>0)
+      ||(!input.centers.length&&config.totalOverheadCost+config.totalIntermediateCost+config.totalFinalCost>0);
+  });
+  const [sourceError,setSourceError]=useState('');
+  const [retry,setRetry]=useState(0);
+  const retrySources=()=>{setSourceError('');setSharing(true);setRetry(value=>value+1);};
+  useEffect(()=>{
+    let active=true;
+    void initialize().then(()=>shareSourceData({onlyEmpty:true})).catch(error=>{
+      if(active)setSourceError(error instanceof Error?error.message:String(error));
+    }).finally(()=>{if(active)setSharing(false);});
+    return()=>{active=false;};
+  },[initialize,retry]);
+  if(sharing||!state.workspace)return <div className="space-y-4">
+    <WorkspaceIntro view={view}/>
+    {sharing?<p role="status" className="uc-notice">Menyiapkan data sumber dari sesi ini…</p>
+      :<Panel title="Data sumber belum siap">
+        <p role="alert" className="text-sm text-red-800">{sourceError||state.error||'Data sesi tidak dapat dibuka.'}</p>
+        <button type="button" className={btn} onClick={retrySources}>Coba lagi</button>
+      </Panel>}
+  </div>;
+  const next=view==='upload'?workflowSteps[1]:undefined;
+  const snap=activeSnapshot(state);
+  const showResults=['dashboard','patients','comparison','reports'].includes(view);
+  const stale=showResults&&snap&&!snap.sensitivity&&snap.inputVersion!==state.workspace.version;
+  const dashboard=view==='dashboard';
+  const needsCalculation=!snap||stale||state.busy||state.error||snap.result.methods.every(method=>method.blocked);
+  return <div className="space-y-6">
+    <WorkspaceIntro view={view}/>
+    {sourceError&&<div className="uc-notice flex flex-wrap items-center gap-2">
+      <p role="alert">Data sumber bersama belum lengkap. {sourceError}</p>
+      <button type="button" className={secondary} onClick={retrySources}>Coba lagi</button>
+    </div>}
+    {view==='input'&&<V4Header/>}
+    {dashboard&&needsCalculation&&<V4Header dashboard/>}
+    {stale&&!dashboard&&<p className="uc-notice">Perlu dihitung ulang karena input berubah. <Link className="font-semibold underline" to="/costing">Buka Biaya &amp; Alokasi</Link>.</p>}
+    {view==='guide'?<StartGuide/>:view==='input'?<CostInput/>:view==='upload'?<Upload/>:view==='settings'?<Settings/>:view==='reports'?<Reports/>:dashboard&&!snap?null:<Analysis view={view}/>}
+    {next&&<div className="print:hidden flex justify-end"><Link className={btn} to={next.path}>Lanjut ke {next.label}<ArrowRight size={16}/></Link></div>}
+  </div>;
 }
 function CostInput(){
   const {state,w,editable,message,act}=useActions();const input=w!.input;const [tab,setTab]=useState('Periode');const [advanced,setAdvanced]=useState(false);const [centerID,setCenterID]=useState(input.centers[0]?.id||'');
@@ -73,7 +137,7 @@ function CostInput(){
   const config=(key:string,value:unknown)=>update(i=>({...i,settings:{...i.settings,[key]:value}}),`Parameter ${key}`);
   const changeCenter=(patch:Partial<Center>)=>center&&update(i=>({...i,centers:i.centers.map(c=>c.id===center.id?{...c,...patch}:c),mappingVersion:patch.mapping?i.mappingVersion+1:i.mappingVersion,corrections:patch.mapping?[]:i.corrections}),`Unit ${center.name}`);
   const tabs=['Periode','Pusat biaya','Pemicu JKN','Matriks 18',...(input.settings.methods!=='M2'?['Driver antarunit']:[]),...(advanced?[...(input.settings.methods==='M2'?['Driver antarunit']:[]),'Cakupan','Koreksi']:[])];
-  return <><TemplateGuide mode="integrated" compact/><InputDeletion/><section className="uc-panel uc-cost-editor">
+  return <><InputDeletion/><section className="uc-panel uc-cost-editor">
     <header className="uc-cost-editor-header"><div><p className="uc-eyebrow">BIAYA &amp; ALOKASI</p><h2>Siapkan costing rumah sakit</h2><p>Lengkapi data dari kiri ke kanan, lalu hitung unit cost.</p></div><div className="uc-cost-actions"><Link className={secondary} to="/upload">Perbarui Excel</Link><button className={secondary} onClick={downloadStandardCostingTemplate}>Unduh template costing RS</button><button className={secondary} onClick={()=>void act(()=>downloadTemplateWorkbook(templateWorkbook(input),'Costing-Sesi.xlsx'))}>Ekspor costing sesi</button></div></header>
     <div className="uc-cost-tabs" role="tablist" aria-label="Tahapan input biaya">{tabs.map((t,index)=><button key={t} id={`cost-tab-${index}`} role="tab" aria-controls="cost-input-content" aria-selected={tab===t} className="uc-cost-tab" onClick={()=>setTab(t)}><span className="uc-cost-step">{index+1}</span>{({'Pemicu JKN':'Porsi JKN','Driver antarunit':'Antarunit','Matriks 18':'18 komponen'} as Record<string,string>)[t]||t}</button>)}</div>
     <div className="uc-cost-tools"><button type="button" aria-expanded={advanced} onClick={()=>{setAdvanced(!advanced);if(advanced)setTab('Periode');}}>{advanced?'− Sembunyikan opsi lanjutan':'+ Opsi lanjutan'}</button><Link to="/settings">Referensi &amp; asumsi →</Link></div>
@@ -118,7 +182,7 @@ function Settings(){
       <label className={secondary}>Import CSV referensi<input className="sr-only" type="file" accept=".csv" onChange={e=>{const f=e.target.files?.[0];if(f)void act(async()=>{const refs=importReferences(await f.text());await state.update(i=>({...i,references:[...i.references,...refs]}),'Impor referensi belum terverifikasi');});e.target.value='';}}/></label><button className={secondary} onClick={()=>download('kind,code,care,value,from,until,version,source\nweight,KODE_IDRG,inap,1,2025-01-01,,versi-contoh,Sumber ilustratif\n','Format-Referensi.csv','text/csv')}>Unduh format CSV</button></fieldset>
       <Table headers={['Jenis','Kode','Rawat','Nilai','Versi','Tanggal','Sumber','Verifikasi']} rows={input.references.map(r=>[r.kind,r.code,r.care,r.value+(r.kind==='adjustment'&&r.adjustmentUnit!=='factor'?' % (format lama)':''),r.version,`${r.from} – ${r.until||'seterusnya'}`,r.source,r.verified?'Terverifikasi':<button key={r.id} className={secondary} disabled={!admin||state.busy} onClick={()=>{if(window.confirm('Sumber dan masa berlaku referensi ini sudah diverifikasi? Angka ilustratif tidak boleh disetujui.'))void act(()=>state.update(i=>({...i,references:i.references.map(x=>x.id===r.id?{...x,verified:true}:x)}),'Verifikasi referensi '+r.version));}}>Belum terverifikasi</button>])}/><p className="text-sm">Impor selalu belum terverifikasi. Adjustment Factor bawaan 1 tanpa referensi tambahan; faktor lain harus memiliki sumber valid. Snapshot lama menyimpan versi referensi sendiri.</p></Panel>}
     {tab==='Profil'&&<Panel title="Profil alur kerja lokal"><fieldset disabled={!admin}><Grid><Field label="Nama pengguna lokal" value={name} onChange={setName}/><Select label="Peran" value={role} options={['Administrator','Analis','Reviewer','Pembaca']} onChange={v=>setRole(v as Role)}/></Grid><button className={btn} onClick={()=>void act(async()=>{await state.addProfile(name,role);setName('');})}>Tambah profil</button></fieldset><Table headers={['Nama','Peran']} rows={w!.profiles.map(p=>[p.name,p.role])}/><p className="text-sm">Reviewer tidak dapat menyetujui hasil yang ia buat atau koreksi. Pilihan profil ini bukan autentikasi multiuser server.</p></Panel>}
-    {tab==='Cadangan'&&<BackupPanel/>}
+    {tab==='Cadangan'&&<><BackupPanel/>{editable&&<Link className="text-sm font-medium text-red-800 underline" to="/reset">Reset Data</Link>}</>}
   </>;
 }
 function Analysis({view}:{view:string}){
@@ -128,15 +192,21 @@ function Analysis({view}:{view:string}){
   if(!snap)return <>{view==='patients'&&proxyPanel}<Panel title="Hasil perhitungan"><p>Lengkapi input biaya dan klaim, lalu pilih Hitung unit cost.</p><Link className={btn} to="/costing">Input biaya</Link></Panel></>;
   const result=snap.result.methods.find(m=>m.method===method)||snap.result.methods[0];
   if(view==='patients')return <>{proxyPanel}<Panel title="Hasil Pasien — Costing RS"><div className="flex flex-wrap gap-2">{snap.result.methods.map(m=><button key={m.method} className={result.method===m.method?btn:secondary} onClick={()=>setMethod(m.method)}>Metode {m.method}</button>)}</div><p className="text-sm">Versi hasil {snap.id.slice(0,8)} · {new Date(snap.at).toLocaleString('id-ID')}</p>{result.blocked&&<p role="alert" className="text-red-800">Metode ini memiliki validasi yang memblokir. Hasil diagnostik belum boleh digunakan.</p>}</Panel>{result.localCosting?<HospitalBaseRateResults result={result.localCosting} references={snap.input.references} editable={canEdit(workingProfile(state.workspace!).role)} exportAllowed={!result.blocked && snap.inputVersion===state.workspace?.version}/>:<Panel title="CW dan HBR RS belum dihitung"><p>Snapshot lama memakai CW referensi. Hitung ulang untuk menyimpan CW RS dan HBR pada versi baru; riwayat lama tetap dipertahankan.</p><Link className={btn} to="/costing">Buka Biaya &amp; Alokasi</Link></Panel>}<Panel title="Rincian 18 komponen pasien"><Table headers={['SEP masking','Rawat','iDRG','Unit cost','Komponen alokasi']} rows={result.patients.slice(page*50,page*50+50).map(p=>[maskSEP(p.sep),p.care,p.code,money(p.uc),<details key={p.id}><summary>Lihat 18 komponen</summary>{KEYS.map((k,i)=><p key={k}>{LABELS[i]}: {money(p.allocations[k])}</p>)}</details>])}/><Pager page={page} count={result.patients.length} change={setPage}/></Panel></>;
-  const localTariffs=new Map(result.localCosting?.patients.map(p=>[p.id,p.standardCost])||[]);
-  const comparisonPatients=view==='comparison'?result.patients.map(p=>{
+  const localTariffs=new Map(view==='comparison'?result.localCosting?.patients.map(p=>[p.id,p.standardCost]):undefined);
+  const comparisonPatients:(typeof result.patients[number]&{rsAvailable?:boolean})[]=view==='comparison'?result.patients.map(p=>{
     const rs=localTariffs.get(p.id);
     const statusFor=(tariff:string|null)=>rs==null||tariff==null?'Tidak dapat dihitung':dec(tariff).gt(rs)?'PROFIT':dec(tariff).lt(rs)?'DEFISIT':'BEP';
     return {...p,uc:rs??'0',statusIDRG:statusFor(p.tariffIDRG),statusINA:statusFor(p.tariffINA),crrIDRG:rs!=null&&dec(rs).gt(0)&&p.tariffIDRG!=null?dec(p.tariffIDRG).div(rs).toString():null,crrINA:rs!=null&&dec(rs).gt(0)&&p.tariffINA!=null?dec(p.tariffINA).div(rs).toString():null,rsAvailable:rs!=null};
-  }):result.patients.map(p=>({...p,rsAvailable:true}));
+  }):result.patients;
+  const queryText=query.toLowerCase();
   const patients=comparisonPatients.filter(p=>{
-    const delta=(mode==='IDRG'?p.tariffIDRG:p.tariffINA);const diff=delta===null||!p.rsAvailable?null:dec(delta).minus(p.uc);
-    return (care==='semua'||p.care===care)&&(!mdc||p.mdc===mdc)&&(status==='semua'||(mode==='IDRG'?p.statusIDRG:p.statusINA)===status)&&`${p.code} ${p.inacbg} ${p.description} ${maskSEP(p.sep)}`.toLowerCase().includes(query.toLowerCase())&&(!min||(diff&&diff.gte(min)))&&(!max||(diff&&diff.lte(max)));
+    if((care!=='semua'&&p.care!==care)||(mdc&&p.mdc!==mdc)||(status!=='semua'&&(mode==='IDRG'?p.statusIDRG:p.statusINA)!==status))return false;
+    if(queryText&&!`${p.code} ${p.inacbg} ${p.description} ${maskSEP(p.sep)}`.toLowerCase().includes(queryText))return false;
+    if(!min&&!max)return true;
+    const tariff=mode==='IDRG'?p.tariffIDRG:p.tariffINA;
+    if(tariff===null||p.rsAvailable===false)return false;
+    const diff=dec(tariff).minus(p.uc);
+    return (!min||diff.gte(min))&&(!max||diff.lte(max));
   });
   const titles:Record<string,string>={dashboard:'Dashboard Unit Cost',patients:'Biaya per pasien',comparison:'Perbandingan Tarif RS dan tarif klaim'};
   return <><Panel title={titles[view]||'Hasil analisis'}><div className="flex flex-wrap gap-2">{snap.result.methods.map(m=><button key={m.method} className={result.method===m.method?btn:secondary} onClick={()=>setMethod(m.method)}>Metode {m.method}</button>)}</div><p className="text-sm">{snap.result.accepted.toLocaleString('id-ID')} klaim diterima · {snap.result.rejected.toLocaleString('id-ID')} ditolak · dihitung {new Date(snap.at).toLocaleString('id-ID')}</p>{result.blocked&&<p className="text-red-800" role="alert">Ada kesalahan yang memblokir metode ini. Hasil diagnostik belum boleh digunakan sebagai hasil final.</p>}{result.blocked&&<ul className="list-disc pl-5 text-red-800">{[...new Set(snap.result.issues.filter(i=>i.severity==='error'&&(!i.method||i.method===result.method)).map(i=>`${i.code}: ${i.message}`))].map(t=><li key={t}>{t}</li>)}</ul>}

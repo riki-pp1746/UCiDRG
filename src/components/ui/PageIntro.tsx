@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Lightbulb, X } from 'lucide-react';
+import { Lightbulb } from 'lucide-react';
 import { useUiPrefsStore } from '../../stores/uiPrefsStore';
 
 interface PageIntroProps {
@@ -13,26 +13,14 @@ interface PageIntroProps {
 /** Kotak pengantar halaman. Tampil hanya saat Mode Pemula aktif. */
 export default function PageIntro({ title, what, prepare, result, children }: PageIntroProps) {
   const beginnerMode = useUiPrefsStore(s => s.beginnerMode);
-  const setBeginnerMode = useUiPrefsStore(s => s.setBeginnerMode);
   if (!beginnerMode) return null;
 
   return (
-    <section
-      aria-label={`Pengantar ${title}`}
-      className="relative mb-6 rounded-2xl border border-[#568D7E]/30 bg-[#FCF0E5] p-5 pr-12"
-    >
-      <button
-        type="button"
-        onClick={() => setBeginnerMode(false)}
-        aria-label="Sembunyikan penjelasan (matikan Mode Pemula)"
-        title="Sembunyikan penjelasan. Dapat diaktifkan lagi di Pengaturan."
-        className="absolute top-3 right-3 p-1 rounded-md text-[#965238] hover:bg-[#568D7E]/10"
-      >
-        <X className="w-4 h-4" />
-      </button>
-      <div className="flex gap-3">
-        <Lightbulb className="w-5 h-5 text-[#568D7E] shrink-0 mt-0.5" strokeWidth={1.75} />
-        <div className="text-sm text-[#3D3A33] space-y-2 leading-relaxed">
+    <details className="text-sm text-slate-600 print:hidden">
+      <summary className="w-fit cursor-pointer font-medium text-teal-800">
+        <Lightbulb className="mr-1 inline size-4" aria-hidden /> Bantuan halaman
+      </summary>
+      <div className="mt-2 max-w-2xl space-y-2 rounded-lg border border-slate-200 bg-white p-4 leading-relaxed">
           <p className="font-semibold text-[#17645D]">{title}</p>
           <p>{what}</p>
           {prepare && prepare.length > 0 && (
@@ -45,8 +33,7 @@ export default function PageIntro({ title, what, prepare, result, children }: Pa
           )}
           {result && <p><span className="font-medium text-[#17645D]">Hasil:</span> {result}</p>}
           {children}
-        </div>
       </div>
-    </section>
+    </details>
   );
 }

@@ -1,17 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, BookOpen, Calculator, ChevronDown, FileText, LayoutDashboard,
-  LogOut, Menu, RotateCcw, Settings, Shield, Upload, Users, X,
+  LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, Users, X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
 import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
-import { usePreferences } from '../../v4/preferences';
 import { BrandLogo } from '../../pages/LoginPage';
-import { AnalysisReviewPanel } from '../ui/AnalysisControls';
-import WorkflowStepper from '../ui/WorkflowStepper';
 
 const navigation = [
   { label: 'Ikhtisar', items: [
@@ -27,7 +24,6 @@ const navigation = [
   ] },
   { label: 'Administrasi', items: [
     { path: '/settings', icon: Settings, label: 'Pengaturan' },
-    { path: '/reset', icon: RotateCcw, label: 'Reset Data' },
   ] },
 ];
 
@@ -40,17 +36,17 @@ const aliases: Record<string, string> = {
 const userManagement = { path: '/user-management', icon: Users, label: 'Manajemen Pengguna' };
 
 export default function AppLayout() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   const localRole = useMethodologyStore(s => s.role);
-  const legacyMode = useCostingStore(s => s.viewMode);
-  const legacyToggle = useCostingStore(s => s.toggleViewMode);
-  const revisionMode = usePreferences(s => s.viewMode);
-  const revisionToggle = usePreferences(s => s.toggleViewMode);
+  const mode = useCostingStore(s => s.viewMode);
+  const toggleMode = useCostingStore(s => s.toggleViewMode);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [desktopOpen, setDesktopOpen] = useState(true);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const sidebar = useRef<HTMLElement>(null);
   const main = useRef<HTMLElement>(null);
   const integrated = pathname.startsWith('/revisi4');
   const route = (integrated ? pathname.slice('/revisi4'.length) : pathname).replace(/\/$/, '') || '/';
@@ -58,41 +54,77 @@ export default function AppLayout() {
   const groups = navigation.map(group => group.label === 'Administrasi' && user?.role === 'admin'
     ? { ...group, items: [...group.items, userManagement] }
     : group);
-  const page = groups.flatMap(group => group.items).find(item => item.path === current);
+  const pageLabel = current === '/reset' ? 'Reset Data' : groups.flatMap(group => group.items).find(item => item.path === current)?.label;
   const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
-  const mode = integrated ? revisionMode : legacyMode;
-  const toggleMode = integrated ? revisionToggle : legacyToggle;
   const pagePath = (path: string, revision = integrated) =>
     revision && path !== userManagement.path ? '/revisi4' + (path === '/' ? '' : path) : path;
-  const showMode = ['/dashboard', '/compare', '/reports'].includes(current);
+  const showMode = !integrated && ['/dashboard', '/compare', '/reports'].includes(current);
   const readOnly = !integrated && localRole === 'Pembaca' && ['/upload', '/costing', '/tarif-pasien', '/reset'].includes(current);
 
+  const closeMobileMenu = useCallback(() => {
+    setMenuOpen(false);
+    requestAnimationFrame(() => menuButton.current?.focus());
+  }, []);
+
   useEffect(() => {
+    if (hash) {
+      const target = document.getElementById(hash.slice(1));
+      if (target && main.current?.contains(target)) {
+        target.scrollIntoView?.({ block: 'start' });
+        return;
+      }
+    }
     main.current?.scrollTo({ top: 0 });
-  }, [pathname]);
+  }, [pathname, hash]);
 
   useEffect(() => {
     if (!menuOpen) return;
     closeButton.current?.focus();
-    const escape = (event: KeyboardEvent) => {
+    const desktop = window.matchMedia('(min-width: 64rem)');
+    const resize = () => { if (desktop.matches) setMenuOpen(false); };
+    const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setMenuOpen(false);
-        menuButton.current?.focus();
+        event.preventDefault();
+        closeMobileMenu();
+      }
+      if (event.key === 'Tab') {
+        const targets = sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), select:not(:disabled)');
+        const first = targets?.[0];
+        const last = targets?.[targets.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
       }
     };
-    window.addEventListener('keydown', escape);
-    return () => window.removeEventListener('keydown', escape);
-  }, [menuOpen]);
+    window.addEventListener('keydown', keydown);
+    desktop.addEventListener('change', resize);
+    return () => {
+      window.removeEventListener('keydown', keydown);
+      desktop.removeEventListener('change', resize);
+    };
+  }, [menuOpen, closeMobileMenu]);
 
   return (
-    <div className="uc-workspace-frame grid h-dvh min-h-0 bg-[#f4f8f7] lg:grid-cols-[15.75rem_minmax(0,1fr)]">
-      <a href="#main-content" className="uc-skip">Langsung ke isi halaman</a>
-      {menuOpen && <button aria-label="Tutup navigasi" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} className="fixed inset-0 z-30 bg-teal-950/45 lg:hidden print:hidden" />}
+    <div className={clsx(
+      'uc-workspace-frame grid h-dvh min-h-0 grid-cols-[minmax(0,1fr)] bg-[#f4f8f7]',
+      desktopOpen && 'lg:grid-cols-[15.75rem_minmax(0,1fr)]',
+    )}>
+      <a href="#main-content" className="uc-skip" inert={menuOpen}>Langsung ke isi halaman</a>
+      {menuOpen && <button type="button" tabIndex={-1} aria-label="Tutup navigasi dari luar panel" onClick={closeMobileMenu} className="fixed inset-0 z-30 bg-teal-950/50 lg:hidden print:hidden" />}
       <aside
+        ref={sidebar}
         id="main-navigation"
+        role={menuOpen ? 'dialog' : undefined}
+        aria-modal={menuOpen || undefined}
+        aria-label="Menu aplikasi"
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 w-[min(19rem,88vw)] flex-col border-r border-[#205553] bg-[#093d3c] text-white lg:static lg:flex lg:w-auto print:hidden',
+          'fixed inset-y-0 left-0 z-40 w-[min(20rem,88vw)] flex-col border-r border-[#205553] bg-[#093d3c] text-white lg:static lg:w-auto print:hidden',
           menuOpen ? 'flex' : 'hidden',
+          desktopOpen ? 'lg:flex' : 'lg:hidden',
         )}
       >
         <div className="flex h-17 shrink-0 items-center gap-3 border-b border-white/15 px-5">
@@ -101,22 +133,22 @@ export default function AppLayout() {
             <p className="text-base font-bold tracking-tight text-white">UnitCOSt <span className="text-[#d6ea87]">PRO</span></p>
             <p className="truncate text-xs text-[#bbd6d1]" title={user?.namaRS}>{user?.namaRS || 'Costing rumah sakit'}</p>
           </div>
-          <button ref={closeButton} type="button" aria-label="Tutup menu" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} className="rounded-md p-2 text-white hover:bg-white/10 lg:hidden">
+          <button ref={closeButton} type="button" aria-label="Tutup menu" onClick={closeMobileMenu} className="grid size-11 shrink-0 place-items-center rounded-md text-white hover:bg-white/10 lg:hidden">
             <X size={18} />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
           <label className="mb-5 block px-2">
             <span className="mb-1.5 block text-xs font-semibold text-[#c4dad7]">Ruang analisis</span>
             <span className="relative block">
               <select
                 value={integrated ? 'integrated' : 'components'}
                 onChange={event => {
-                  navigate(pagePath(current === userManagement.path ? '/' : current, event.target.value === 'integrated'));
-                  setMenuOpen(false);
+                  navigate(pagePath('/dashboard', event.target.value === 'integrated'));
+                  if (menuOpen) closeMobileMenu();
                 }}
-                className="w-full appearance-none rounded-lg border border-[#51817b] bg-[#154b49] py-2.5 pl-2.5 pr-8 text-xs font-semibold text-white"
+                className="min-h-11 w-full appearance-none rounded-lg border border-[#51817b] bg-[#154b49] py-2.5 pl-2.5 pr-8 text-base font-semibold text-white lg:min-h-0 lg:text-xs"
               >
                 <option value="components">Analisis 18 Komponen</option>
                 <option value="integrated">Analisis Biaya Terintegrasi</option>
@@ -134,9 +166,9 @@ export default function AppLayout() {
                       <Link
                         to={pagePath(path)}
                         aria-current={current === path ? 'page' : undefined}
-                        onClick={() => setMenuOpen(false)}
+                        onClick={() => { if (menuOpen) closeMobileMenu(); }}
                         className={clsx(
-                          'flex items-center gap-2.5 rounded-md border-l-2 px-2.5 py-2 text-[13px] leading-5',
+                          'flex min-h-11 items-center gap-2.5 rounded-md border-l-2 px-2.5 py-2 text-sm leading-5 lg:min-h-0 lg:text-[13px]',
                           current === path
                             ? 'border-[#c9e674] bg-[#d8eee8] font-semibold text-[#103e3b]'
                             : 'border-transparent font-medium text-[#e1efed] hover:bg-white/10 hover:text-white',
@@ -154,21 +186,27 @@ export default function AppLayout() {
         </div>
 
         <div className="shrink-0 border-t border-white/15 p-3">
-          <button type="button" onClick={() => { logout(); navigate('/login'); }} className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm text-[#e1efed] hover:bg-white/10">
+          <button type="button" onClick={() => { logout(); navigate('/login'); }} className="flex min-h-11 w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-[#e1efed] hover:bg-white/10">
             <LogOut size={16} aria-hidden /> Keluar
           </button>
         </div>
       </aside>
 
-      <div className="uc-workspace-body flex min-h-0 min-w-0 flex-col">
-        <header className="uc-workspace-header flex min-h-17 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 sm:px-7 print:hidden">
-          <div className="flex min-w-0 items-center gap-3">
-            <button ref={menuButton} type="button" aria-label="Buka navigasi" aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen(true)} className="-ml-1 shrink-0 rounded-md p-2 text-teal-900 hover:bg-slate-100 lg:hidden">
+      <div className="uc-workspace-body flex min-h-0 min-w-0 flex-col" inert={menuOpen}>
+        <header className="uc-workspace-header flex min-h-17 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:gap-3 sm:px-7 print:hidden">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <button ref={menuButton} type="button" aria-label="Buka navigasi" aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen(true)} className="grid size-11 shrink-0 place-items-center rounded-md text-teal-900 hover:bg-slate-100 lg:hidden">
               <Menu size={20} />
+            </button>
+            <button type="button" aria-label={desktopOpen ? 'Tutup sidebar' : 'Buka sidebar'}
+              title={desktopOpen ? 'Tutup sidebar' : 'Buka sidebar'} aria-expanded={desktopOpen}
+              aria-controls="main-navigation" onClick={() => setDesktopOpen(open => !open)}
+              className="hidden size-10 shrink-0 place-items-center rounded-md text-teal-900 hover:bg-slate-100 lg:grid">
+              {desktopOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
             </button>
             <div className="min-w-0">
               <p className="truncate text-xs text-slate-600">{analysisName}</p>
-              <p className="truncate text-base font-semibold tracking-tight text-teal-950">{page?.label}</p>
+              <p className="truncate text-base font-semibold tracking-tight text-teal-950">{pageLabel}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3 sm:gap-5">
@@ -188,18 +226,9 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main ref={main} id="main-content" tabIndex={-1} className="uc-workspace-shell min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-7 sm:py-7">
+        <main ref={main} id="main-content" tabIndex={-1} className="uc-workspace-shell min-h-0 flex-1 overflow-auto px-3 py-4 sm:px-7 sm:py-7">
           <div className="mx-auto max-w-[88rem]">
-            <details className="mb-4 text-xs text-slate-600 print:hidden">
-              <summary className="flex w-fit list-none items-center gap-1.5 font-medium hover:text-teal-800">
-                <Shield size={14} aria-hidden /> Sesi sementara <ChevronDown size={12} aria-hidden />
-              </summary>
-              <p className="mt-2 max-w-xl leading-5">Data kedua ruang hanya berada di memori. Muat ulang, keluar, atau tutup tab akan mengosongkan data. Unduh cadangan atau ekspor hasil sebelum mengakhiri sesi.</p>
-            </details>
-            {!integrated && <WorkflowStepper />}
-            {!integrated && current !== '/' && <AnalysisReviewPanel />}
             <fieldset disabled={readOnly} className="min-w-0"><Outlet /></fieldset>
-            {!integrated && current === '/' && <div className="mx-auto mt-5 max-w-6xl"><AnalysisReviewPanel /></div>}
           </div>
         </main>
       </div>

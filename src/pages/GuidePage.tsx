@@ -1,4 +1,5 @@
 import {Link} from 'react-router-dom';
+import {useWorkflowProgress} from '../hooks/useWorkflowProgress';
 import {CheckCircle,AlertTriangle,Database,Building2,ArrowRight,BookOpen,ClipboardList,Activity,Users,Receipt,HardDrive} from 'lucide-react';
 import clsx from 'clsx';
 import AnalysisGuide from '../components/ui/AnalysisGuide';
@@ -115,6 +116,7 @@ const DATA_YANG_DISIAPKAN = [
 // Data: Langkah-langkah Penggunaan Aplikasi
 // ────────────────────────────────────────────────────────────
 export default function GuidePage(){
+  const {readyCount,steps}=useWorkflowProgress();
   return <div className="mx-auto max-w-6xl space-y-5">
     <section className="overflow-hidden rounded-xl border border-slate-200 border-l-4 border-l-teal-700 bg-white">
       <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.48fr)]">
@@ -126,6 +128,7 @@ export default function GuidePage(){
         </div>
         <div className="border-t border-slate-200 bg-teal-50/65 px-5 py-6 sm:px-7 md:border-l md:border-t-0">
           <h2 className="text-sm font-semibold text-teal-950">Sebelum mulai</h2>
+          {readyCount>0&&<p className="mt-1 text-xs text-teal-800">{readyCount} dari {steps.length} tahap siap</p>}
           <ul className="mt-3 space-y-3 text-sm leading-5 text-slate-700">
             <li className="flex gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0 text-teal-800" aria-hidden /> Klaim JKN dari E-Klaim</li>
             <li className="flex gap-2"><CheckCircle size={16} className="mt-0.5 shrink-0 text-teal-800" aria-hidden /> Workbook biaya dan volume layanan RS</li>

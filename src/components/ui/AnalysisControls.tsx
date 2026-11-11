@@ -1,4 +1,4 @@
-import {useEffect,useState,useMemo} from 'react';
+import {useState,useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import {useMethodologyStore,defaultMethodology,CALC_VERSION} from '../../stores/methodologyStore';
 import type {Methodology} from '../../stores/methodologyStore';
@@ -53,26 +53,129 @@ export function MethodologyControls(){
  </fieldset>{error&&<p role="alert" className="uc-error">{error}</p>}</section>;
 }
 
-export function AnalysisReviewPanel(){
- const policy=useMethodologyStore();const raw=useCostingStore(s=>s.rawRecords);const period=useCostingStore(s=>s.periodNormalization);const config=useHospitalCostStore(s=>s.config);const snapshot=useTarifPasienStore(s=>s.snapshot);const local=useTarifPasienStore(s=>s.localCosting);const view=useAnalysisView();
- const [error,setError]=useState('');const [password,setPassword]=useState('');const [preview,setPreview]=useState<BackupPayload|null>(null);const [busy,setBusy]=useState(false);const [progress,setProgress]=useState(0);const [remind,setRemind]=useState(false);const history=useAnalysisHistoryStore();
- const issues=useMemo(()=>snapshot?.issues||inputQuality(config,raw,policy.settings,config.sourceOrigin||'contoh'),[snapshot,config,raw,policy.settings]);const blocked=issues.some(i=>i.severity==='error');
- useEffect(()=>{const dirty=()=>raw.length>0&&(!policy.lastBackup||Boolean(snapshot&&Date.parse(snapshot.at)>policy.lastBackup));const leave=(e:BeforeUnloadEvent)=>{if(dirty()){e.preventDefault();e.returnValue='';}};window.addEventListener('beforeunload',leave);const timer=setInterval(()=>{if(dirty())setRemind(true);},policy.settings.reminderMinutes*60000);return()=>{window.removeEventListener('beforeunload',leave);clearInterval(timer);};},[raw.length,policy.lastBackup,policy.settings.reminderMinutes,snapshot]);
- const hasCosts=config.totalOverheadCost+config.totalIntermediateCost+config.totalFinalCost>0;
+
+export function AnalysisCalculationPanel(){
+ const policy=useMethodologyStore();
+ const raw=useCostingStore(s=>s.rawRecords);
+ const period=useCostingStore(s=>s.periodNormalization);
+ const config=useHospitalCostStore(s=>s.config);
+ const snapshot=useTarifPasienStore(s=>s.snapshot);
+ const [error,setError]=useState('');
+ const [busy,setBusy]=useState(false);
+ const [progress,setProgress]=useState(0);
  const needsCalculation=analysisStale();
- const run=async(fn:()=>void|Promise<void>)=>{setBusy(true);setError('');try{await fn();}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}};
- return <section id="hitung-18-komponen" className="uc-panel mb-5 space-y-3 print:hidden" aria-label="Kualitas dan cadangan analisis"><div className="flex flex-wrap gap-3 items-center justify-between"><p className="font-semibold">{config.sourceOrigin==='contoh'||!config.sourceOrigin?'DATA CONTOH':'Biaya '+config.sourceOrigin} · {CALC_VERSION} · {raw.length.toLocaleString('id-ID')} kasus sumber</p><button className="uc-primary" disabled={busy||!raw.length||!hasCosts||policy.role==='Pembaca'} onClick={()=>void run(()=>calculateAnalysisJob(setProgress))}>{busy?"Sedang menghitung…":needsCalculation?"Hitung 18 komponen":"Hitung ulang"}</button></div><p className="text-xs">{config.sourceFilename||'Biaya bawaan/manual'} · {config.sourceAt?new Date(config.sourceAt).toLocaleString('id-ID'):''} · {!raw.length?'Unggah klaim':!hasCosts?'Unggah atau isi biaya RS':needsCalculation?'Hasil belum dihitung untuk sumber aktif':'Hasil tersimpan dalam sesi'} · {policy.lastBackup?'Cadangan terakhir '+new Date(policy.lastBackup).toLocaleTimeString('id-ID'):'Perubahan belum dicadangkan'}</p>
- {busy&&<div role="status"><progress max={100} value={progress}/> {progress}% · Sedang diproses</div>}{remind&&<p role="status" className="uc-notice">Simpan cadangan sebelum rapat, refresh, atau keluar. Data hanya berada dalam memori.</p>}
- {Boolean(period?.dateOutliers?.length)&&!period?.confirmed&&<p className="uc-error">Pencilan bulan: {period?.dateOutliers?.join(', ')}. <Link to="/upload">Konfirmasi periode</Link>.</p>}
- <details className="border-t border-slate-200 pt-3"><summary className={blocked?"font-semibold text-red-800":"font-semibold text-teal-950"}>Pusat Peringatan · {issues.filter(i=>i.severity==='error').length} kategori Blokir · {issues.filter(i=>i.severity!=='error').length} kategori lainnya</summary><ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-2">{[...issues].sort((a,b)=>({error:0,warning:1,info:2})[a.severity]-({error:0,warning:1,info:2})[b.severity]).map(i=><li key={i.id} className="text-sm"><Link className="underline" to={i.source}>{i.severity==='error'?'⛔ Blokir':i.severity==='warning'?'⚠ Peringatan':'ℹ Info'} · {i.count} · {i.message}</Link>{i.examples.length>0&&<p className="text-xs">{i.examples.join('; ')}</p>}</li>)}</ul></details>
- {config.sourceOrigin==='contoh'&&<button className="uc-secondary" disabled={policy.role==='Pembaca'} onClick={()=>{useHospitalCostStore.setState(s=>({config:{...s.config,overheadCenters:[],intermediateCenters:[],finalCenters:[],totalOverheadCost:0,totalIntermediateCost:0,totalFinalCost:0,sourceOrigin:'diketik'}}));useTarifPasienStore.setState({snapshot:null,localCosting:null,biayaRSMap:{}});}}>Hapus data contoh</button>}
- {(config.importIssues||[]).length>0&&<button className="uc-secondary" disabled={policy.role==='Pembaca'} onClick={()=>{if(!window.confirm('Nyatakan seluruh sel biaya kosong yang tercantum sebagai nol secara sengaja? Keputusan dicatat dalam jejak audit.'))return;useMethodologyStore.setState(s=>({revision:s.revision+1,audit:[...s.audit,{at:new Date().toISOString(),actor:s.actor,action:'Sel kosong dinyatakan nol',before:config.importIssues,after:0}]}));useHospitalCostStore.setState(s=>({config:{...s.config,importIssues:[]}}));}}>Nyatakan sel kosong sebagai nol dengan catatan audit</button>}
- <details><summary className="font-semibold">Cadangan lengkap terenkripsi dan pemulihan</summary><p className="text-sm">Cadangan lengkap memakai kata sandi minimal 12 karakter. Hash memeriksa integritas; AES-GCM memeriksa autentikasi enkripsi. Kata sandi tidak membuktikan identitas pembuat.</p><label className="uc-label">Kata sandi<input className="uc-input" type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><div className="flex flex-wrap gap-3 mt-3"><button disabled={busy||password.length<12||!raw.length} className="uc-secondary" onClick={()=>void run(async()=>{const text=await createAnalysisBackup(password);const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='UnitCOSt-18-Cadangan-Terenkripsi.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);setPassword('');setRemind(false);})}>Cadangkan sekarang</button><label className="uc-label">Pratinjau cadangan<input type="file" accept=".json" disabled={busy} onChange={e=>{const file=e.target.files?.[0];if(file)void run(async()=>{if(file.size>250*1024*1024)throw new Error('Berkas melebihi 250 MB.');setPreview(await previewAnalysisBackup(await file.text(),password));});}}/></label></div>{preview&&<div className="uc-notice"><p>{preview.rowCount} kasus · {preview.config.namaRS} · {preview.period?.label} · mengganti sesi {raw.length} kasus.</p><button className="uc-secondary" disabled={busy||policy.role==='Pembaca'} onClick={()=>void run(()=>{applyAnalysisBackup(preview);setPreview(null);setPassword('');})}>Pulihkan dan ganti sesi dengan pratinjau ini</button></div>}</details>
- {local&&view.summary&&<details><summary className="font-semibold">Versi laporan dan tren</summary><div className="flex gap-2 mt-3">{(['Draft','Review','Final'] as const).map(state=><button key={state} className="uc-secondary" onClick={()=>void run(()=>history.save({period:local.period,state,local,summary:view.summary!},!blocked&&config.sourceOrigin!=='simulasi'&&policy.settings.referenceVerified&&!analysisStale()))}>Simpan {state}</button>)}</div><p className="text-xs mt-2">Pengesahan profil lokal. Periode dengan parameter atau populasi berbeda tidak langsung sebanding.</p><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>CMI</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td></tr>)}</tbody></table></details>}
- {error&&<p role="alert" className="uc-error">{error}</p>}</section>;
+ const issues=useMemo(()=>!needsCalculation&&snapshot?snapshot.issues:inputQuality(config,raw,policy.settings,config.sourceOrigin||'contoh'),[needsCalculation,snapshot,config,raw,policy.settings]);
+ const blockers=issues.filter(i=>i.severity==='error').length;
+ const hasCosts=config.totalOverheadCost+config.totalIntermediateCost+config.totalFinalCost>0;
+
+ async function calculate(){
+  setBusy(true);setProgress(0);setError('');
+  try{await calculateAnalysisJob(setProgress);}
+  catch(e){setError(e instanceof Error?e.message:String(e));}
+  finally{setBusy(false);}
+ }
+
+ return <section id="hitung-18-komponen" className="uc-panel space-y-3 scroll-mt-4 print:hidden" aria-labelledby="analysis-calculate-title">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+   <div>
+    <h2 id="analysis-calculate-title" className="font-semibold text-teal-950">Hitung unit cost</h2>
+    <p className="mt-1 text-sm text-slate-600">
+     {!raw.length?<Link className="font-medium text-teal-800 underline" to="/upload">Unggah klaim untuk mulai menghitung</Link>:!hasCosts?'Lengkapi biaya RS untuk menghitung.':raw.length.toLocaleString('id-ID')+' kasus sumber · '+(needsCalculation?'Hasil belum tersedia untuk input ini':'Hasil tersedia dalam sesi')}
+    </p>
+   </div>
+   <button type="button" className="uc-primary" disabled={busy||!raw.length||!hasCosts||policy.role==='Pembaca'} onClick={()=>void calculate()}>
+    {busy?'Sedang menghitung…':needsCalculation?'Hitung 18 komponen':'Hitung ulang'}
+   </button>
+  </div>
+  {busy&&<div role="status"><progress aria-label="Kemajuan perhitungan" max={100} value={progress}/> {progress}% · Sedang diproses</div>}
+  {Boolean(period?.dateOutliers?.length)&&!period?.confirmed&&<p className="uc-error">Pencilan bulan: {period?.dateOutliers?.join(', ')}. <Link to="/upload">Konfirmasi periode</Link>.</p>}
+  {issues.length>0&&(raw.length>0||hasCosts||blockers>0)&&(
+   <details className="border-t border-slate-200 pt-3">
+    <summary className={blockers?'font-semibold text-red-800':'font-semibold text-teal-950'}>
+     Peringatan data · {blockers?blockers+' memblokir, ':''}{issues.length-blockers} catatan lain
+    </summary>
+    <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-2">
+     {[...issues].sort((a,b)=>({error:0,warning:1,info:2})[a.severity]-({error:0,warning:1,info:2})[b.severity]).map(i=>(
+      <li key={i.id} className="text-sm">
+       <Link className="underline" to={i.source}>{i.severity==='error'?'Blokir':i.severity==='warning'?'Peringatan':'Info'} · {i.count} · {i.message}</Link>
+       {i.examples.length>0&&<p className="text-xs">{i.examples.join('; ')}</p>}
+      </li>
+     ))}
+    </ul>
+   </details>
+  )}
+  {config.sourceOrigin==='contoh'&&<button className="uc-secondary" disabled={policy.role==='Pembaca'} onClick={()=>{useHospitalCostStore.setState(s=>({config:{...s.config,overheadCenters:[],intermediateCenters:[],finalCenters:[],totalOverheadCost:0,totalIntermediateCost:0,totalFinalCost:0,sourceOrigin:'diketik'}}));useTarifPasienStore.setState({snapshot:null,localCosting:null,biayaRSMap:{}});}}>Hapus data contoh</button>}
+  {(config.importIssues||[]).length>0&&<button className="uc-secondary" disabled={policy.role==='Pembaca'} onClick={()=>{if(!window.confirm('Nyatakan seluruh sel biaya kosong yang tercantum sebagai nol secara sengaja? Keputusan dicatat dalam jejak audit.'))return;useMethodologyStore.setState(s=>({revision:s.revision+1,audit:[...s.audit,{at:new Date().toISOString(),actor:s.actor,action:'Sel kosong dinyatakan nol',before:config.importIssues,after:0}]}));useHospitalCostStore.setState(s=>({config:{...s.config,importIssues:[]}}));}}>Nyatakan sel kosong sebagai nol dengan catatan audit</button>}
+  {error&&<p role="alert" className="uc-error">{error}</p>}
+ </section>;
 }
 
-export function AnalysisReportDetails(){const snapshot=useTarifPasienStore(s=>s.snapshot);const view=useAnalysisView();if(!snapshot)return null;return <><AnalysisCostDetails/><section className="uc-panel space-y-3"><h2 className="font-semibold">DRAFT · Metodologi dan asumsi</h2><p className="text-sm">Hasil analisis bukan tarif final. Kelompok kecil memerlukan data tambahan. {view.summary?.populationLabel}. {snapshot.version} · {new Date(snapshot.at).toLocaleString('id-ID')}</p><div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Rawat</th><th>Pool JKN penuh</th><th>Pool HBR aktif</th><th>Dikecualikan</th><th>Casemix</th><th>HBR</th><th>Selisih identitas</th></tr></thead><tbody>{snapshot.local.pools.map(p=><tr key={p.care}><td>{p.care}</td><td>{money(p.total)}</td><td>{money(p.hbrPool??p.total)}</td><td>{money(p.policyExcluded||'0')}</td><td>{p.casemix===null?'Tidak tersedia':formatNumber(Number(p.casemix),3)}</td><td>{money(p.hbr)}</td><td>{p.identityDelta==='Tidak tersedia'?'Tidak tersedia':money(p.identityDelta||'0')}</td></tr>)}</tbody></table></div><p className="text-sm">ROV skala ln(UC positif): mentah {view.summary?.rov?.raw==null?'Tidak tersedia':formatNumber(view.summary.rov.raw*100,1)+'%'}; adjusted {view.summary?.rov?.adjusted==null?'Tidak tersedia':formatNumber(view.summary.rov.adjusted*100,1)+'%'}; validasi silang {view.summary?.rov?.crossValidated==null?'Tidak tersedia':formatNumber(view.summary.rov.crossValidated*100,1)+'%'}. {view.summary?.rov?.reason}. n={view.summary?.rov?.n}, k={view.summary?.rov?.k}, singleton={view.summary?.rov?.singletons}, dikeluarkan={view.summary?.rov?.excluded}.</p><details open><summary>Seluruh parameter dan sumber</summary><table className="uc-table"><tbody>{methodologyRows().slice(1).map(([key,value])=><tr key={key}><th>{key}</th><td className="break-all">{value}</td></tr>)}</tbody></table></details><ul className="text-sm">{snapshot.issues.map(i=><li key={i.id}>{i.severity==='error'?'Blokir':'Peringatan'}: {i.count} · {i.message}</li>)}</ul><p className="text-xs">Komponen biaya terbesar menjelaskan struktur biaya, bukan bukti sebab defisit. Tarif paket tidak dibagi ke komponen tanpa asumsi eksplisit.</p><div className="grid sm:grid-cols-3 gap-3 text-sm"><p>Disusun: __________<br/>Tanggal: __________</p><p>Diperiksa: __________<br/>Tanggal: __________</p><p>Disetujui: __________<br/>Tanggal: __________</p></div></section></>;}
+export function AnalysisBackupPanel(){
+ const role=useMethodologyStore(s=>s.role);
+ const lastBackup=useMethodologyStore(s=>s.lastBackup);
+ const count=useCostingStore(s=>s.rawRecords.length);
+ const [error,setError]=useState('');
+ const [password,setPassword]=useState('');
+ const [preview,setPreview]=useState<BackupPayload|null>(null);
+ const [busy,setBusy]=useState(false);
+ async function run(fn:()=>void|Promise<void>){
+  setBusy(true);setError('');
+  try{await fn();}catch(e){setError(e instanceof Error?e.message:String(e));}
+  finally{setBusy(false);}
+ }
+ async function download(){
+  const text=await createAnalysisBackup(password);
+  const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
+  const link=document.createElement('a');link.href=url;link.download='UnitCOSt-18-Cadangan-Terenkripsi.json';link.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  setPassword('');
+ }
+ async function readBackup(file:File){
+  setPreview(null);
+  if(file.size>250*1024*1024)throw new Error('Berkas melebihi 250 MB.');
+  setPreview(await previewAnalysisBackup(await file.text(),password));
+ }
+ return <details id="cadangan-sesi" className="uc-panel print:hidden">
+  <summary className="cursor-pointer font-semibold text-teal-950">Cadangan dan pemulihan sesi</summary>
+  <div className="mt-4 space-y-3">
+   <p className="text-sm text-slate-600">Muat ulang, keluar, atau tutup tab akan mengosongkan data sesi. Simpan cadangan terenkripsi dengan kata sandi minimal 12 karakter.</p>
+   {lastBackup&&<p className="text-xs text-slate-600">Cadangan terakhir {new Date(lastBackup).toLocaleString('id-ID')}</p>}
+   <label className="uc-label">Kata sandi cadangan<input className="uc-input" type="password" value={password} onChange={e=>{setPassword(e.target.value);setPreview(null);}}/></label>
+   <div className="flex flex-wrap items-end gap-3">
+    <button disabled={busy||password.length<12||!count} className="uc-secondary" onClick={()=>void run(download)}>Unduh cadangan</button>
+    <label className="uc-label">Pratinjau cadangan<input type="file" accept=".json" disabled={busy||password.length<12} onChange={e=>{const file=e.target.files?.[0];e.target.value='';if(file)void run(()=>readBackup(file));}}/></label>
+   </div>
+   {preview&&<div className="uc-notice"><p>{preview.rowCount} kasus · {preview.config.namaRS} · {preview.period?.label} · mengganti sesi {count} kasus.</p><button className="uc-secondary" disabled={busy||role==='Pembaca'} onClick={()=>void run(()=>{applyAnalysisBackup(preview);setPreview(null);setPassword('');})}>Pulihkan dan ganti sesi</button></div>}
+   {error&&<p role="alert" className="uc-error">{error}</p>}
+  </div>
+ </details>;
+}
+
+export function AnalysisReportVersions(){
+ const policy=useMethodologyStore();
+ const origin=useHospitalCostStore(s=>s.config.sourceOrigin);
+ const snapshot=useTarifPasienStore(s=>s.snapshot);
+ const local=useTarifPasienStore(s=>s.localCosting);
+ const {summary}=useAnalysisView();
+ const history=useAnalysisHistoryStore();
+ const [error,setError]=useState('');
+ if(!local||!summary||!snapshot)return null;
+ function save(state:'Draft'|'Review'|'Final'){
+  if(!local||!summary||!snapshot)return;
+  setError('');
+  try{history.save({period:local.period,state,local,summary},!snapshot.issues.some(i=>i.severity==='error')&&origin!=='simulasi'&&policy.settings.referenceVerified&&!analysisStale());}
+  catch(e){setError(e instanceof Error?e.message:String(e));}
+ }
+ return <details className="uc-panel print:hidden">
+  <summary className="cursor-pointer font-semibold text-teal-950">Versi laporan dan tren</summary>
+  <div className="mt-3 flex flex-wrap gap-2">{(['Draft','Review','Final'] as const).map(state=><button key={state} className="uc-secondary" onClick={()=>save(state)}>Simpan {state}</button>)}</div>
+  <p className="mt-2 text-xs text-slate-600">Periode dengan parameter atau populasi berbeda tidak langsung sebanding.</p>
+  {error&&<p role="alert" className="uc-error">{error}</p>}
+  {history.entries.length>0&&<div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>CMI</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td></tr>)}</tbody></table></div>}
+ </details>;
+}
+
+export function AnalysisReportDetails(){const snapshot=useTarifPasienStore(s=>s.snapshot);const view=useAnalysisView();if(!snapshot)return null;return <><AnalysisCostDetails/><section className="uc-panel space-y-3"><h2 className="font-semibold">DRAFT · Metodologi dan asumsi</h2><p className="text-sm">Hasil analisis bukan tarif final. Kelompok kecil memerlukan data tambahan. {view.summary?.populationLabel}. {snapshot.version} · {new Date(snapshot.at).toLocaleString('id-ID')}</p><div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Rawat</th><th>Pool JKN penuh</th><th>Pool HBR aktif</th><th>Dikecualikan</th><th>Casemix</th><th>HBR</th><th>Selisih identitas</th></tr></thead><tbody>{snapshot.local.pools.map(p=><tr key={p.care}><td>{p.care}</td><td>{money(p.total)}</td><td>{money(p.hbrPool??p.total)}</td><td>{money(p.policyExcluded||'0')}</td><td>{p.casemix===null?'Tidak tersedia':formatNumber(Number(p.casemix),3)}</td><td>{money(p.hbr)}</td><td>{p.identityDelta==='Tidak tersedia'?'Tidak tersedia':money(p.identityDelta||'0')}</td></tr>)}</tbody></table></div><p className="text-sm">ROV skala ln(UC positif): mentah {view.summary?.rov?.raw==null?'Tidak tersedia':formatNumber(view.summary.rov.raw*100,1)+'%'}; adjusted {view.summary?.rov?.adjusted==null?'Tidak tersedia':formatNumber(view.summary.rov.adjusted*100,1)+'%'}; validasi silang {view.summary?.rov?.crossValidated==null?'Tidak tersedia':formatNumber(view.summary.rov.crossValidated*100,1)+'%'}. {view.summary?.rov?.reason}. n={view.summary?.rov?.n}, k={view.summary?.rov?.k}, singleton={view.summary?.rov?.singletons}, dikeluarkan={view.summary?.rov?.excluded}.</p><details><summary>Seluruh parameter dan sumber</summary><table className="uc-table"><tbody>{methodologyRows().slice(1).map(([key,value])=><tr key={key}><th>{key}</th><td className="break-all">{value}</td></tr>)}</tbody></table></details><ul className="text-sm">{snapshot.issues.map(i=><li key={i.id}>{i.severity==='error'?'Blokir':'Peringatan'}: {i.count} · {i.message}</li>)}</ul><p className="text-xs">Komponen biaya terbesar menjelaskan struktur biaya, bukan bukti sebab defisit. Tarif paket tidak dibagi ke komponen tanpa asumsi eksplisit.</p><div className="grid sm:grid-cols-3 gap-3 text-sm"><p>Disusun: __________<br/>Tanggal: __________</p><p>Diperiksa: __________<br/>Tanggal: __________</p><p>Disetujui: __________<br/>Tanggal: __________</p></div></section></>;}
 
 
 

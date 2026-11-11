@@ -13,7 +13,7 @@ import {money,maskSEP} from '../v4/numbers';
 import * as XLSX from 'xlsx';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import PageIntro from '../components/ui/PageIntro';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import IDRGTariffPage from './IDRGTariffPage';
 import React, { useState, useEffect, useMemo } from 'react';
 import {buildBiayaRSMap,biayaRSMapToRVU} from '../stores/tarifPasienStore';
@@ -280,7 +280,7 @@ export default function TarifPasienPage() {
       {/* Tab 3: Hasil Cost per Pasien */}
       {activeTab === 'hasil' && rawRecords.length > 0 && !localCosting && (
         <div className="uc-notice" role="status">
-          <p>Unit cost pasien belum tersedia untuk sumber aktif. Gunakan <a href="#hitung-18-komponen" className="font-semibold underline">Hitung 18 komponen</a> setelah biaya RS terisi.</p>
+          <p>Unit cost pasien belum tersedia. Buka <Link to="/costing#hitung-18-komponen" className="font-semibold underline">Biaya &amp; Alokasi</Link> untuk menghitung.</p>
         </div>
       )}
       {activeTab === 'hasil' && (localCosting || !rawRecords.length) && (

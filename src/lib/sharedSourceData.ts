@@ -62,17 +62,21 @@ export async function shareSourceData(options:{claims?:boolean;costs?:boolean;ex
  const hasCosts=config.totalOverheadCost+config.totalIntermediateCost+config.totalFinalCost>0;
  if(!raw.length&&!hasCosts&&!options.excel)return;
  await useV4Store.getState().initialize();
- if(useV4Store.getState().busy){useV4Store.getState().cancel();await new Promise<void>(resolve=>setTimeout(resolve,0));}
  const workspace=useV4Store.getState().workspace;if(!workspace)return;
  const claims=options.onlyEmpty?workspace.input.claims.length===0&&raw.length>0:Boolean(options.claims);
  const costs=options.onlyEmpty?workspace.input.centers.length===0&&hasCosts:Boolean(options.costs);
  if(!claims&&!costs)return;
+ if(useV4Store.getState().busy){
+  if(options.onlyEmpty)return;
+  useV4Store.getState().cancel();
+  await new Promise<void>(resolve=>setTimeout(resolve,0));
+ }
  let imported=workspace.input;
  if(costs){if(options.excel){const result=importWorkbook(await options.excel.arrayBuffer(),workspace.input);imported={...result.input,importIssues:[...(result.input.importIssues||[]),...result.warnings.map(message=>({code:'V22',severity:'warning' as const,message}))]};}else imported=sharedCostInput(config,workspace.input);}
  // Reset/logout/new upload invalidates any pending read of an old source.
  if(useV4Store.getState().workspace!==workspace||useCostingStore.getState().rawRecords!==raw||useHospitalCostStore.getState().config!==config)return;
  const deferred=claims&&options.deferLargeClaims&&!shouldAutoAnalyse(raw.length);
  const transferred=claims?(deferred?{claims:[],issues:[{code:'V24',severity:'warning' as const,message:'Data besar tersimpan di sumber bersama; rincian analisis terintegrasi disiapkan saat ruang tersebut dibuka.'}]}:await sharedClaimsAsync(raw,useCostingStore.getState().sessions.find(s=>s.id===useCostingStore.getState().activeSessionId)?.filename)):null;
- if(raw!==useCostingStore.getState().rawRecords||!useV4Store.getState().workspace)return;
+ if(raw!==useCostingStore.getState().rawRecords||config!==useHospitalCostStore.getState().config||useV4Store.getState().workspace!==workspace)return;
  await useV4Store.getState().update(current=>({...current,...(costs?{hospital:imported.hospital,workbookSource:imported.workbookSource,centers:imported.centers,settings:imported.settings,mappingVersion:current.mappingVersion+1}:{}),...(transferred?{claims:transferred.claims}:{}),importIssues:[...(costs?imported.importIssues||[]:current.importIssues||[]),...(transferred?.issues||[])],corrections:[]}),`Data sumber bersama: ${claims?'klaim ':''}${costs?'biaya RS':''}; hasil tiap metode perlu dihitung sendiri`);
 }

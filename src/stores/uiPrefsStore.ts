@@ -14,7 +14,7 @@ interface UiPrefsState {
 export const useUiPrefsStore = create<UiPrefsState>()(
   persist(
     (set) => ({
-      beginnerMode: true,
+      beginnerMode: false,
       setBeginnerMode: (beginnerMode) => set({ beginnerMode }),
     }),
     { storage:sessionMemoryStorage,

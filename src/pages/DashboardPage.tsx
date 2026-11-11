@@ -20,7 +20,7 @@ import {
   Users, AlertTriangle,
   Upload, Activity, FileBarChart2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 
 const COLORS = {
@@ -104,7 +104,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <AnalysisFilters/>
-      <PageIntro title="Ringkasan hasil analisis" what="Halaman ini menampilkan total biaya, tarif dan kasus pada populasi ringkasan, serta jumlah kelompok DRG menurut status finansial. Kepastian statistik ditampilkan terpisah." result="Gunakan stepper di atas untuk melanjutkan ke langkah berikutnya." />
+      <PageIntro title="Ringkasan hasil analisis" what="Tinjau total biaya, tarif, kasus, dan status finansial kelompok DRG." result="Buka Hasil Pasien atau Perbandingan untuk melihat rinciannya." />
       <div>
         <h1 className="text-2xl font-bold text-[#17645D] tracking-tight">Dashboard Overview</h1>
         <p className="text-gray-500 mt-1">Ringkasan implementasi Patient Level Costing</p>
@@ -161,10 +161,10 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3">
               <Activity className="w-5 h-5 text-amber-500" />
-              <p className="text-sm font-medium text-gray-500">Case Mix Index</p>
+              <p className="text-sm font-medium text-gray-500">Case Mix Index lokal</p>
             </div>
             <p className="text-3xl font-bold text-gray-900 truncate">{summaryMetricText(summary,'cmi')}</p>
-            <p className="text-xs text-gray-400 mt-1">Cost Weight Rata-rata</p>
+            <p className="text-xs text-gray-500 mt-1">Rata-rata CW hasil costing RS</p>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>
@@ -211,6 +211,41 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {view.weightComparison.length > 0 && (
+        <section className="uc-panel space-y-3" aria-labelledby="dashboard-cw-title">
+          <h2 id="dashboard-cw-title" className="font-semibold text-teal-950">Cost Weight RS dan bobot iDRG dari TXT</h2>
+          <p className="text-sm text-slate-600">
+            CW lokal membagi rata-rata biaya kelompok dengan rata-rata biaya acuan RS untuk jenis rawat yang sama.
+            Karena skala ini, rata-ratanya dapat mendekati 1 meskipun CW antar kelompok berbeda.
+          </p>
+          <div className="uc-table-scroll">
+            <table className="uc-table">
+              <thead><tr><th scope="col">Jenis rawat</th><th scope="col">CW lokal RS</th><th scope="col">CW iDRG dari TXT</th></tr></thead>
+              <tbody>{view.weightComparison.map(({care,cases,local,source,sourceBaseCount}) => (
+                <tr key={care}>
+                  <th scope="row">{care===1?'Rawat inap':'Rawat jalan'}</th>
+                  {[local,source].map((stats,index) => (
+                    <td key={index}>
+                      {stats ? (
+                        <>
+                          <strong>Rata-rata {formatNumber(stats.average,3)}</strong>
+                          <p className="text-xs text-slate-600">
+                            Rentang {formatNumber(stats.min,3)}–{formatNumber(stats.max,3)} · {formatNumber(stats.count)} dari {formatNumber(cases)} kasus
+                            {index===1&&sourceBaseCount>0&&` · ${formatNumber(sourceBaseCount)} memakai CW dasar`}
+                          </p>
+                        </>
+                      ) : 'Tidak tersedia'}
+                    </td>
+                  ))}
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-600">Kolom TXT memakai total CW iDRG jika tersedia. Kasus dengan total CW kosong dapat memakai CW dasar dari TXT yang sama.</p>
+          <Link className="inline-block text-sm font-semibold text-teal-800 underline" to="/tarif-pasien?tab=tarif">Lihat CW lokal per kelompok iDRG</Link>
+        </section>
+      )}
 
       <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi ln(UC) dalam kelompok ÷ variasi ln(UC) seluruh kasus positif. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik memakai UC seluruh kasus valid pada skala rupiah, sehingga skalanya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>
       {/* Selisih Alert */}

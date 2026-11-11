@@ -12,7 +12,7 @@ export const templateRules=[
  'Isi 0 hanya jika nilai memang nol. Nilai yang belum tersedia perlu dicatat dan diperiksa; kolom biaya kosong ditandai sebagai data belum lengkap. Rumus tanpa hasil tersimpan harus dihitung ulang di Excel lalu disimpan.',
  'CW proxy tagihan RS: cleaning → normalisasi komponen → trimming geometrik ±3 SD → CW. Acuan unggahan lokal, terpisah dari CW biaya RS.',
  'Trimming hasil biaya RS: di luar rata-rata ±2 SD sampel per iDRG dan jenis rawat. CW memakai inlier; seluruh biaya outlier tetap masuk pool HBR dan kasusnya masuk casemix.',
- 'Distribusi Analisis 18 Komponen: Kamar memakai LOS dan ICU memakai hari ICU jika lengkap; cadangan episode diberi peringatan. Rasio biaya/tagihan di luar 0,2–5 perlu ditinjau.',
+ 'Distribusi Analisis 18 Komponen: Kamar memakai LOS dan ICU memakai hari ICU jika lengkap; cadangan episode diberi peringatan. Rasio biaya/tagihan di luar 0,5–5 (bawaan) perlu ditinjau.',
  'Satu biaya dicatat sekali. Periksa apakah gaji, jasa medis, operasional, dan penyusutan sudah saling terpisah.',
  'Contoh dalam panduan adalah data sintetis. Jangan menyalinnya sebagai data RS sebenarnya.',
 ];

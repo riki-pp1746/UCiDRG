@@ -135,13 +135,34 @@ describe('Analisis tambahan setelah login',()=>{
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
       const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
       const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4'+(path==='/'?'':path)]},createElement(AppRoutes)));
-      expect(html).toContain(title);if(['/upload','/costing','/tarif-pasien','/compare','/reports'].includes(path))expect(html).toContain('DARI 5');expect(html).toContain('href="/revisi4/upload"');
+      expect(html).toContain(title);
+      expect(html).not.toContain('aria-label="Tahapan kerja"');
+      expect(html.includes('>Hitung unit cost</button>')).toBe(path==='/costing');
+      expect(html).toContain('href="/revisi4/upload"');
     });
   }
   it('menahan unduh ketika input berubah setelah dihitung',()=>{
     const result=snap();const w=workspace();w.version=2;useV4Store.setState({workspace:w,snapshots:[result],selected:result.id,busy:false,error:''});
     const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/reports']},createElement(AppRoutes)));
     expect(html).toContain('Ekspor ditahan');expect(html).toMatch(/disabled=""[^>]*>Unduh Excel/);expect(html).toContain('Perlu dihitung ulang');
+  });
+  it('dashboard terintegrasi mengarahkan pengguna sesuai kesiapan data sumber',()=>{
+    const render=()=>renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/dashboard']},createElement(AppRoutes)));
+    useV4Store.setState({workspace:workspace(initialInput()),snapshots:[],selected:null,busy:false,error:''});
+    const empty=render();
+    expect(empty).toContain('Dashboard Biaya Terintegrasi');
+    expect(empty).toMatch(/href="\/revisi4\/upload"[^>]*>Buka Data sumber/);
+    expect(empty).not.toContain('Total biaya JKN</small>');
+
+    const claimsOnly=fixture();claimsOnly.centers=[];
+    useV4Store.setState({workspace:workspace(claimsOnly)});
+    expect(render()).toContain('Lengkapi biaya RS');
+
+    useV4Store.setState({workspace:workspace()});
+    const ready=render();
+    expect(ready).toContain('2 klaim · 2 pusat layanan final');
+    expect(ready).toContain('>Hitung unit cost</button>');
+    expect(ready).not.toContain('Panduan lima tahap kerja');
   });
 });
 
@@ -167,5 +188,14 @@ it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/upload']},createElement(AppRoutes)));
  expect(html).toContain('value="integrated" selected=""');
  for(const path of ['dashboard','upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="/revisi4/${path}"`);
- expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).toContain('Data kedua ruang hanya berada di memori');
+ expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).not.toContain('Data kedua ruang hanya berada di memori');
+});
+
+it('menempatkan perhitungan dan cadangan pada halaman masing-masing',()=>{
+ for(const path of ['/','/upload','/costing','/dashboard','/tarif-pasien','/compare','/reports','/settings']){
+   const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[path]},createElement(AppRoutes)));
+   expect(html.includes('id="hitung-18-komponen"')).toBe(path==='/costing');
+   expect(html.includes('id="cadangan-sesi"')).toBe(path==='/settings');
+   expect(html).not.toContain('Bantuan halaman');
+ }
 });
