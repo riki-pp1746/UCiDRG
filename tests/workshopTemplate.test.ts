@@ -16,8 +16,8 @@ function filled(){
  book.Sheets['Data Dasar RS'].B2={t:'s',v:'RS Uji Workshop'};book.Sheets['Data Dasar RS'].B5={t:'n',v:2025};sheet.B2={t:'n',v:2025};
  return book;
 }
-it('bundles exact source bytes with protection and operational definitions preserved',()=>{
- expect(createHash('sha256').update(bytes()).digest('hex')).toBe('5a90a36fe0a932cf22ca304e7e896f2edf2908dac69dc9d8877a175e744f5eed');
+it('preserves the workshop template and appends the HBR input block',()=>{
+ expect(createHash('sha256').update(bytes()).digest('hex')).toBe('886f33339faffefd1fbca29229db1bfd10be63ba6848a3e01c4b456202d26045');
  const book=XLSX.read(bytes(),{type:'buffer'});expect(costingWorkbookFormat(book)).toBe('workshop-do');expect(book.SheetNames).toHaveLength(6);expect(book.Sheets['Data Dasar RS'].D1.v).toContain('Definisi');
 });
 it('rejects untouched template formulas with empty cached results instead of treating them as zero',()=>{const b=bytes();expect(()=>importWorkbook(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),initialInput())).toThrow(/hitung ulang/);});

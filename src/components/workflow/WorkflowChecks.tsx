@@ -20,7 +20,7 @@ export default function WorkflowChecks({ workflow }: { workflow: AnalysisWorkflo
       ['Tingkat','Temuan','Jumlah','Bagian terkait'],
       ...checks.map(check=>[check.severity==='error'?'Memblokir':check.severity==='warning'?'Catatan':'Informasi',check.message,check.count,check.source]),
     ]),'Pemeriksaan data');
-    XLSX.writeFile(book,'Pemeriksaan-Data-UnitCOSt.xlsx');
+    XLSX.writeFile(book,'Pemeriksaan-Data-SiBiPa.xlsx');
   }
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -37,7 +37,7 @@ export default function WorkflowChecks({ workflow }: { workflow: AnalysisWorkflo
         {key:'claims',cells:['Kasus',formatNumber(workflow.raw.length),result?formatNumber(result.local.patients.length):'Belum dihitung',result?formatNumber(workflow.raw.length-result.local.patients.length):'—']},
       ]}/>
     </section>}
-    {workflow.canCalculate?<p className="uc-notice">Pemeriksaan sumber lolos. {workflow.resultBlockers.length>0?'Tinjau temuan hasil sebelum menjalankan ulang perhitungan.':'Tahap Alokasi Biaya sudah dapat dibuka.'}</p>:<p className="uc-error">Selesaikan {workflow.sourceBlockers.length} temuan yang memblokir untuk membuka Alokasi Biaya.</p>}
+    {workflow.canCalculate?<p className="uc-notice">Tidak ada temuan yang memblokir perhitungan. {checks.some(check=>check.severity==='warning')?'Catatan peninjauan masih perlu diperhatikan. ':''}{workflow.resultBlockers.length>0?'Tinjau temuan hasil sebelum menjalankan ulang perhitungan.':'Tahap Alokasi Biaya sudah dapat dibuka.'}</p>:<p className="uc-error">Selesaikan {workflow.sourceBlockers.length} temuan yang memblokir untuk membuka Alokasi Biaya.</p>}
     {workflow.config.sourceOrigin==='contoh'&&<Link className="uc-secondary" to="/alur/profil-rs">Ganti data contoh di Tahap 1</Link>}
   </div>;
 }

@@ -1,23 +1,11 @@
+import BrandLogo from '../components/ui/BrandLogo';
 import { useState, useEffect, type FormEvent } from 'react';
 import { authConfigured, useAuthStore } from '../stores/authStore';
-import { APP_METHOD, APP_NAME } from '../lib/appBrand';
+import { APP_FULL_NAME, APP_METHOD, APP_NAME } from '../lib/appBrand';
 import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 import LoginCaptcha from '../components/auth/LoginCaptcha';
 import LoginDataAgreement from '../components/auth/LoginDataAgreement';
 import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, Eye, EyeOff } from 'lucide-react';
-
-// ============================================================
-// COMPONENT: Custom Logo SVG (Professional & Elegant)
-// ============================================================
-export function BrandLogo({ className = "w-12 h-12" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <rect width="48" height="48" rx="11" fill="#007D76" />
-      <path d="M11 14v12a8 8 0 0 0 8 8h3" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" />
-      <path d="M27 33v-7m6 7V21m6 12V14" stroke="#D6EA87" strokeWidth="3.5" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export default function LoginPage() {
  const [mode, setMode] = useState<'login' | 'register'>('login');
@@ -121,8 +109,9 @@ export default function LoginPage() {
       <circle cx="400" cy="156" r="4" fill="currentColor"/>
      </g>
     </svg>
-    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_METHOD}</small></div></div>
+    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_FULL_NAME}</small></div></div>
     <div className="uc-login-story-content">
+     <p className="uc-login-method">{APP_METHOD}</p>
      <h1 id="login-story-title">Hitung biaya tiap pasien</h1>
      <p>Biaya rumah sakit dialokasikan ke tiap kunjungan atau rawat inap. Bandingkan hasilnya dengan tarif klaim iDRG.</p>
     </div>

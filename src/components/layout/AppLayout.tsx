@@ -8,8 +8,8 @@ import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
 import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
-import { BrandLogo } from '../../pages/LoginPage';
-import { APP_NAME } from '../../lib/appBrand';
+import BrandLogo from '../ui/BrandLogo';
+import { APP_NAME, APP_FULL_NAME } from '../../lib/appBrand';
 import { useAnalysisWorkflow, workflowStatus } from '../../hooks/useAnalysisWorkflow';
 import { workflowPath, workflowSection, workflowStages } from '../../lib/workflowNavigation';
 
@@ -138,7 +138,7 @@ export default function AppLayout() {
         <div className="flex h-17 shrink-0 items-center gap-3 border-b border-white/15 px-5">
           <BrandLogo className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
-            <p className="text-base font-bold tracking-tight text-white">{APP_NAME}</p>
+            <p className="text-base font-bold tracking-tight text-white" title={APP_FULL_NAME}>{APP_NAME}</p>
             <p className="truncate text-xs text-[#bbd6d1]" title={user?.namaRS}>{user?.namaRS || 'Costing rumah sakit'}</p>
           </div>
           <button ref={closeButton} type="button" aria-label="Tutup menu" onClick={closeMobileMenu} className="grid size-11 shrink-0 place-items-center rounded-md text-white hover:bg-white/10 lg:hidden">

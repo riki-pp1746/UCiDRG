@@ -26,7 +26,7 @@ export async function saveSnapshot(snapshot:Snapshot){
 /** Remove the old persisted database; current analysis never opens it. */
 export async function purgeLegacyDatabase(){
   if(typeof indexedDB==='undefined')return;
-  await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(DB);request.onsuccess=()=>resolve();request.onerror=()=>reject(new Error('Data lama belum dapat dibersihkan.'));request.onblocked=()=>reject(new Error('Tutup tab UnitCOSt lain, lalu muat ulang untuk membersihkan penyimpanan lama.'));});
+  await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(DB);request.onsuccess=()=>resolve();request.onerror=()=>reject(new Error('Data lama belum dapat dibersihkan.'));request.onblocked=()=>reject(new Error('Tutup tab SiBiPa lain, lalu muat ulang untuk membersihkan penyimpanan lama.'));});
 }
 export const hash=async(value:unknown)=>{
   const bytes=new TextEncoder().encode(JSON.stringify(value));

@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react';
 
-export default function WorkflowTable({ label, columns, rows, numeric = [] }: {
+export default function WorkflowTable({ label, columns, rows, numeric = [], minWidth }: {
   label: string;
   columns: ReactNode[];
   rows: { key: string; cells: ReactNode[] }[];
   numeric?: number[];
+  minWidth?: number;
 }) {
   return <div className="uc-table-scroll max-h-[36rem]" role="region" aria-label={label} tabIndex={0}>
-    <table className="uc-table">
+    <table className="uc-table" style={minWidth?{minWidth}:undefined}>
       <thead className="sticky top-0 z-10 bg-slate-100"><tr>{columns.map((column,index)=><th key={index} scope="col" className={index===0?'sticky left-0 z-10 bg-slate-100':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{column}</th>)}</tr></thead>
       <tbody>{rows.map(row=><tr key={row.key}>{row.cells.map((cell,index)=><td key={index} className={index===0?'sticky left-0 bg-white font-medium text-teal-950':numeric.includes(index)?'whitespace-nowrap tabular-nums':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr>)}</tbody>
     </table>

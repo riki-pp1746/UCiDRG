@@ -128,6 +128,14 @@ export interface FinalCenter {
 // Informasi operasional tingkat RS keseluruhan
 // ============================================================
 export interface DataDasarRS {
+  // Optional HBR inputs: blank is distinct from a confirmed zero.
+  hbrPendapatanInap?: number;
+  hbrPendapatanJalan?: number;
+  hbrProporsiInap?: number;
+  hbrKasusInap?: number;
+  hbrKasusJalan?: number;
+  hbrBasis?: number; // 0 revenue, 1 manual percentage, 2 TXT billing proxy
+  hbrAsumsiKeparahan?: number; // 1 = explicitly accepted
   bor: number;                    // Bed Occupancy Rate (%)
   alos: number;                   // Average Length of Stay (hari)
   jumlahTempaTidur: number;       // Total tempat tidur RS

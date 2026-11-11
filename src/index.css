@@ -444,3 +444,30 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 }
 @keyframes uc-fade-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
 @media (max-width:640px) { .uc-panel { @apply p-4; } }
+/* Financial results: one palette, explicit labels, no color-only meaning. */
+.uc-financial-badge { display:inline-flex; align-items:center; gap:7px; border:1px solid; border-radius:999px; padding:5px 10px; font-size:11px; font-weight:650; line-height:1.3; white-space:nowrap; }
+.uc-financial-badge > span { width:5px; height:5px; border-radius:50%; background:currentColor; }
+.uc-financial-badge--positive { color:#176347; background:#EDF8F1; border-color:#CBE6D6; }
+.uc-financial-badge--negative { color:#A1333D; background:#FEF1F1; border-color:#F0CDD0; }
+.uc-financial-badge--balanced { color:#916515; background:#FFF8E8; border-color:#EBD9AB; }
+.uc-financial-badge--neutral { color:#586575; background:#F2F4F7; border-color:#DCE2E8; }
+.uc-financial-value { font-weight:650; font-variant-numeric:tabular-nums; }
+.uc-financial-value--positive { color:#176347; }
+.uc-financial-value--negative { color:#A1333D; }
+.uc-financial-value--balanced { color:#916515; }
+.uc-financial-value--neutral { color:#586575; }
+.uc-workspace-shell .uc-panel { border-color:#DDE7E3; border-radius:18px; box-shadow:0 3px 16px #193E3506; }
+.uc-workspace-shell .uc-table th { background:#F5F7F5; color:#4C625D; letter-spacing:.01em; font-weight:650; }
+.uc-workspace-shell .uc-table tbody tr:nth-child(even) { background:#FAFCFB; }
+.uc-workspace-shell .uc-table tbody tr:hover { background:#F0F7F3; }
+.uc-workspace-shell .uc-primary { background:#164E47; border-color:#164E47; box-shadow:0 2px 5px #0E3E3512; }
+.uc-workspace-shell .uc-primary:hover { background:#103F39; border-color:#103F39; }
+.uc-workspace-shell .uc-secondary { background:#FFFFFF; border-color:#D4DED8; }
+.uc-hbr-card { padding:24px; border:1px solid #DBE6E0; border-top:3px solid #B99D66; border-radius:16px; background:linear-gradient(145deg,#FFFFFF,#F7FAF7); box-shadow:0 5px 18px #183D3405; }
+.uc-hbr-card > h3 { color:#28584D; font-size:13px; letter-spacing:.035em; }
+@media(max-width:640px) { .uc-hbr-card { padding:18px; } }
+
+.uc-login-method { color:#C8D9CF; font-size:12px; font-weight:500; letter-spacing:.02em; margin-bottom:14px; }
+.uc-login-story { background-color:#123F3C; }
+.uc-login-brand strong { letter-spacing:-.04em; font-size:27px; }
+.uc-login-brand small { color:#C8D9CF; }

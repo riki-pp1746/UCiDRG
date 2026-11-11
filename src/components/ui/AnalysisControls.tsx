@@ -135,7 +135,7 @@ export function AnalysisBackupPanel(){
  async function download(){
   const text=await createAnalysisBackup(password);
   const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
-  const link=document.createElement('a');link.href=url;link.download='UnitCOSt-18-Cadangan-Terenkripsi.json';link.click();
+  const link=document.createElement('a');link.href=url;link.download='SiBiPa-Cadangan-Terenkripsi.json';link.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   setPassword('');
  }

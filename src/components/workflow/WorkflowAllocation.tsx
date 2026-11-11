@@ -1,3 +1,4 @@
+import { allocationPresentation } from '../../lib/allocationPresentation';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import type { AnalysisWorkflow } from '../../hooks/useAnalysisWorkflow';
@@ -103,7 +104,13 @@ export default function WorkflowAllocation({workflow,section}:{workflow:Analysis
         <button type="button" className={tab==='matrix'?'uc-primary':'uc-secondary'} aria-pressed={tab==='matrix'} onClick={()=>setTab('matrix')}>Matriks pusat biaya</button>
         <button type="button" className={tab==='total'?'uc-primary':'uc-secondary'} aria-pressed={tab==='total'} onClick={()=>setTab('total')}>Total per komponen</button>
       </nav>
-      {tab==='total'?<WorkflowTable label="Total 18 komponen" columns={['Komponen','Biaya JKN (Rp)','Tagihan (Rp)','Dasar distribusi','Belum teralokasi (Rp)']} numeric={[1,2,4]} rows={distribusi.map(row=>({key:row.key,cells:[componentName(row.key),formatNumber(row.totalBiayaRS),formatNumber(row.totalEKlaim),row.metodeAlokasi,formatNumber(Number(row.unallocated))]}))}/>:<>
+      {tab==='total'?<>
+        <p className="text-sm text-slate-600">Sisa belum teralokasi Rp0 berarti seluruh biaya komponen telah dibagikan ke pasien. Jika biaya komponen juga Rp0, tidak ada biaya yang perlu dialokasikan.</p>
+        <WorkflowTable label="Total 18 komponen" columns={['Komponen','Biaya JKN (Rp)','Sudah teralokasi (Rp)','Sisa belum teralokasi (Rp)','Status alokasi','Tagihan (Rp)','Dasar distribusi']} numeric={[1,2,3,5]} rows={distribusi.map(row=>{
+          const allocation=allocationPresentation(row.totalBiayaRS,row.unallocated);
+          return {key:row.key,cells:[componentName(row.key),formatNumber(row.totalBiayaRS),allocation.allocated===null?'—':formatNumber(allocation.allocated),row.unallocated===undefined?'—':formatNumber(Number(row.unallocated)),allocation.status,formatNumber(row.totalEKlaim),row.metodeAlokasi]};
+        })}/>
+      </>:<>
         <p className="text-sm text-slate-600">Nilai tahunan dalam rupiah. Geser tabel untuk melihat seluruh komponen.</p>
         <WorkflowTable label="Matriks pusat biaya dan komponen" columns={['Pusat biaya',...ALL_KOMPONEN_KEYS.map(componentName)]} numeric={ALL_KOMPONEN_KEYS.map((_,index)=>index+1)} rows={entries.slice(safePage*25,safePage*25+25).map(([key,row])=>({key,cells:[row.name,...ALL_KOMPONEN_KEYS.map(component=>formatNumber(row.values[component]??0))]}))}/>
         <WorkflowPager count={entries.length} page={safePage} setPage={setPage}/>

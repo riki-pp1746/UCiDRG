@@ -1,3 +1,5 @@
+import { FinancialBadge } from '../components/ui/FinancialStatus';
+import { financialTone } from '../lib/financialPresentation';
 import {financialLabel,summaryMetricText} from '../lib/analysisSnapshot';
 import {useAnalysisView} from '../hooks/useAnalysisView';
 import {rankFinancialImpact} from '../lib/calculations/financialImpact';
@@ -144,13 +146,11 @@ export default function DashboardPage() {
             <div className="bg-teal-50 p-2.5 rounded-xl">
               <Activity className="w-6 h-6 text-teal-600" />
             </div>
-            <span className={clsx("px-2.5 py-1 text-xs font-bold rounded-full", summary.financialStatus==='UNTUNG' ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700")}>
-              {financialLabel(summary.financialStatus)}
-            </span>
+            <FinancialBadge status={summary.financialStatus} label={financialLabel(summary.financialStatus)}/>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-500 mb-1">Cost Recovery Rate (CRR)</p>
-            <p className={clsx("text-4xl font-bold tracking-tight truncate", summary.financialStatus==='UNTUNG' ? "text-green-600" : "text-red-600")}>
+            <p className={"text-4xl font-bold tracking-tight truncate uc-financial-value--"+financialTone(summary.financialStatus)}>
               {summaryMetricText(summary,'crr')}
             </p>
             <p className="text-xs text-gray-400 mt-2">Tarif {viewMode} / Unit Cost RS</p>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
           <summary className="cursor-pointer font-semibold text-teal-950">Rincian CW RS dan pembanding bobot iDRG TXT</summary>
           <p className="text-sm text-slate-600">
             CW RS = rata-rata biaya DRG ÷ rata-rata biaya seluruh DRG pada jenis rawat yang sama (rata-rata tertimbang kasus).
-            CMI = jumlah bobot kasus ÷ jumlah kasus. CMI RS dari CW RS adalah angka utama; bobot TXT hanya pembanding.
+            CMI = jumlah bobot kasus ÷ jumlah kasus. CMI iDRG memakai CW asli TXT. CW RS dihitung per DRG; rata-rata tertimbangnya adalah CMI lokal.
           </p>
           <div className="uc-table-scroll">
             <table className="uc-table">

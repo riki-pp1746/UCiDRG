@@ -1,3 +1,4 @@
+import HbrRevenueInputs from '../components/costing/HbrRevenueInputs';
 import {useMethodologyStore} from '../stores/methodologyStore';
 import {analysisStale, calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
@@ -765,6 +766,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
           </div>
 
           }
+          {(!section||section==='finance')&&<HbrRevenueInputs/>}
           {(!section||section==='finance')&&
           (config.dataDasar.pendapatanJKN > 0 || config.dataDasar.biayaGajiTotal > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

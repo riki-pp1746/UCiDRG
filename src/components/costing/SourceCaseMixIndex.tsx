@@ -1,15 +1,14 @@
-﻿import {useState} from 'react';
+import {useState} from 'react';
 import {Link} from 'react-router-dom';
 import type {AnalysisView} from '../../lib/analysisSnapshot';
 import {formatNumber} from '../../lib/calculations/patientLevelCosting';
 import {inpatientCmiStudy,inpatientCmiStudyRows} from '../../lib/analysisFormulas';
-import {compareCw,cwStatusLabel} from '../../lib/calculations/cwCompare';
 import {useAuthStore} from '../../stores/authStore';
-import {Badge,CompareBar,EmptyState,StatCard} from '../ui/Kit';
+import {EmptyState,StatCard} from '../ui/Kit';
 
 const careName=(care:number)=>care===1?'Rawat inap':'Rawat jalan';
 
-/** CMI = jumlah bobot kasus ÷ jumlah kasus. Angka utama memakai CW RS; CW TXT hanya pembanding. */
+/** CMI uses original TXT weights; local cost weights retain their separate cost basis. */
 export default function SourceCaseMixIndex({rows,compact=false}:{rows:AnalysisView['weightComparison'];compact?:boolean}){
   const inpatient=rows.find(row=>row.care===1);
   const hospitalClass=useAuthStore(state=>state.user?.hospitalClass);
@@ -17,24 +16,20 @@ export default function SourceCaseMixIndex({rows,compact=false}:{rows:AnalysisVi
   return <section aria-label="Case Mix Index" className={compact?'space-y-3':'space-y-5'}>
     <div>
       <h2 className={compact?'text-sm font-medium text-slate-600':'text-lg font-semibold text-teal-950'}>Case Mix Index (CMI) RS</h2>
-      {!compact&&<p className="mt-1 text-sm text-slate-600">CMI = jumlah bobot relatif seluruh kasus ÷ total jumlah kasus. Angka utama dihitung dari CW RS (unit cost RS); CW TXT hanya sebagai pembanding.</p>}
+      {!compact&&<p className="mt-1 text-sm text-slate-600">CMI = jumlah bobot relatif seluruh kasus ÷ total jumlah kasus. CMI memakai CW iDRG asli dari TXT dan dihitung terpisah untuk rawat inap dan rawat jalan.</p>}
     </div>
-    {!rows.length?<EmptyState title="CMI belum tersedia">Hitung unit cost RS agar CW RS terbentuk pada populasi ini.</EmptyState>:<div className={compact?'space-y-4':'grid gap-4 lg:grid-cols-2'}>{rows.map(row=>{
-      const cmp=compareCw(row.local?.average,row.source?.average);
-      return <article key={row.care} className="space-y-3">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <StatCard primary label={`CMI RS · ${careName(row.care)}`} value={row.local?formatNumber(row.local.average,2):'Tidak tersedia'} hint={row.local?`${formatNumber(row.local.count)} dari ${formatNumber(row.cases)} kasus memiliki CW RS.`:'CW RS belum dapat dihitung pada populasi ini.'} badge={cmp.status!=='tidak-tersedia'&&<Badge tone={cmp.status==='sepadan'?'teal':'amber'}>{cwStatusLabel[cmp.status]}</Badge>}/>
-          <StatCard label="CMI TXT (pembanding)" value={row.source?formatNumber(row.source.average,2):'Tidak tersedia'} hint={row.source?`${formatNumber(row.source.count)} kasus memiliki CW TXT${row.sourceBaseCount>0?`; ${formatNumber(row.sourceBaseCount)} memakai CW dasar`:''}.`:'CW TXT tidak tersedia pada klaim ini.'}/>
-        </div>
-        {!compact&&<CompareBar rs={row.local?.average??null} txt={row.source?.average??null}/>}
-      </article>;})}</div>}
+    {!rows.length?<EmptyState title="CMI belum tersedia">Unggah klaim dengan kode iDRG dan CW sumber yang valid, lalu hitung analisis.</EmptyState>:<div className="grid gap-4 sm:grid-cols-2">{rows.map(row=><StatCard key={row.care} primary label={`CMI iDRG · ${careName(row.care)}`} value={row.source?formatNumber(row.source.average,2):'Tidak tersedia'} hint={row.source?`${formatNumber(row.source.count)} dari ${formatNumber(row.cases)} kasus memiliki CW TXT${row.sourceBaseCount>0?`; ${formatNumber(row.sourceBaseCount)} memakai CW dasar`:''}.`:'CW iDRG dari TXT belum tersedia. CW lokal tidak digunakan sebagai pengganti.'}/>)}</div>}
+    {!compact&&<details className="rounded-xl border border-slate-200 p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-teal-900">CMI lokal berbasis CW RS</summary>
+      <p className="mt-3 text-sm text-slate-600">CW RS per DRG = rata-rata biaya DRG ÷ rata-rata biaya seluruh kasus RS pada jenis rawat yang sama. Karena memakai biaya RS sendiri sebagai acuan, rata-rata tertimbang seluruh CW RS menjadi 1. Bobot masing-masing DRG tetap dapat berbeda. Indeks ini tidak menunjukkan tingkat kompleksitas RS terhadap acuan nasional.</p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">{rows.map(row=><StatCard key={row.care} label={`CMI lokal · ${careName(row.care)}`} value={row.local?formatNumber(row.local.average,2):'Tidak tersedia'} hint={row.local?`Rentang CW RS ${formatNumber(row.local.min,2)}–${formatNumber(row.local.max,2)}; ${formatNumber(row.local.count)} kasus.`:'CW RS belum tersedia.'}/>)}</div>
+    </details>}
     <details className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <summary className="cursor-pointer text-sm font-semibold text-teal-900">Bandingkan CMI rawat inap dengan hasil penelitian</summary>
       <div className="mt-3 space-y-3">
         {!hospitalClass?<p className="text-sm text-slate-700"><Link to="/profile" className="font-medium text-teal-800 underline underline-offset-2">Atur kelas RS di Profil Pengguna</Link> untuk melihat hasil penelitian pada kelas yang sama.</p>:<>
-        <p className="text-sm text-slate-700">CMI rawat inap RS kelas {hospitalClass} dari CW RS <strong className="tabular-nums text-teal-900">{inpatient?.local?formatNumber(inpatient.local.average,3):'belum tersedia'}</strong>
-          {inpatient?.local&&<> ({formatNumber(inpatient.local.count)} dari {formatNumber(inpatient.cases)} kasus memiliki CW RS)</>}.
-          {inpatient?.source&&<span className="text-slate-500"> Pembanding TXT: {formatNumber(inpatient.source.average,3)}.</span>}
+        <p className="text-sm text-slate-700">CMI rawat inap RS kelas {hospitalClass} dari CW iDRG TXT <strong className="tabular-nums text-teal-900">{inpatient?.source?formatNumber(inpatient.source.average,3):'belum tersedia'}</strong>
+          {inpatient?.source&&<> ({formatNumber(inpatient.source.count)} dari {formatNumber(inpatient.cases)} kasus memiliki CW iDRG TXT)</>}.
         </p>
         <label className="flex flex-wrap items-center gap-2 text-xs text-slate-600">Tahun penelitian
           <select className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-teal-950" value={year} onChange={event=>setYear(event.target.value==='2019'?2019:2020)}>

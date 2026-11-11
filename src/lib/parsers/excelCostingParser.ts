@@ -1,3 +1,4 @@
+import { hbrInputLabels, type HbrInputKey } from '../calculations/revenueHbr';
 // ============================================================
 // PARSER: excelCostingParser.ts
 // Membaca Template Costing.xlsx (format "Costing Dummy" sheet)
@@ -85,7 +86,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        if(workbook.Sheets['Metadata UnitCOSt']){const metadata=XLSX.utils.sheet_to_json(workbook.Sheets['Metadata UnitCOSt'],{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
+        if(workbook.Sheets['Metadata SiBiPa']||workbook.Sheets['Metadata UnitCOSt']){const metadata=XLSX.utils.sheet_to_json(workbook.Sheets['Metadata SiBiPa']||workbook.Sheets['Metadata UnitCOSt'],{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
 
         // Data dasar disimpan pada sheet tersendiri agar template tetap mudah dibaca.
         const dataDasarSheetName = workbook.SheetNames.find(s => /data\s*dasar/i.test(s));
@@ -98,6 +99,14 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
             if (label === 'nama rumah sakit') { if(row[1])parsedInfo.namaRS=String(row[1]);return; }
             if (label === 'tipe rs') { if(row[1])parsedInfo.tipeRS=String(row[1]) as HospitalCostConfig['tipeRS'];return; }
             if (label === 'kepemilikan rs') { if(row[1])parsedInfo.kepemilikan=String(row[1]);return; }
+            const hbrKey = Object.entries(hbrInputLabels).find(([,name]) => clean(name) === label)?.[0] as HbrInputKey | undefined;
+            if(hbrKey){
+              if(row[1] === null || row[1] === undefined || row[1] === '') { delete parsedDataDasar[hbrKey]; return; }
+              const numeric = typeof row[1] === 'number' ? row[1] : Number(String(row[1]).replace(/,/g,''));
+              if(!Number.isFinite(numeric) || numeric < 0 || hbrKey === 'hbrProporsiInap' && numeric > 100 || hbrKey === 'hbrBasis' && ![0,1,2].includes(numeric) || hbrKey === 'hbrAsumsiKeparahan' && ![0,1].includes(numeric) || ['hbrKasusInap','hbrKasusJalan'].includes(hbrKey) && !Number.isSafeInteger(numeric)) throw new Error(`Nilai ${row[0]} tidak valid.`);
+              parsedDataDasar[hbrKey] = numeric;
+              return;
+            }
             // Ignore headings and notes; only recognized numeric indicators are parsed.
             if(!/^(bor(?: \(%\))?|alos(?: \(hari\))?|jumlah tempat tidur|lama hari rawat (?:jkn|non jkn)|jumlah sdm (?:dokter|nakes|non nakes)|biaya gaji(?: total)?|biaya jasa\/remunerasi|biaya operasional lainnya|biaya penyusutan|pendapatan fungsional (?:jkn|non jkn)|pendapatan lainnya|subsidi\/pendanaan pemerintah|tahun data)$/.test(label))return;
             const value = safeFloat(row[1]);
