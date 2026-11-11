@@ -4,7 +4,7 @@
     {"key":"X-Frame-Options","value":"DENY"},
     {"key":"Referrer-Policy","value":"no-referrer"},
     {"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"},
-    {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self' https://static.geetest.com https://gcaptcha4.geetest.com; style-src 'self' 'unsafe-inline' https://static.geetest.com; img-src 'self' data: blob: https://static.geetest.com https://gcaptcha4.geetest.com; font-src 'self' https://static.geetest.com; connect-src 'self' https://vowutzxizrrywpwcobth.supabase.co https://gcaptcha4.geetest.com https://static.geetest.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"}
+    {"key":"Content-Security-Policy","value":"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://vowutzxizrrywpwcobth.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"}
   ]}],
   "rewrites": [
     { "source": "/:path((?!api/).*)", "destination": "/index.html" }

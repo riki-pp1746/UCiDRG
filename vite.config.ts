@@ -11,10 +11,6 @@ export default defineConfig(async ({ mode }) => {
   const authKey = integrationKey || env[fallbackName]?.trim()
 
   if (mode === 'vercel') {
-    const captcha = loadEnv(mode, import.meta.dirname, ['VITE_GEETEST_CAPTCHA_ID', 'GEETEST_CAPTCHA_KEY', 'SUPABASE_SECRET_KEY'])
-    if (captcha.VITE_GEETEST_CAPTCHA_ID?.trim() && (!captcha.GEETEST_CAPTCHA_KEY?.trim() || !captcha.SUPABASE_SECRET_KEY?.trim().startsWith('sb_secret_'))) {
-      throw new Error('Set GEETEST_CAPTCHA_KEY and a server-only SUPABASE_SECRET_KEY before enabling the login puzzle.')
-    }
     if (!authKey?.startsWith('sb_publishable_')) {
       throw new Error(`Set ${keyName} or ${fallbackName} before deploying to Vercel.`)
     }

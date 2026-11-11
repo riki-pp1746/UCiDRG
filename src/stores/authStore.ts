@@ -2,7 +2,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { create } from 'zustand';
 import { clearAnalysisSession } from '../lib/sessionData';
 import { isHospitalClass, type HospitalClass } from '../types/hospitalClass';
-import { loginCaptchaId, type LoginCaptchaProof } from '../lib/loginCaptcha';
+import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 
 const supabaseUrl = 'https://vowutzxizrrywpwcobth.supabase.co';
 const publishableKey = import.meta.env.NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY?.trim()
@@ -145,17 +145,8 @@ export const useAuthStore = create<AuthState>(set => ({
   login: (identity, password, proof) => {
     const trimmed = identity.trim();
     const email = trimmed.toLowerCase() === 'admin' ? adminEmail : trimmed;
-    if (!loginCaptchaId) return authenticate(connection => connection.auth.signInWithPassword({ email, password }));
-    if (!proof) return Promise.resolve({ status: 'error', message: authMessage('captcha_required') });
-    return authenticate(async connection => {
-      const response = await fetch('/api/sign-in', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, proof }), cache: 'no-store', redirect: 'error',
-      });
-      const result = await response.json();
-      if (!response.ok) return { data: { session: null, user: null }, error: { code: result.code } };
-      return connection.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
-    });
+    if (!isLoginCaptchaProofValid(proof)) return Promise.resolve({ status: 'error', message: authMessage('captcha_required') });
+    return authenticate(connection => connection.auth.signInWithPassword({ email, password }));
   },
   register: async (email, password, name, hospital, phone, hospitalCode) => {
     if (email.trim().toLowerCase() === adminEmail) {

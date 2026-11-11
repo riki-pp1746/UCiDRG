@@ -1,7 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { authConfigured, useAuthStore } from '../stores/authStore';
 import { APP_METHOD, APP_NAME } from '../lib/appBrand';
-import { loginCaptchaId, type LoginCaptchaProof } from '../lib/loginCaptcha';
+import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 import LoginCaptcha from '../components/auth/LoginCaptcha';
 import LoginDataAgreement from '../components/auth/LoginDataAgreement';
 import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, Eye, EyeOff } from 'lucide-react';
@@ -57,7 +57,7 @@ export default function LoginPage() {
  function handleSubmit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
   if (busy) return;
-  if (!registering && loginCaptchaId && !proof) {
+  if (!registering && !isLoginCaptchaProofValid(proof)) {
    setError('Selesaikan verifikasi gambar sebelum masuk.');
    return;
   }
@@ -84,6 +84,12 @@ export default function LoginPage() {
 
  async function submitAccount() {
   if (busy) return;
+  if (!registering && !isLoginCaptchaProofValid(proof)) {
+   setError('Verifikasi gambar kedaluwarsa. Coba gambar baru.');
+   setProof(null);
+   setCaptchaVersion(value => value + 1);
+   return;
+  }
   setBusy(true);
   setError('');
   setNotice('');
@@ -93,7 +99,7 @@ export default function LoginPage() {
     : await login(email, password, proof ?? undefined);
    if (result.status === 'error') {
     setError(result.message);
-    if (!registering && loginCaptchaId) {
+    if (!registering) {
      setProof(null);
      setCaptchaVersion(value => value + 1);
     }
@@ -186,8 +192,8 @@ export default function LoginPage() {
         </button>
        </div>
       </div>
-      {!registering && loginCaptchaId && <LoginCaptcha key={captchaVersion} onProof={setProof}/>}
-      <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured || Boolean(!registering && loginCaptchaId && !proof)}>
+      {!registering && <LoginCaptcha key={captchaVersion} onProof={setProof}/>}
+      <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured || Boolean(!registering && !isLoginCaptchaProofValid(proof))}>
        {busy ? 'Memproses…' : registering ? 'Buat akun' : 'Masuk'} <ArrowRight size={18} aria-hidden />
       </button>
       <p className="text-sm text-slate-600">

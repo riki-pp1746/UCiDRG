@@ -40,7 +40,7 @@ it('uses a Supabase session to open the workspace and forgets it on logout', asy
   });
   const { useAuthStore } = await import('../src/stores/authStore');
 
-  await expect(useAuthStore.getState().login(' user@example.test ', 'test-password'))
+  await expect(useAuthStore.getState().login(' user@example.test ', 'test-password', { completedAt: Date.now() }))
     .resolves.toEqual({ status: 'authenticated' });
   expect(sdk.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'user@example.test', password: 'test-password' });
   expect(sdk.createClient).toHaveBeenCalledWith('https://vowutzxizrrywpwcobth.supabase.co', 'sb_publishable_test', {
@@ -81,7 +81,7 @@ it.each(['pending', 'expired'])('blocks login for a %s account', async status =>
   });
   sdk.maybeSingle.mockResolvedValueOnce({ data: { role: 'user', status }, error: null });
   const { useAuthStore } = await import('../src/stores/authStore');
-  await expect(useAuthStore.getState().login('user@example.test', 'test-password'))
+  await expect(useAuthStore.getState().login('user@example.test', 'test-password', { completedAt: Date.now() }))
     .resolves.toMatchObject({ status: 'error' });
   expect(useAuthStore.getState().isAuthenticated).toBe(false);
   expect(sdk.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
@@ -93,7 +93,7 @@ it('uses the Admin alias and trusts the server role instead of user metadata', a
     error: null,
   });
   const { useAuthStore } = await import('../src/stores/authStore');
-  await expect(useAuthStore.getState().login('Admin', 'test-password'))
+  await expect(useAuthStore.getState().login('Admin', 'test-password', { completedAt: Date.now() }))
     .resolves.toEqual({ status: 'authenticated' });
   expect(sdk.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'admin@unitcost.example', password: 'test-password' });
   expect(useAuthStore.getState().user?.role).toBe('user');
@@ -103,7 +103,7 @@ it('uses the Admin alias and trusts the server role instead of user metadata', a
 it('keeps the workspace locked when the public key is absent', async () => {
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', '');
   const { useAuthStore } = await import('../src/stores/authStore');
-  await expect(useAuthStore.getState().login('user@example.test', 'test-password'))
+  await expect(useAuthStore.getState().login('user@example.test', 'test-password', { completedAt: Date.now() }))
     .resolves.toMatchObject({ status: 'error' });
   expect(sdk.createClient).not.toHaveBeenCalled();
   expect(useAuthStore.getState().isAuthenticated).toBe(false);
@@ -120,7 +120,7 @@ it('saves the selected hospital class to the signed-in profile and reads it at t
     return { data: { user: { user_metadata: userMetadata } }, error: null };
   });
   const { useAuthStore, saveHospitalClass } = await import('../src/stores/authStore');
-  const login = () => useAuthStore.getState().login('user@example.test', 'test-password');
+  const login = () => useAuthStore.getState().login('user@example.test', 'test-password', { completedAt: Date.now() });
   await login();
   expect(useAuthStore.getState().user?.hospitalClass).toBe('B');
   await saveHospitalClass('C');
@@ -130,4 +130,13 @@ it('saves the selected hospital class to the signed-in profile and reads it at t
   await login();
   expect(useAuthStore.getState().user?.hospitalClass).toBe('C');
   useAuthStore.getState().logout();
+});
+
+it('requires a fresh local puzzle before submitting the password', async () => {
+  const { useAuthStore } = await import('../src/stores/authStore');
+  for (const proof of [undefined, { completedAt: Date.now() - 120_000 }]) {
+    await expect(useAuthStore.getState().login('user@example.test', 'test-password', proof))
+      .resolves.toMatchObject({ status: 'error' });
+  }
+  expect(sdk.auth.signInWithPassword).not.toHaveBeenCalled();
 });
