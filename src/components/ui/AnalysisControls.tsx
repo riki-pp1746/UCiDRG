@@ -9,7 +9,7 @@ import {useAnalysisHistoryStore} from '../../stores/analysisHistoryStore';
 import {ALL_KOMPONEN_KEYS,KOMPONEN_LABELS} from '../../types/tarifPasien.types';
 import {calculateAnalysisJob,analysisStale} from '../../lib/analysisController';
 import {inputQuality} from '../../lib/analysisQuality';
-import {summaryMetricText} from '../../lib/analysisSnapshot';
+import {analysisView,summaryMetricText} from '../../lib/analysisSnapshot';
 import {useAnalysisView} from '../../hooks/useAnalysisView';
 import {createAnalysisBackup,previewAnalysisBackup,applyAnalysisBackup,validateMethodology} from '../../lib/analysisBackup';
 import type {BackupPayload} from '../../lib/analysisBackup';
@@ -55,7 +55,7 @@ export function MethodologyControls(){
 }
 
 
-export function AnalysisCalculationPanel(){
+export function AnalysisCalculationPanel({workflow=false}:{workflow?:boolean}={}){
  const policy=useMethodologyStore();
  const raw=useCostingStore(s=>s.rawRecords);
  const period=useCostingStore(s=>s.periodNormalization);
@@ -71,7 +71,15 @@ export function AnalysisCalculationPanel(){
 
  async function calculate(){
   setBusy(true);setProgress(0);setError('');
-  try{await calculateAnalysisJob(setProgress);}
+  try{
+   await calculateAnalysisJob(setProgress);
+   const result=useTarifPasienStore.getState().snapshot;
+   const summary=workflow&&result?analysisView(result,'IDRG').summary:null;
+   if(result&&summary){
+    const {sourceWeights,...local}=result.local;
+    useAnalysisHistoryStore.getState().save({period:local.period,state:'Draft',local:{...local,patients:[],sourceWeights:sourceWeights&&{...sourceWeights,patients:[]}},summary},false);
+   }
+  }
   catch(e){setError(e instanceof Error?e.message:String(e));}
   finally{setBusy(false);}
  }
@@ -81,16 +89,16 @@ export function AnalysisCalculationPanel(){
    <div>
     <h2 id="analysis-calculate-title" className="font-semibold text-teal-950">Hitung unit cost</h2>
     <p className="mt-1 text-sm text-slate-600">
-     {!raw.length?<Link className="font-medium text-teal-800 underline" to="/upload">Unggah klaim untuk mulai menghitung</Link>:!hasCosts?'Lengkapi biaya RS untuk menghitung.':raw.length.toLocaleString('id-ID')+' kasus sumber · '+(needsCalculation?'Hasil belum tersedia untuk input ini':'Hasil tersedia dalam sesi')}
+     {!raw.length?<Link className="font-medium text-teal-800 underline" to="/upload">Unggah klaim untuk mulai menghitung</Link>:!hasCosts?'Lengkapi biaya RS untuk menghitung.':raw.length.toLocaleString('id-ID')+' kasus sumber · '+(needsCalculation?'Input belum dihitung':'Terakhir dihitung '+new Date(snapshot!.at).toLocaleString('id-ID'))}
     </p>
    </div>
    <button type="button" className="uc-primary" disabled={busy||!raw.length||!hasCosts||policy.role==='Pembaca'} onClick={()=>void calculate()}>
-    {busy?'Sedang menghitung…':needsCalculation?'Hitung 18 komponen':'Hitung ulang'}
+    {busy?'Sedang menghitung…':needsCalculation?'Hitung unit cost':'Hitung ulang'}
    </button>
   </div>
   {busy&&<div role="status"><progress aria-label="Kemajuan perhitungan" max={100} value={progress}/> {progress}% · Sedang diproses</div>}
   {Boolean(period?.dateOutliers?.length)&&!period?.confirmed&&<p className="uc-error">Pencilan bulan: {period?.dateOutliers?.join(', ')}. <Link to="/upload">Konfirmasi periode</Link>.</p>}
-  {issues.length>0&&(raw.length>0||hasCosts||blockers>0)&&(
+  {!workflow&&issues.length>0&&(raw.length>0||hasCosts||blockers>0)&&(
    <details className="border-t border-slate-200 pt-3">
     <summary className={blockers?'font-semibold text-red-800':'font-semibold text-teal-950'}>
      Peringatan data · {blockers?blockers+' memblokir, ':''}{issues.length-blockers} catatan lain

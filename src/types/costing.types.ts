@@ -260,6 +260,7 @@ export interface CostingSummary {
 // Session / Upload State
 // ============================================================
 export interface UploadSession {
+  importNotes?: string[];
   id: string;
   filename: string;
   uploadedAt: string;

@@ -235,8 +235,9 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
 }
 
 
-export default function CostingInputPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('info');
+export default function CostingInputPage({section}:{section?:'profile'|'operations'|'finance'|'centers'}) {
+  const [tab, setActiveTab] = useState<Tab>('info');
+  const activeTab = section==='profile'?'info':section==='operations'||section==='finance'?'dataDasar':section==='centers'&&!['overhead','intermediate','final'].includes(tab)?'overhead':tab;
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [formulaDetail, setFormulaDetail] = useState<null | {
     title: string;
@@ -420,7 +421,7 @@ export default function CostingInputPage() {
         parsedData.dataLayanan ? 'Data Operasional' : '',
       ].filter(Boolean).join(', ');
 
-      toast(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nValidasi dan Unit Cost sudah dikalkulasi otomatis. Periksa penanda merah bila ada data yang perlu disesuaikan.`);
+      toast(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nTinjau data di Pemeriksaan & Rekonsiliasi sebelum menghitung unit cost.`);
     } catch (err: any) {
       console.error(err);
       toast(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
@@ -435,30 +436,29 @@ export default function CostingInputPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <label className="uc-label">Cari pusat biaya<input className="uc-input" value={centerQuery} onChange={e=>setCenterQuery(e.target.value)}/></label>
-      <PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Periksa biaya Penunjang Umum (Overhead), Penunjang Medis (Intermediate), dan Pusat Biaya Utama. Pada ruang ini biaya penunjang dibagikan langsung ke 18 komponen tagihan pasien." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>
+      {(!section||section==='centers')&&<label className="uc-label">Cari pusat biaya<input className="uc-input" value={centerQuery} onChange={e=>setCenterQuery(e.target.value)}/></label>}
+      {!section&&<PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Periksa biaya Penunjang Umum (Overhead), Penunjang Medis (Intermediate), dan Pusat Biaya Utama. Pada ruang ini biaya penunjang dibagikan langsung ke 18 komponen tagihan pasien." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-        <div>
+        {!section&&<div>
           <h1 className="text-2xl font-bold text-[#17645D] tracking-tight flex items-center gap-2">
             <Layers className="w-6 h-6 text-teal-600" />
             Input Data Costing RS
           </h1>
           <p className="text-gray-500 text-sm mt-1">Biaya didistribusikan langsung ke 18 variabel E-Klaim</p>
-        </div>
+        </div>}
         <div className="flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={handleImport} className="hidden" />
           <button
             onClick={handleDownloadTemplate}
             className="flex items-center gap-2 px-4 py-2.5 bg-white text-green-600 border border-green-200 rounded-xl hover:bg-green-50 text-sm font-semibold transition-all"
           >
-            <FileSpreadsheet className="w-4 h-4" /> Download Template
+            <FileSpreadsheet className="w-4 h-4" /> Unduh template
           </button>
           <button
             onClick={() => fileRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2.5 bg-white text-blue-600 border border-blue-200 rounded-xl hover:bg-blue-50 text-sm font-semibold transition-all"
           >
-            <UploadIcon className="w-4 h-4" /> Import Excel
+            <UploadIcon className="w-4 h-4" /> Impor Excel
           </button>
           <details className="text-sm text-slate-600">
             <summary className="cursor-pointer font-medium">Opsi biaya</summary>
@@ -470,7 +470,7 @@ export default function CostingInputPage() {
         </div>
       </div>
 
-      <AnalysisCalculationPanel />
+      {!section&&<><AnalysisCalculationPanel />
 
       {/* Status kalkulasi — selalu tampil */}
       <div className={clsx(
@@ -523,9 +523,10 @@ export default function CostingInputPage() {
         </div>
       </div>
 
-      {/* Tab Navigation */}
+      </>}
+      {(!section||section==='centers')&&<>
       <div className="flex gap-1 bg-white/80 p-1.5 rounded-2xl overflow-x-auto border border-gray-200 shadow-sm">
-        {TABS.map(tab => (
+        {TABS.filter(tab=>!section||['overhead','intermediate','final'].includes(tab.id)).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -536,13 +537,14 @@ export default function CostingInputPage() {
                 : 'text-gray-600 hover:bg-gray-100'
             )}
           >
-            <span>{tab.icon}</span>
-            <span>{tab.label}</span>
+            {!section&&<span>{tab.icon}</span>}
+            <span>{section?({overhead:'Penunjang Umum',intermediate:'Penunjang Medis',final:'Pusat Biaya Utama'} as Partial<Record<Tab,string>>)[tab.id]:tab.label}</span>
           </button>
         ))}
       </div>
 
-      {validation.errors.size > 0 && (
+      </>}
+      {!section&&validation.errors.size > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-none" />
@@ -667,7 +669,7 @@ export default function CostingInputPage() {
             </div>
           </div>
 
-          {/* Panduan Kesiapan RS (Hal 38) */}
+          {!section&&<>
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
             <h3 className="font-semibold text-blue-800 flex items-center gap-2 mb-3">
               <Info className="w-5 h-5" /> Checklist Kesiapan RS
@@ -698,7 +700,7 @@ export default function CostingInputPage() {
             >
               Lanjut: Data Dasar RS <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </div></>}
         </div>
       )}
 
@@ -707,7 +709,7 @@ export default function CostingInputPage() {
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'dataDasar' && (
         <div className="space-y-4">
-          {/* Indikator Operasional */}
+          {section!=='finance'&&
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="font-bold text-[#17645D] text-lg mb-4 flex items-center gap-2">
               <Activity className="w-5 h-5 text-teal-600" /> Indikator Operasional RS
@@ -734,7 +736,8 @@ export default function CostingInputPage() {
             </div>
           </div>
 
-          {/* Pendapatan & Biaya RS */}
+          }
+          {section!=='operations'&&
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <h2 className="font-bold text-[#17645D] text-lg mb-4 flex items-center gap-2">
               <Database className="w-5 h-5 text-teal-600" /> Laporan Keuangan RS
@@ -761,8 +764,9 @@ export default function CostingInputPage() {
             </div>
           </div>
 
-          {/* Ringkasan Data Dasar */}
-          {(config.dataDasar.pendapatanJKN > 0 || config.dataDasar.biayaGajiTotal > 0) && (
+          }
+          {(!section||section==='finance')&&
+          (config.dataDasar.pendapatanJKN > 0 || config.dataDasar.biayaGajiTotal > 0) && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: 'Total Pendapatan JKN', value: config.dataDasar.pendapatanJKN, color: 'bg-green-50 border-green-200 text-green-700' },
@@ -778,14 +782,14 @@ export default function CostingInputPage() {
             </div>
           )}
 
-          <div className="flex justify-between">
+          {!section&&<div className="flex justify-between">
             <button onClick={() => setActiveTab('info')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all">
               ← Kembali
             </button>
             <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700 transition-all">
-              Lanjut: A. Overhead <ArrowRight className="w-4 h-4" />
+              Lanjut: Penunjang Umum <ArrowRight className="w-4 h-4" />
             </button>
-          </div>
+          </div>}
         </div>
       )}
 
@@ -796,7 +800,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
             <p className="text-sm text-blue-800 font-medium">
-              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Biaya unit non-layanan yang pada Step 3 langsung dibagikan ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
+              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Masukkan biaya langsung dan dasar alokasi unit penunjang umum.
             </p>
           </div>
 
@@ -876,7 +880,7 @@ export default function CostingInputPage() {
             </div>
           ))}
 
-          <div className="flex justify-between">
+          <div className={section?'hidden':'flex justify-between'}>
             <button onClick={() => setActiveTab('dataDasar')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
             <button onClick={() => setActiveTab('intermediate')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: B. Penunjang <ArrowRight className="w-4 h-4" /></button>
           </div>
@@ -890,7 +894,7 @@ export default function CostingInputPage() {
         <div className="space-y-4">
           <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Intermediate Cost</strong> — Biaya pusat penunjang medik yang pada Step 3 langsung dibagikan bersama Overhead ke 18 variabel berdasarkan proporsi tagihan TXT E-Klaim.
+              🔬 <strong>Intermediate Cost</strong> — Masukkan biaya langsung dan volume layanan unit penunjang medis.
             </p>
           </div>
 
@@ -961,7 +965,7 @@ export default function CostingInputPage() {
             </div>
           ))}
 
-          <div className="flex justify-between">
+          <div className={section?'hidden':'flex justify-between'}>
             <button onClick={() => setActiveTab('overhead')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
             <button onClick={() => setActiveTab('final')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lanjut: C. Pusat Biaya Utama <ArrowRight className="w-4 h-4" /></button>
           </div>
@@ -1113,7 +1117,7 @@ export default function CostingInputPage() {
             );
           })}
 
-          <div className="flex justify-between">
+          <div className={section?'hidden':'flex justify-between'}>
             <button onClick={() => setActiveTab('intermediate')} className="flex items-center gap-2 px-5 py-2 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50">← Kembali</button>
             <button onClick={() => setActiveTab('hasil')} className="flex items-center gap-2 px-6 py-2.5 bg-teal-600 text-white rounded-xl font-semibold text-sm hover:bg-teal-700">Lihat Hasil <ArrowRight className="w-4 h-4" /></button>
           </div>

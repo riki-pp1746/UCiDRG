@@ -29,6 +29,8 @@ import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
 import clsx from 'clsx';
 import type { BillingGroup } from '../types/costing.types';
+import { reportSections, useWorkflowReportStore } from '../stores/workflowReportStore';
+import type { ReportSection } from '../stores/workflowReportStore';
 
 const STATUS_BADGE = {
   TIDAK_TERSEDIA: 'text-slate-600 bg-slate-100',
@@ -64,7 +66,7 @@ const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
   { key: 'drug_chemo_amt', label: 'Obat Kemoterapi' },
 ];
 
-export default function ReportPage() {
+export default function ReportPage({variant}:{variant?:'summary'|'print'|'export'}={}) {
   const viewMode = useCostingStore(s => s.viewMode);
   const filterCount=useCostingStore(s=>Number(Boolean(s.filterPTD))+Number(Boolean(s.searchTerm.trim()))+Number(s.filterStatus!=='ALL'));
   const view=useAnalysisView();
@@ -80,6 +82,9 @@ export default function ReportPage() {
   const biayaRSMap = useTarifPasienStore(s => s.biayaRSMap);
   const { user } = useAuthStore();
   const [section,setSection]=useState<'summary'|'groups'|'checks'|'methods'>('summary');
+  const [preview,setPreview]=useState(false);
+  const reportSelection=useWorkflowReportStore(s=>s.selected);
+  const toggleReportSection=useWorkflowReportStore(s=>s.toggle);
   const checks=useMemo(()=>reportChecks([...allocationIssues,...(sourceIssues||[])]),[allocationIssues,sourceIssues]);
   const blockers=checks.filter(c=>c.severity==='error');
   const notes=checks.filter(c=>c.severity==='warning');
@@ -302,11 +307,26 @@ export default function ReportPage() {
   };
 
   // Print / PDF
-  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
+  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass,variant==='print'?reportSelection:undefined).save('Ringkasan-UnitCOSt-DRAFT.pdf');};
+  if(variant==='export')return <section className="uc-panel space-y-4">
+    <h2 className="font-semibold text-teal-950">Workbook hasil analisis</h2>
+    <p className="text-sm text-slate-600">Memuat perbandingan tarif, HBR vs NBR, CW, distribusi 18 komponen, dan jejak audit. Untuk mempertahankan hasil setelah keluar atau memuat ulang, unduh berkas saat sesi masih aktif.</p>
+    <div className="flex flex-wrap gap-2"><button type="button" onClick={exportExcel} className="uc-primary"><FileSpreadsheet size={16}/>Unduh Excel</button><button type="button" onClick={exportPptx} className="uc-secondary"><Presentation size={16}/>Unduh PowerPoint</button></div>
+  </section>;
+  if(variant==='print')return <div className="space-y-4">
+    <section className="uc-panel space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-teal-950">Bagian laporan</h2><p className="mt-1 text-sm text-slate-600">{config.namaRS||user?.namaRS||'Rumah sakit'} · {summary.periodeData} · {viewMode==='IDRG'?'iDRG':'INA-CBG'}</p></div><button className="uc-primary" onClick={handlePrint}><Printer size={16}/>Cetak PDF</button></div>
+      <fieldset className="grid gap-3 sm:grid-cols-2"><legend className="mb-3 text-sm font-medium">Pilih lampiran ringkasan</legend>{(Object.entries(reportSections) as [ReportSection,string][]).map(([id,label])=><label key={id} className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={reportSelection.includes(id)} onChange={()=>toggleReportSection(id)}/>{label}</label>)}</fieldset>
+      <p className="text-xs text-slate-600">Ringkasan utama, periode, asumsi, dan pemeriksaan data selalu disertakan. Rincian seluruh kasus dan kelompok tersedia pada Ekspor Excel.</p>
+      <button type="button" className="uc-secondary" aria-expanded={preview} onClick={()=>setPreview(value=>!value)}>{preview?'Tutup pratinjau':'Lihat pratinjau'}</button>
+      {preview&&<div className="uc-inset space-y-3"><h3 className="font-semibold">Ringkasan Eksekutif</h3><p className="text-sm">{formatNumber(summary.totalKasus)} kasus · {formatRupiah(summary.totalBiayaRS)} biaya · CRR {summaryMetricText(summary,'crr')}</p><ul className="list-disc pl-5 text-sm">{reportSelection.map(id=><li key={id}>{reportSections[id]}</li>)}</ul></div>}
+    </section>
+    <details className="uc-panel"><summary className="cursor-pointer font-semibold">Periksa periode dan asumsi</summary><div className="mt-3"><AnalysisReportDetails/></div></details>
+  </div>;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
-      <header className="uc-panel space-y-4">
+      {!variant&&<><header className="uc-panel space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-semibold tracking-tight text-teal-950">Laporan Unit Cost</h1><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700" title="Hasil analisis masih untuk ditinjau dan belum ditetapkan sebagai tarif final.">Draf</span>{config.sourceOrigin==='simulasi'&&<span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900">Data simulasi</span>}</div><p className="mt-2 text-sm text-slate-600">{config.namaRS||user?.namaRS||'Rumah sakit'} · {summary.periodeData}</p><p className="mt-1 text-xs text-slate-500">Draf adalah hasil untuk ditinjau, belum menjadi tarif final.</p></div>
           <div className="flex flex-wrap gap-2 print:hidden">
@@ -321,21 +341,27 @@ export default function ReportPage() {
       <div className={clsx('flex flex-col items-start justify-between gap-3 rounded-xl border p-4 sm:flex-row',blockers.length?'border-red-200 bg-red-50':notes.length?'border-amber-200 bg-amber-50':'border-teal-200 bg-teal-50')} role="status">
         <div className="flex min-w-0 flex-1 gap-3">{(blockers.length||notes.length)?<AlertCircle className={clsx("mt-0.5 shrink-0",blockers.length?"text-red-700":"text-amber-700")} size={20}/>:<CheckCircle2 className="mt-0.5 shrink-0 text-teal-700" size={20}/>}<div><p className={clsx('font-semibold',blockers.length?'text-red-900':'text-slate-800')}>{blockers.length?`${blockers.length} pemeriksaan menghambat penggunaan hasil`:notes.length?'Hasil tersedia dengan catatan peninjauan':'Tidak ada temuan pada pemeriksaan yang dijalankan'}</p><p className="mt-1 text-sm text-slate-600">{blockers.length?'Selesaikan masalah alokasi atau data sebelum menggunakan hasil untuk keputusan. ':''}{notes.length>0?`${notes.length.toLocaleString('id-ID')} catatan perlu ditinjau. `:''}Rincian dan tautan perbaikan tersedia di Pemeriksaan Data.</p></div></div>
         <button className="uc-secondary shrink-0 print:hidden" onClick={()=>setSection('checks')}>Periksa data</button>
-      </div>
+      </div></>}
 
       <details className="uc-panel print:hidden"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Filter laporan{filterCount>0&&<span className="ml-2 rounded-full bg-teal-50 px-2 py-0.5 text-xs text-teal-800">{filterCount} aktif</span>}</summary><div className="mt-3"><AnalysisFilters/></div></details>
-      <nav aria-label="Bagian laporan" className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 print:hidden sm:grid-cols-4">{([{id:'summary',label:'Ringkasan'},{id:'groups',label:'Rincian DRG'},{id:'checks',label:'Pemeriksaan Data'},{id:'methods',label:'Metode'}] as const).map(tab=><button key={tab.id} type="button" aria-pressed={section===tab.id} className={clsx('min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',section===tab.id?'bg-teal-800 text-white':'text-slate-600 hover:bg-slate-50')} onClick={()=>setSection(tab.id)}>{tab.label}</button>)}</nav>
+      {!variant&&<nav aria-label="Bagian laporan" className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 print:hidden sm:grid-cols-4">{([{id:'summary',label:'Ringkasan'},{id:'groups',label:'Rincian DRG'},{id:'checks',label:'Pemeriksaan Data'},{id:'methods',label:'Metode'}] as const).map(tab=><button key={tab.id} type="button" aria-pressed={section===tab.id} className={clsx('min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',section===tab.id?'bg-teal-800 text-white':'text-slate-600 hover:bg-slate-50')} onClick={()=>setSection(tab.id)}>{tab.label}</button>)}</nav>}
 
       {section==='summary'&&<section aria-label="Ringkasan laporan" className="space-y-5">
-        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
+        {variant==='summary'&&<div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm text-slate-600">{summary.periodeData} · {config.sourceOrigin==='simulasi'?'Data simulasi':'Hasil sesi ini'}</p><Link className="uc-primary" to="/alur/cetak"><Printer size={16}/>Cetak ringkasan</Link></div>}
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">{[
           {label:'Jumlah kasus',value:formatNumber(summary.totalKasus),currency:false},
           {label:'Kelompok DRG',value:formatNumber(drgResults.length),currency:false},
           {label:'Total biaya',value:formatRupiah(summary.totalBiayaRS),currency:true},
           {label:`Total tarif ${viewMode==='INACBG'?'INA-CBG':'iDRG'}`,value:formatRupiah(summary.totalTarif),currency:true},
+          {label:'CRR',value:summaryMetricText(summary,'crr'),currency:false},
+          {label:'ROV',value:summaryMetricText(summary,'rov'),currency:false},
         ].map(kpi=><div key={kpi.label} className={clsx('uc-panel min-w-0',kpi.currency&&'col-span-2 sm:col-span-1')}><p className="text-sm text-slate-500">{kpi.label}</p><p className={clsx('mt-2 break-words font-semibold tracking-tight text-teal-950',kpi.currency?'text-lg':'text-2xl')}>{kpi.value}</p></div>)}</div>
         <SourceCaseMixIndex rows={view.weightComparison}/>
         <section className="uc-panel space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-teal-950">Perbandingan biaya dan tarif</h2><p className="mt-1 text-sm text-slate-600">Tarif klaim dikurangi biaya pada populasi laporan ini.</p></div><span className={clsx('rounded-full px-3 py-1 text-sm font-semibold',STATUS_BADGE[summary.financialStatus||'IMPAS'])}>{financialLabel(summary.financialStatus)}</span></div><p className={clsx('break-words text-3xl font-semibold',summary.totalSelisih<0?'text-red-700':'text-teal-800')}>{summary.totalSelisih>0?'+':''}{formatRupiah(summary.totalSelisih)}</p><div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">{[{label:'DRG defisit',value:summary.jumlahDRGRugi},{label:'DRG impas',value:summary.jumlahDRGImpas},{label:'DRG surplus',value:summary.jumlahDRGUntung}].map(item=><div key={item.label}><p className="text-xl font-semibold text-slate-800">{item.value}</p><p className="text-xs text-slate-500">{item.label}</p></div>)}</div></section>
-        {summary.top10Rugi.length>0&&<section className="uc-panel space-y-3"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold text-teal-950">Prioritas peninjauan</h2><button className="uc-secondary" onClick={()=>setSection('groups')}>Lihat rincian DRG</button></div><p className="text-sm text-slate-600">Kelompok dengan defisit dan jumlah kasus yang memadai untuk ditinjau lebih lanjut.</p><ul className="divide-y divide-slate-100">{summary.top10Rugi.slice(0,5).map(group=><li key={group.group_code} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="min-w-0 flex-1 text-slate-700">{group.group_description||group.group_code}</span><strong className="text-red-700">{formatRupiah((group.totalTarif||0)-(group.totalBiayaRS||0))}</strong></li>)}</ul></section>}
+        <div className="grid gap-4 lg:grid-cols-2">{([['5 DRG dengan defisit terbesar',summary.top10Rugi,'text-red-700'],['5 DRG dengan surplus terbesar',summary.top10Untung,'text-teal-800']] as const).map(([label,groups,color])=><section className="uc-panel space-y-3" key={label}>
+          <h2 className="text-lg font-semibold text-teal-950">{label}</h2>
+          {!groups.length?<p className="text-sm text-slate-600">Belum ada kelompok dengan jumlah kasus dan kepastian statistik yang memadai.</p>:<ul className="divide-y divide-slate-100">{groups.slice(0,5).map(group=><li key={group.ptd+'|'+group.group_code} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="min-w-0 flex-1 text-slate-700"><strong className="block font-medium">{group.group_code}</strong>{group.group_description}</span><strong className={color}>{group.totalTarif>group.totalBiayaRS?'+':''}{formatRupiah(group.totalTarif-group.totalBiayaRS)}</strong></li>)}</ul>}
+        </section>)}</div>
         <p className="px-1 text-xs text-slate-500">Filter hanya mengubah ringkasan laporan. Perhitungan CW RS dan HBR memakai populasi awal, termasuk kasus outlier yang memenuhi syarat.</p>
       </section>}
 

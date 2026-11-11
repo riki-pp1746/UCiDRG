@@ -86,7 +86,7 @@ export const useCostingStore = create<CostingState>()(
       idrgResults: [],
       summaryINACBG: null,
       summaryIDRG: null,
-      viewMode: 'INACBG',
+      viewMode: 'IDRG',
       overheadConfig: DEFAULT_OVERHEAD_CONFIG,
       tarifIDRGConfig: DEFAULT_TARIF_IDRG_CONFIG,
       periodNormalization: null,

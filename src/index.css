@@ -433,3 +433,6 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
     overflow: visible !important;
   }
 }
+@media (min-width: 64rem) {
+  .uc-workspace-frame[data-sidebar="open"] .workflow-submenu { display: none; }
+}

@@ -12,6 +12,7 @@ import {usePreferences} from '../v4/preferences';
 import {endIntegratedSession} from '../v4/store';
 import {purgeLegacyDatabase} from '../v4/storage';
 import {clearSessionMemory} from './sessionMemory';
+import {useWorkflowReportStore} from '../stores/workflowReportStore';
 
 export function clearAnalysisSession(){
   useBaseRateComparisonStore.setState(useBaseRateComparisonStore.getInitialState(),true);
@@ -25,6 +26,7 @@ export function clearAnalysisSession(){
   useHospitalCostStore.setState(useHospitalCostStore.getInitialState(),true);
   useTarifPasienStore.setState(useTarifPasienStore.getInitialState(),true);
   useUiPrefsStore.setState(useUiPrefsStore.getInitialState(),true);
+  useWorkflowReportStore.setState(useWorkflowReportStore.getInitialState(),true);
   usePreferences.setState(usePreferences.getInitialState(),true);
   clearSessionMemory();
 }

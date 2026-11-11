@@ -6,7 +6,7 @@ import type {HospitalCostResult} from '../../lib/calculations/hospitalBaseRate';
 import type {Reference} from '../../v4/types';
 import {money,displayDecimal,parseNumber} from '../../v4/numbers';
 import {formatCostingWorkbook} from '../../lib/costingWorkbookFormat';
-export default function BaseRateComparisonPanel({result=null,references,editable=true,exportAllowed=true,manageReferences=false}:{result?:HospitalCostResult|null;references?:Reference[];editable?:boolean;exportAllowed?:boolean;manageReferences?:boolean}){
+export default function BaseRateComparisonPanel({result=null,references,editable=true,exportAllowed=true,manageReferences=false,showExport=true}:{result?:HospitalCostResult|null;references?:Reference[];editable?:boolean;exportAllowed?:boolean;manageReferences?:boolean;showExport?:boolean}){
  const state=useBaseRateComparisonStore();const [draft,setDraft]=useState({care:'inap',value:'',source:'',version:'',from:'',until:'',verified:false});const [error,setError]=useState('');
  const refs=references??state.references,rows=compareBaseRates(result,refs,state.date);
  const simulation=compareSimulationBaseRates(rows);
@@ -26,7 +26,7 @@ export default function BaseRateComparisonPanel({result=null,references,editable
    ]),'Rancangan NBR iDRG');
   XLSX.writeFile(formatCostingWorkbook(wb),'Perbandingan-HBR-NBR.xlsx');
  };
- return <section className="uc-panel space-y-4" aria-label="Perbandingan HBR dan NBR"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-semibold text-lg">{manageReferences?'Referensi NBR':'HBR RS dan Rancangan NBR iDRG'}</h2>{!manageReferences&&<p className="text-sm text-slate-600">Perbandingan rawat inap dan rawat jalan.</p>}</div>{!manageReferences&&<button className="uc-secondary" disabled={!result||!exportAllowed} onClick={exportData}>Ekspor HBR vs NBR</button>}</div>
+ return <section className="uc-panel space-y-4" aria-label="Perbandingan HBR dan NBR"><div className="flex flex-wrap justify-between gap-3"><div><h2 className="font-semibold text-lg">{manageReferences?'Referensi NBR':'HBR RS dan Rancangan NBR iDRG'}</h2>{!manageReferences&&<p className="text-sm text-slate-600">Perbandingan rawat inap dan rawat jalan.</p>}</div>{!manageReferences&&showExport&&<button className="uc-secondary" disabled={!result||!exportAllowed} onClick={exportData}>Ekspor HBR vs NBR</button>}</div>
  {!manageReferences&&<>
  <p className="text-xs text-slate-600">Periode costing {result?.period||'belum tersedia'}. Rancangan ini digunakan sebagai pembanding simulasi.</p>
  <div className="grid gap-4 md:grid-cols-2">
@@ -38,11 +38,13 @@ export default function BaseRateComparisonPanel({result=null,references,editable
      <div><p className="text-xs">Rancangan NBR iDRG</p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
     </div>
     {source&&<p className="text-xs text-slate-600">{source.pools.find(p=>p.care===r.care)?.count.toLocaleString('id-ID')} dari {source.pools.find(p=>p.care===r.care)?.cases.toLocaleString('id-ID')} kasus memiliki CW yang dapat dipakai.</p>}
-    {r.percent===null?<p>{source?'HBR belum tersedia. Periksa CW iDRG pada TXT klaim.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {money(r.difference)} ({displayDecimal(r.percent)}%)</p>}
+    {r.percent===null?<p>{source?'HBR belum tersedia. Periksa CW iDRG pada TXT klaim.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {Number(r.difference)>0?'+':''}{money(r.difference)} ({Number(r.percent)>0?'+':''}{displayDecimal(r.percent,1)}%)</p>}
+    {!showExport&&r.hbr!==null&&<div className="space-y-2 text-xs text-slate-600" aria-label="Grafik HBR dan NBR">{[[hbrLabel,r.hbr,'bg-teal-700'],['Rancangan NBR',r.nbr,'bg-amber-700']].map(([label,value,color])=><div key={label}><div className="mb-1">{label}</div><div className="h-2 rounded bg-slate-200"><div className={'h-2 rounded '+color} style={{width:(Number(value)/Math.max(1,Number(r.hbr),Number(r.nbr))*100)+'%'}}/></div></div>)}</div>}
 
    </article>;
   })}
  </div>
+ {!showExport&&rows.some(row=>row.reference)&&<details><summary className="cursor-pointer text-sm font-medium">Referensi NBR yang berlaku</summary><ul className="mt-2 space-y-2 text-sm">{rows.filter(row=>row.reference).map(row=><li key={row.care}>{row.care==='inap'?'Rawat inap':'Rawat jalan'} · {money(row.nbr)} · {row.reference?.source} · {row.reference?.version}</li>)}</ul></details>}
  </>}
  {!manageReferences&&<details><summary className="cursor-pointer text-sm font-medium">Cara membaca perbandingan</summary><p className="text-sm mt-2">Selisih = HBR − NBR; persentase = selisih ÷ NBR × 100%. CW lokal dan CW nasional dapat memakai skala berbeda. Angka di atas/bawah NBR tidak otomatis berarti profit atau defisit.</p></details>}
  {manageReferences&&<label className="uc-label">Tanggal acuan<input className="uc-input" type="date" value={state.date} onChange={e=>{try{state.setDate(e.target.value);setError('');}catch(e){setError(String(e));}}}/></label>}

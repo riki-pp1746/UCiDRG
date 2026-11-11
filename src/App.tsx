@@ -1,16 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
 import AppLayout from './components/layout/AppLayout';
-import GuidePage from './pages/GuidePage';
-import DashboardPage from './pages/DashboardPage';
-import UploadPage from './pages/UploadPage';
-import CostingInputPage from './pages/CostingInputPage';
-import TarifPasienPage from './pages/TarifPasienPage';
-import ComparisonPage from './pages/ComparisonPage';
-import ReportPage from './pages/ReportPage';
-import SettingsPage from './pages/SettingsPage';
+import SettingsPage, { ReferencesPage } from './pages/SettingsPage';
+import WorkflowPage, { WorkflowHome } from './pages/WorkflowPage';
 import ResetDataPage from './pages/ResetDataPage';
 import UserManagementPage from './pages/UserManagementPage';
 import UserProfilePage from './pages/UserProfilePage';
@@ -33,6 +27,13 @@ function AdminRoute() {
   return role === 'admin' ? <UserManagementPage /> : <Navigate to="/" replace />;
 }
 
+function LegacyWorkflowRoute({page}:{page:'costing'|'patients'}) {
+  const {search,hash}=useLocation();
+  if(page==='costing')return <Navigate to={hash==='#hitung-18-komponen'?'/alur/dasar-alokasi#hitung-18-komponen':'/alur/pusat-biaya'} replace/>;
+  const tab=new URLSearchParams(search).get('tab');
+  return <Navigate to={tab==='hasil'?'/alur/unit-cost-pasien':tab==='tarif'||tab==='proxy'?'/alur/cost-weight'+(tab==='proxy'?'?tab=proxy':''):'/alur/data-pasien'} replace/>;
+}
+
 export function AppRoutes() {
   return (
       <Routes>
@@ -45,23 +46,24 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         >
-          {/* Halaman awal: Panduan Penggunaan */}
-          <Route index element={<GuidePage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="upload" element={<UploadPage />} />
-          <Route path="costing" element={<CostingInputPage />} />
-          <Route path="input-biaya" element={<CostingInputPage />} />
-          <Route path="tarif-pasien" element={<TarifPasienPage />} />
-          <Route path="compare" element={<ComparisonPage />} />
-          <Route path="comparison" element={<ComparisonPage />} />
-          <Route path="reports" element={<ReportPage />} />
-          <Route path="report" element={<ReportPage />} />
+          <Route index element={<WorkflowHome />} />
+          <Route path="alur/:section" element={<WorkflowPage />} />
+          <Route path="dashboard" element={<Navigate to="/alur/ringkasan-eksekutif" replace />} />
+          <Route path="upload" element={<Navigate to="/alur/unggah-klaim" replace />} />
+          <Route path="costing" element={<LegacyWorkflowRoute page="costing" />} />
+          <Route path="input-biaya" element={<LegacyWorkflowRoute page="costing" />} />
+          <Route path="tarif-pasien" element={<LegacyWorkflowRoute page="patients" />} />
+          <Route path="compare" element={<Navigate to="/alur/tarif-idrg" replace />} />
+          <Route path="comparison" element={<Navigate to="/alur/tarif-idrg" replace />} />
+          <Route path="reports" element={<Navigate to="/alur/ringkasan-eksekutif" replace />} />
+          <Route path="report" element={<Navigate to="/alur/ringkasan-eksekutif" replace />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="references" element={<ReferencesPage />} />
           <Route path="reset" element={<ResetDataPage />} />
           <Route path="user-management" element={<AdminRoute />} />
           <Route path="profile" element={<UserProfilePage />} />
           <Route path="revisi4/reset" element={<ResetDataPage />} />
-          <Route path="tarif-idrg" element={<Navigate to="/tarif-pasien?tab=tarif" replace />} />
+          <Route path="tarif-idrg" element={<Navigate to="/alur/cost-weight" replace />} />
           <Route path="revisi4/" element={<V4Page view="guide" />} />
           <Route path="revisi4/dashboard" element={<V4Page view="dashboard" />} />
           <Route path="revisi4/upload" element={<V4Page view="upload" />} />

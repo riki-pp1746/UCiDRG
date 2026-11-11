@@ -127,9 +127,9 @@ it('sinh berkas sintetis untuk pemeriksaan browser',async()=>{
 
 // Exercise the actual post-login route tree, so a disconnected engine cannot pass unnoticed.
 describe('Analisis tambahan setelah login',()=>{
-  it('menu tarif iDRG membuka rincian pasien setelah login',()=>{
-    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/tarif-pasien?tab=tarif']},createElement(AppRoutes)));
-    expect(html).toContain('CW, Casemix &amp; HBR RS');expect(html).not.toContain('National Base Rate');expect(html).not.toContain('Tarif iDRG eksisting');expect(html).not.toContain('href="/tarif-idrg"');expect(html).not.toContain('Kalkulator Tarif iDRG');
+  it('menampilkan tujuan Cost Weight dan mengunci hasil yang belum dihitung',()=>{
+    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/alur/cost-weight']},createElement(AppRoutes)));
+    expect(html).toContain('4.3 Cost Weight &amp; Casemix');expect(html).toContain('Tahap ini belum siap');expect(html).not.toContain('Hitung CW proxy');expect(html).not.toContain('Tambah manual');
   });
   for(const [path,title] of [['/','Lima tahap kerja dari data sumber sampai laporan.'],['/upload','Unggah data sumber'],['/costing','Siapkan costing rumah sakit'],['/dashboard','Lanjutkan analisis'],['/tarif-pasien','Rincian 18 komponen pasien'],['/compare','Tarif RS dan tarif pembanding'],['/reports','Unduh laporan'],['/settings','Pengaturan dan penyimpanan lokal']]){
     it(`membuka ${path} dengan data dan hasil Revisi 4`,()=>{
@@ -166,21 +166,19 @@ describe('Analisis tambahan setelah login',()=>{
   });
 });
 
-it('mempertahankan halaman lama sebagai tampilan utama',()=>{
+it('membuka Beranda enam tahap setelah login',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Panduan kerja');expect(html).toContain('Lima tahap kerja');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('gunakan laporan keuangan yang sudah diperiksa atau diaudit');expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('href="/upload"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');expect(html).not.toContain('Tiga langkah dari data sumber sampai laporan.');
+ expect(html).toContain('Progres Tahap');expect(html).toContain('Mulai Tahap 1');expect(html).toContain('enam tahap');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('href="/alur/profil-rs"');expect(html).toContain('href="/alur/ringkasan-eksekutif"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');
 });
 
-it('panduan kedua ruang menjelaskan lima tahap dan hanya menautkan data ruang aktif',()=>{
+it('mempertahankan panduan lima tahap di ruang terintegrasi',()=>{
  const result=snap();useV4Store.setState({workspace:workspace(),snapshots:[result],selected:result.id,busy:false,error:''});
- for(const prefix of ['', '/revisi4']){
-   const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[prefix||'/']},createElement(AppRoutes)));
+   const prefix='/revisi4';
+   const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[prefix]},createElement(AppRoutes)));
    for(const title of ['Rincian tahap 1','Rincian tahap 2','Rincian tahap 3','Rincian tahap 4','Rincian tahap 5'])expect(html).toContain(title);
    for(const path of ['upload','costing','tarif-pasien','compare','reports','settings'])expect(html).toContain(`href="${prefix}/${path}"`);
-   expect(html).toContain(prefix?'HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode':'HBR = pool HBR aktif ÷ casemix positif');expect(html).toContain('Data kedua ruang');expect(html).toContain('hanya berada di memori');
-   if(prefix){expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. CW, Casemix &amp; HBR RS');}
-   else {expect(html).toContain('Tab 3. CW, Casemix &amp; HBR RS');expect(html).toContain('Logout, refresh, atau menutup tab mengosongkan data');expect(html).not.toContain('LANGKAH 06');expect(html).not.toContain('sesuai standar penghitungan tarif iDRG Nasional');}
- }
+   expect(html).toContain('HBR = pool biaya JKN penuh ÷ total casemix seluruh kasus berkode');expect(html).toContain('Data kedua ruang');expect(html).toContain('hanya berada di memori');
+   expect(html).toContain('Metode 2 adalah bawaan');expect(html).toContain('snapshot yang sama');expect(html).toContain('kontrol profil serta persetujuan Review–Final masih disembunyikan');expect(html).not.toContain('Tab 3. CW, Casemix &amp; HBR RS');
 });
 
 it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
@@ -191,10 +189,12 @@ it('navigasi terintegrasi tetap berada dalam ruang analisis aktif',()=>{
  expect(html).not.toContain('href="/upload"');expect(html).not.toContain('Analisis Revisi 4');expect(html).not.toContain('Data kedua ruang hanya berada di memori');
 });
 
-it('menempatkan perhitungan dan cadangan pada halaman masing-masing',()=>{
- for(const path of ['/','/upload','/costing','/dashboard','/tarif-pasien','/compare','/reports','/settings']){
+it('menempatkan pemeriksaan dan cadangan pada halaman masing-masing serta mengunci alokasi tanpa klaim',()=>{
+ for(const path of ['/','/alur/unggah-klaim','/alur/profil-rs','/alur/pemeriksaan','/alur/dasar-alokasi','/alur/unit-cost-pasien','/alur/tarif-idrg','/alur/ringkasan-eksekutif','/settings']){
    const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:[path]},createElement(AppRoutes)));
-   expect(html.includes('id="hitung-18-komponen"')).toBe(path==='/costing');
+   expect(html).not.toContain('id="hitung-18-komponen"');
+   expect(html.includes('aria-label="Pemeriksaan data laporan"')).toBe(path==='/alur/pemeriksaan');
+   if(path==='/alur/dasar-alokasi')expect(html).toContain('Tahap ini belum siap');
    expect(html.includes('id="cadangan-sesi"')).toBe(path==='/settings');
    expect(html).not.toContain('Bantuan halaman');
  }

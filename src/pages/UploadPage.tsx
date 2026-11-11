@@ -7,7 +7,7 @@ import {prepareIdentities} from '../lib/analysisIdentity';
 
 import {shareSourceData} from '../lib/sharedSourceData';
 
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
@@ -31,7 +31,7 @@ interface ProcessResult {
   errors: string[];
 }
 
-export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
+export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:boolean;claimsOnly?:boolean}={}) {
   const integrated=useLocation().pathname.startsWith('/revisi4');
   const [claimMode,setClaimMode]=useState<'append'|'replace'>('append');
   const [sessionQuery,setSessionQuery]=useState('');
@@ -39,6 +39,8 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
   const sourceConfig=useHospitalCostStore(state=>state.config);
   const sourceCost=sourceConfig.totalOverheadCost+sourceConfig.totalIntermediateCost+sourceConfig.totalFinalCost;
   const { setRawRecords, rawRecords, periodNormalization, setPeriodNormalization, sessions, activeSessionId, setActiveSession, deleteSession } = useCostingStore();
+  const inpatient=useMemo(()=>claimsOnly?rawRecords.reduce((count,row)=>count+Number(row.ptd===1),0):0,[claimsOnly,rawRecords]);
+  const activeImport=sessions.find(session=>session.id===activeSessionId);
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState(0);
   const [phase,setPhase]=useState('Membaca file...');
@@ -97,6 +99,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             if(claims.errors.length)processResult.errors.push(...claims.errors);
             continue;
           }
+          if(claimsOnly)throw new Error('Impor template biaya melalui Tahap 1 · Data RS & Keuangan.');
           if(file.size>5*1024*1024)throw new Error('Excel ini tidak dikenali sebagai klaim. Untuk costing gunakan template enam sheet; untuk klaim gunakan XLSX dengan judul KODE_RS/PTD/SEP atau TXT asli.');
           const parsedData = await parseExcelTemplate(file);
           useHospitalCostStore.setState(s => ({
@@ -132,7 +135,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           processResult.totalTxtRows += parseResult.totalRows;
           processResult.totalParsedTxtRows += parseResult.parsedRows;
           if (parseResult.errors.length > 0) {
-            processResult.errors.push(`[${file.name}] ${parseResult.errors.length} baris gagal diparsing.`);
+            processResult.errors.push(`[${file.name}] ${parseResult.totalRows-parseResult.parsedRows} baris tidak diterima.`,...parseResult.errors.slice(0,5).map(reason=>`[${file.name}] ${reason}`));
           }
         } catch (e: any) {
           if(abort.signal.aborted)return;
@@ -171,6 +174,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           uploadedAt: new Date().toISOString(),
           totalRows: processResult.totalTxtRows,
           parsedRows: processResult.totalParsedTxtRows,
+          importNotes:processResult.errors.slice(0,20),
           status: 'done',
           periodNormalization: detectedPeriod,
           annualCostTotal,
@@ -188,7 +192,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
       const activeClaims = useCostingStore.getState().rawRecords;
       const activeCosts = useHospitalCostStore.getState().config;
       const hasCosts = activeCosts.totalOverheadCost + activeCosts.totalIntermediateCost + activeCosts.totalFinalCost > 0;
-      if (activeClaims.length && hasCosts) {
+      if (!claimsOnly && activeClaims.length && hasCosts) {
         setPhase(`Menghitung ${activeClaims.length.toLocaleString('id-ID')} klaim di latar belakang…`);
         try {
           await calculateAnalysisJob(n => {
@@ -215,14 +219,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     }finally{
       if(uploadAbort.current===abort)uploadAbort.current=null;
     }
-  }, [setPeriodNormalization, setRawRecords,disabled,claimMode]);
+  }, [setPeriodNormalization, setRawRecords,disabled,claimMode,claimsOnly]);
 
   const handlePeriodMonthsChange = (months: number) => {
     if (!periodNormalization || rawRecords.length === 0) return;
     const updated = overrideEffectiveMonths(periodNormalization, months);
     setPeriodNormalization(updated);
 
-    if (sourceCost > 0) void calculateAnalysisJob().catch(error => {
+    if (!claimsOnly && sourceCost > 0) void calculateAnalysisJob().catch(error => {
       if (error?.name !== 'AbortError') setErrorMsg(String(error));
     });
   };
@@ -258,18 +262,18 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5">
-      <header className="border-b border-slate-200 pb-4">
+      {!claimsOnly&&<header className="border-b border-slate-200 pb-4">
         <p className="text-xs font-semibold text-teal-800">Tahap 01</p>
         <h1 className="mt-1 text-2xl font-bold tracking-tight text-teal-950 sm:text-3xl">Unggah data sumber</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">Unggah klaim E-Klaim dan workbook biaya RS. Periksa file yang diterima dan periode klaim sebelum melanjutkan ke alokasi.</p>
-      </header>
+      </header>}
       <section className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_minmax(15rem,0.65fr)] sm:items-center sm:p-5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-teal-950">Sumber bersama</h2>
-          <p className="mt-1 text-sm leading-5 text-slate-700">Unggah sekali untuk kedua ruang analisis. Pengaturan metode dan hasil alokasi dikelola secara terpisah.</p>
+          <h2 className="text-sm font-semibold text-teal-950">{claimsOnly?'Klaim aktif':'Sumber bersama'}</h2>
+          <p className="mt-1 text-sm leading-5 text-slate-700">{claimsOnly?'Unggah berkas dari periode yang sama. Klaim siap diperiksa setelah impor.':'Unggah sekali untuk kedua ruang analisis. Pengaturan metode dan hasil alokasi dikelola secara terpisah.'}</p>
           {(rawRecords.length > 0 || sourceCost > 0) && (
             <p className="mt-2 text-xs font-semibold tabular-nums text-teal-800" role="status">
-              {rawRecords.length.toLocaleString('id-ID')} klaim · biaya sumber Rp{Math.round(sourceCost).toLocaleString('id-ID')}
+              {rawRecords.length.toLocaleString('id-ID')} klaim{claimsOnly?` · ${inpatient.toLocaleString('id-ID')} rawat inap · ${(rawRecords.length-inpatient).toLocaleString('id-ID')} rawat jalan`:` · biaya sumber Rp${Math.round(sourceCost).toLocaleString('id-ID')}`}
             </p>
           )}
         </div>
@@ -280,6 +284,14 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           </select>
         </label>
       </section>
+      {claimsOnly&&rawRecords.length>0&&periodNormalization&&<section className="uc-panel space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><h2 className="font-semibold text-teal-950">Periode klaim</h2><p className="mt-1 text-sm text-slate-700">{periodNormalization.label} · faktor biaya {periodNormalization.effectiveMonths}/12</p></div>
+          <label className="uc-label">Bulan efektif<select className="uc-input" value={periodNormalization.effectiveMonths} disabled={disabled||uploadState==='parsing'} onChange={event=>handlePeriodMonthsChange(Number(event.target.value))}>{Array.from({length:12},(_,index)=>index+1).map(month=><option key={month} value={month}>{month} bulan</option>)}</select></label>
+        </div>
+        {Boolean(periodNormalization.dateOutliers?.length)&&!periodNormalization.confirmed&&<div className="uc-notice flex flex-wrap items-center justify-between gap-3"><p>Periksa pencilan bulan {periodNormalization.dateOutliers?.join(', ')} sebelum menghitung.</p><button type="button" className="uc-secondary" disabled={disabled||uploadState==='parsing'} onClick={()=>handlePeriodMonthsChange(periodNormalization.effectiveMonths)}>Konfirmasi periode</button></div>}
+        {activeImport?.importNotes?.length&&uploadState!=='done'?<details><summary className="cursor-pointer text-sm font-medium">Catatan impor terakhir</summary><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">{activeImport.importNotes.map((note,index)=><li key={index}>{note}</li>)}</ul></details>:null}
+      </section>}
       {uploadState === 'done' && result ? (
         <div className="bg-white rounded-[24px] border border-green-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="bg-green-50 px-6 py-8 text-center">
@@ -317,7 +329,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
                 )}
               </div>
 
-              <div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
+              {!claimsOnly&&<div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                   <FileSpreadsheet className="w-5 h-5 text-teal-500" />
                   Template Costing (.XLSX)
@@ -330,10 +342,10 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
                 ) : (
                   <p className="text-sm text-gray-500 italic">Tidak ada file Excel yang diunggah.</p>
                 )}
-              </div>
+              </div>}
             </div>
 
-            {result.txtFiles.length > 0 && periodNormalization && (
+            {!claimsOnly&&result.txtFiles.length > 0 && periodNormalization && (
               <div className="mb-6 rounded-2xl border border-blue-200 bg-blue-50 p-5">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div>
@@ -389,8 +401,8 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
             <div className="flex flex-wrap justify-center gap-3">
               <button onClick={reset} className="uc-secondary">Unggah file lain</button>
               {(result.excelFiles.length > 0 || result.txtFiles.length > 0) && (
-                <button onClick={() => navigate(integrated ? '/revisi4/costing' : '/costing')} className="uc-primary">
-                  Lanjut ke Biaya & Alokasi <ArrowRight size={16} aria-hidden />
+                <button onClick={() => navigate(claimsOnly?'/alur/pemeriksaan':integrated ? '/revisi4/costing' : '/costing')} className="uc-primary">
+                  {claimsOnly?'Periksa data':'Lanjut ke Biaya & Alokasi'} <ArrowRight size={16} aria-hidden />
                 </button>
               )}
             </div>
@@ -441,16 +453,16 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
           </div>
           <h2 className="text-xl font-bold text-gray-900">Pilih atau seret file</h2>
           <p className="text-gray-500 mt-2 mb-4 max-w-md mx-auto text-sm">
-            Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)
+            {claimsOnly?'Berkas klaim .TXT, .CSV, atau .XLSX':'Mendukung klaim JKN (.TXT, .CSV, .XLSX) dan template costing (.XLSX)'}
           </p>
-          <div className="mb-8 flex flex-wrap justify-center gap-x-5 gap-y-2">
+          {!claimsOnly&&<div className="mb-8 flex flex-wrap justify-center gap-x-5 gap-y-2">
             <a href="/Template_Costing_Standard.xlsx" download="Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
               Unduh template costing RS 6 sheet (.XLSX)
             </a>
             <a href="/Template_Costing_Demo_RS_ABC_2025_Workshop_DO.xlsx" download="Template_Costing_RS_ABC_Pasangan_Tagihan_Sumber_2025.xlsx" className="text-teal-600 hover:text-teal-700 text-sm font-medium underline underline-offset-4">
               Unduh contoh RS ABC (.XLSX)
             </a>
-          </div>
+          </div>}
           
           <input
             type="file"
@@ -471,7 +483,7 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         </div>
       )}
       
-      {uploadState === 'idle' && (
+      {!claimsOnly && uploadState === 'idle' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
           <div className="bg-white p-5 rounded-[24px] shadow-[0_4px_24px_rgba(0,0,0,0.02)] border border-gray-100 flex items-start gap-4">
             <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><FileText className="w-5 h-5"/></div>

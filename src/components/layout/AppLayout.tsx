@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   BarChart3, BookOpen, Calculator, ChevronDown, FileText, LayoutDashboard,
-  LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, UserRound, Users, X,
+  Home, LibraryBig, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, UserRound, Users, X,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuthStore } from '../../stores/authStore';
 import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
 import { BrandLogo } from '../../pages/LoginPage';
+import { useAnalysisWorkflow, workflowStatus } from '../../hooks/useAnalysisWorkflow';
+import { workflowPath, workflowSection, workflowStages } from '../../lib/workflowNavigation';
 
 const navigation = [
   { label: 'Ikhtisar', items: [
@@ -35,6 +37,7 @@ const aliases: Record<string, string> = {
 };
 
 const userManagement = { path: '/user-management', icon: Users, label: 'Manajemen Pengguna' };
+const workflowAdmin = [{path:'/references',icon:LibraryBig,label:'Referensi'}, ...navigation[2].items];
 
 export default function AppLayout() {
   const { pathname, hash } = useLocation();
@@ -50,17 +53,20 @@ export default function AppLayout() {
   const sidebar = useRef<HTMLElement>(null);
   const main = useRef<HTMLElement>(null);
   const integrated = pathname.startsWith('/revisi4');
+  const workflow = useAnalysisWorkflow();
+  const activeStage = pathname.startsWith('/alur/') ? workflowSection(pathname.split('/')[2]) : null;
   const route = (integrated ? pathname.slice('/revisi4'.length) : pathname).replace(/\/$/, '') || '/';
   const current = aliases[route] ?? route;
   const groups = navigation.map(group => group.label === 'Administrasi' && user?.role === 'admin'
     ? { ...group, items: [...group.items, userManagement] }
     : group);
-  const pageLabel = current === '/reset' ? 'Reset Data' : groups.flatMap(group => group.items).find(item => item.path === current)?.label;
-  const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : 'Analisis 18 Komponen';
+  const pageLabel = activeStage ? activeStage.section[1] : current === '/reset' ? 'Reset Data' : current === '/references' ? 'Referensi' : !integrated && current === '/' ? 'Beranda' : groups.flatMap(group => group.items).find(item => item.path === current)?.label;
+  const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : activeStage ? `Tahap ${activeStage.step} dari 6 · ${activeStage.stage.title}` : 'Analisis 18 Komponen';
   const pagePath = (path: string, revision = integrated) =>
     revision && ![userManagement.path, '/profile'].includes(path) ? '/revisi4' + (path === '/' ? '' : path) : path;
-  const showMode = !integrated && ['/dashboard', '/compare', '/reports'].includes(current);
-  const readOnly = !integrated && localRole === 'Pembaca' && ['/upload', '/costing', '/tarif-pasien', '/reset'].includes(current);
+  const showMode = !integrated && activeStage?.step === 6;
+  const readOnly = !integrated && localRole === 'Pembaca' && (current === '/reset' || activeStage?.step === 1);
+  const closeAfterLink = () => { if (menuOpen) closeMobileMenu(); };
 
   const closeMobileMenu = useCallback(() => {
     setMenuOpen(false);
@@ -110,7 +116,7 @@ export default function AppLayout() {
   }, [menuOpen, closeMobileMenu]);
 
   return (
-    <div className={clsx(
+    <div data-sidebar={desktopOpen?'open':'closed'} className={clsx(
       'uc-workspace-frame grid h-dvh min-h-0 grid-cols-[minmax(0,1fr)] bg-[#f4f8f7]',
       desktopOpen && 'lg:grid-cols-[15.75rem_minmax(0,1fr)]',
     )}>
@@ -146,7 +152,7 @@ export default function AppLayout() {
               <select
                 value={integrated ? 'integrated' : 'components'}
                 onChange={event => {
-                  navigate(pagePath('/dashboard', event.target.value === 'integrated'));
+                  navigate(event.target.value === 'integrated' ? '/revisi4/dashboard' : '/');
                   if (menuOpen) closeMobileMenu();
                 }}
                 className="min-h-11 w-full appearance-none rounded-lg border border-[#51817b] bg-[#154b49] py-2.5 pl-2.5 pr-8 text-base font-semibold text-white lg:min-h-0 lg:text-xs"
@@ -158,7 +164,30 @@ export default function AppLayout() {
             </span>
           </label>
           <nav aria-label="Navigasi utama" className="space-y-4">
-            {groups.map(group => (
+            {!integrated ? <>
+              <Link to="/" onClick={closeAfterLink} aria-current={pathname==='/'?'page':undefined} className={clsx('flex min-h-10 items-center gap-2 rounded-md px-3 text-sm font-semibold',pathname==='/'?'bg-[#d8eee8] text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}><Home size={16}/>Beranda</Link>
+              <ol className="space-y-1">
+                {workflowStages.map((stage,index)=>{
+                  const step=index+1;
+                  const status=workflowStatus(workflow,step);
+                  const selected=activeStage && activeStage.step===step;
+                  return <li key={stage.title}>
+                    <Link to={workflowPath(stage.sections[0][0])} onClick={closeAfterLink} className={clsx('flex min-h-11 items-start gap-2 rounded-md px-2.5 py-2 text-[13px] leading-4',selected?'bg-[#d8eee8] text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}>
+                      <span className={clsx('grid size-5 shrink-0 place-items-center rounded text-[11px] font-bold',selected?'bg-[#badcd4]':'bg-white/10')}>{step}</span>
+                      <span className="min-w-0"><span className="block font-semibold">{stage.title}</span><span className={clsx('mt-0.5 block text-[11px]',selected?'text-teal-800':'text-[#b7d4cf]')}>{status}</span></span>
+                    </Link>
+                    {selected&&<ul className="my-1 ml-4 space-y-0.5 border-l border-white/25 pl-2">
+                      {stage.sections.map(([slug,label],i)=><li key={slug}><Link to={workflowPath(slug)} onClick={closeAfterLink} aria-current={pathname===workflowPath(slug)?'page':undefined} className={clsx('block rounded-md px-2 py-2 text-xs leading-4',pathname===workflowPath(slug)?'bg-white/15 font-semibold text-white':'text-[#cfe5e0] hover:bg-white/10')}><span className="mr-1.5 tabular-nums">{step}.{i+1}</span>{label}</Link></li>)}
+                    </ul>}
+                  </li>;
+                })}
+              </ol>
+              <div className="border-t border-white/15 pt-3">
+                <p className="px-3 pb-1 text-[11px] font-semibold text-[#a9cec9]">Administrasi</p>
+                {(user?.role==='admin'?[...workflowAdmin,userManagement]:workflowAdmin).map(({path,label,icon:Icon})=><Link key={path} to={path} onClick={closeAfterLink} aria-current={pathname===path?'page':undefined} className={clsx('flex min-h-10 items-center gap-2 rounded-md px-3 text-[13px]',pathname===path?'bg-[#d8eee8] font-semibold text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}><Icon size={15}/>{label}</Link>)}
+              </div>
+            </> :
+            groups.map(group => (
               <div key={group.label}>
                 <p className="px-3 pb-1.5 text-[11px] font-semibold tracking-wide text-[#a9cec9]">{group.label}</p>
                 <ul className="space-y-0.5">

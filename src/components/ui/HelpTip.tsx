@@ -13,8 +13,10 @@ export default function HelpTip({ term, className = '' }: { term: GlossaryKey; c
     const close = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     };
+    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false);};
     document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
+    document.addEventListener('keydown',escape);
+    return () => {document.removeEventListener('mousedown', close);document.removeEventListener('keydown',escape);};
   }, [open]);
 
   if (!entry) return null;
@@ -25,6 +27,7 @@ export default function HelpTip({ term, className = '' }: { term: GlossaryKey; c
         type="button"
         aria-label={`Penjelasan: ${entry.term}`}
         aria-expanded={open}
+        title={entry.plain}
         onClick={() => setOpen(o => !o)}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
