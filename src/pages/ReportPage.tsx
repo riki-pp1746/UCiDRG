@@ -1,5 +1,6 @@
 import {AnalysisReportDetails,AnalysisReportVersions} from '../components/ui/AnalysisControls';
 import {analysisPdf} from '../lib/analysisPdf';
+import {APP_NAME} from '../lib/appBrand';
 import {cmiStudyReport} from '../lib/cmiStudyReport';
 import {ensureAnalysisExport,appendAnalysisSheets,methodologyRows} from '../lib/analysisExport';
 import {statusLabel,summaryMetricText,financialLabel} from '../lib/analysisSnapshot';
@@ -115,7 +116,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
 
     // Sheet 1: Summary
     const summaryData = [
-      ['LAPORAN UNIT COST - UnitCOSt PRO'],
+      [`Laporan ${APP_NAME}`],
       ['Rumah Sakit', user?.namaRS],
       ['Periode Data', summary.periodeData],
       ['Sumber Periode', 'Bulan efektif; pencilan memerlukan konfirmasi'],
@@ -232,7 +233,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
     if(!ensureAnalysisExport())return;
     const pptx = new PptxGenJS();
     pptx.layout = 'LAYOUT_WIDE';
-    pptx.author = 'UnitCOSt PRO';
+    pptx.author = APP_NAME;
     pptx.subject = 'Hasil Patient Level Costing';
     pptx.title = `Hasil Unit Cost ${user?.namaRS || ''}`;
     const navy = '041E42'; const teal = '00A99D'; const gray = '52606D'; const light = 'F4F8FA';
@@ -242,7 +243,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       if (sub) slide.addText(sub, { x: 0.6, y: 0.85, w: 12, h: 0.25, fontFace: 'Aptos', fontSize: 10, color: gray });
       slide.addShape(pptx.ShapeType.line, { x: 0.6, y: 1.13, w: 12.1, h: 0, line: { color: teal, width: 1.2 } });
     };
-    const addFooter = (slide: any, page: number) => slide.addText(`UnitCOSt PRO  |  ${new Date().toLocaleDateString('id-ID')}  |  ${page}`, { x: 0.6, y: 7.1, w: 12, h: 0.2, fontFace: 'Aptos', fontSize: 8, color: '7A8793', align: 'right' });
+    const addFooter = (slide: any, page: number) => slide.addText(`${APP_NAME}  |  ${new Date().toLocaleDateString('id-ID')}  |  ${page}`, { x: 0.6, y: 7.1, w: 12, h: 0.2, fontFace: 'Aptos', fontSize: 8, color: '7A8793', align: 'right' });
 
     let slide = pptx.addSlide();
     slide.background = { color: navy };
@@ -368,7 +369,6 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       {section==='groups'&&<section className="uc-panel space-y-4" aria-label="Rincian DRG laporan"><div><h2 className="text-lg font-semibold text-teal-950">Rincian kelompok DRG</h2><p className="mt-1 text-sm text-slate-600">{drgResults.length.toLocaleString('id-ID')} kelompok sesuai filter. Unit cost dan tarif ditampilkan sebagai rata-rata per kasus.</p></div><div className="uc-table-scroll max-h-[640px] overflow-y-auto"><table className="uc-table min-w-[800px]"><thead className="sticky top-0 bg-slate-50"><tr>{['Kode','Kelompok kasus','Kasus','Unit cost','Tarif pembanding','Selisih per kasus','Status'].map(label=><th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{drgResults.map((drg,i)=><tr key={drg.group_code+'|'+i}><td className="font-mono font-semibold text-teal-800">{drg.group_code}</td><td className="min-w-48 max-w-72">{drg.group_description}</td><td>{formatNumber(drg.jumlahKasus)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataTarif)}</td><td className={drg.selisih<0?'text-red-700':'text-teal-800'}>{formatRupiah(drg.selisih)}<span className="mt-1 block text-xs">{formatNumber(drg.selisihPersen,1)}%</span></td><td><span className={clsx('inline-block rounded-full px-2 py-1 text-xs font-semibold',STATUS_BADGE[drg.status])}>{statusLabel(drg)}</span><details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Kepastian data</summary><p className="mt-2">{drg.statisticalLabel}; interval selisih 95%: {drg.ci?formatRupiah(drg.ci.low)+' sampai '+formatRupiah(drg.ci.high):'Belum tersedia'}.</p></details></td></tr>)}</tbody></table></div>{!drgResults.length&&<p className="text-sm text-slate-500">Tidak ada kelompok yang sesuai filter laporan.</p>}</section>}
       {section==='checks'&&<ReportDataChecks checks={checks}/>}
       {section==='methods'&&<div className="space-y-4"><AnalysisReportDetails/><AnalysisReportVersions/></div>}
-      <footer className="border-t border-slate-200 py-3 text-xs text-slate-500">UnitCOSt PRO · Laporan analisis biaya RS</footer>
     </div>
   );
 }

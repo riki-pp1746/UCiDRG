@@ -18,6 +18,7 @@ import WorkflowPatients from '../components/workflow/WorkflowPatients';
 import WorkflowAllocation from '../components/workflow/WorkflowAllocation';
 import WorkflowResults from '../components/workflow/WorkflowResults';
 import WorkflowTable from '../components/workflow/WorkflowTable';
+import { APP_METHOD } from '../lib/appBrand';
 
 type Workflow = ReturnType<typeof useAnalysisWorkflow>;
 const template='/Template_Costing_Standard.xlsx';
@@ -36,7 +37,7 @@ export function WorkflowHome() {
   return <div className="mx-auto max-w-6xl space-y-5">
     <section className="rounded-xl border border-slate-200 border-l-4 border-l-teal-700 bg-white p-5 sm:p-7">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl"><h1 className="text-3xl font-semibold tracking-tight text-teal-950">Beranda</h1><p className="mt-2 text-sm leading-6 text-slate-600">Siapkan data rumah sakit dan klaim, hitung unit cost, lalu susun laporan dalam enam tahap.</p></div>
+        <div className="max-w-2xl"><h1 className="text-3xl font-semibold tracking-tight text-teal-950">Beranda</h1><p className="mt-2 text-sm leading-6 text-slate-700">{APP_METHOD}. Untuk menghitung biaya tiap kasus, ikuti enam tahap di bawah. Siapkan Excel biaya RS dan berkas dari E-Klaim.</p><p className="mt-2 text-xs text-slate-600">Unduh hasil sebelum keluar, memuat ulang, atau menutup tab. Data analisis hanya tersimpan selama sesi.</p></div>
         <Link className="uc-primary" to={workflowPath(next)}>{actionLabel}<ArrowRight size={16}/></Link>
       </div>
       <dl className="mt-5 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">

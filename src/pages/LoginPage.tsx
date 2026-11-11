@@ -1,11 +1,10 @@
-// ============================================================
-// PAGE: LoginPage.tsx
-// UnitCOSt account access
-// ============================================================
-
 import { useState, useEffect, type FormEvent } from 'react';
 import { authConfigured, useAuthStore } from '../stores/authStore';
-import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, ShieldCheck, ChartNoAxesCombined, Database, Eye, EyeOff, Check, Layers } from 'lucide-react';
+import { APP_METHOD, APP_NAME } from '../lib/appBrand';
+import { loginCaptchaId, type LoginCaptchaProof } from '../lib/loginCaptcha';
+import LoginCaptcha from '../components/auth/LoginCaptcha';
+import LoginDataAgreement from '../components/auth/LoginDataAgreement';
+import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 // ============================================================
 // COMPONENT: Custom Logo SVG (Professional & Elegant)
@@ -32,6 +31,9 @@ export default function LoginPage() {
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState('');
  const [notice, setNotice] = useState('');
+ const [proof, setProof] = useState<LoginCaptchaProof | null>(null);
+ const [captchaVersion, setCaptchaVersion] = useState(0);
+ const [agreementOpen, setAgreementOpen] = useState(false);
  const login = useAuthStore(state => state.login);
  const register = useAuthStore(state => state.register);
  const registering = mode === 'register';
@@ -49,25 +51,52 @@ export default function LoginPage() {
   setShowPassword(false);
   setError('');
   setNotice('');
+  setProof(null);
  }
 
- async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+ function handleSubmit(event: FormEvent<HTMLFormElement>) {
   event.preventDefault();
   if (busy) return;
+  if (!registering && loginCaptchaId && !proof) {
+   setError('Selesaikan verifikasi gambar sebelum masuk.');
+   return;
+  }
   if (registering && (!name.trim() || !hospital.trim())) {
    setError('Isi nama lengkap dan nama rumah sakit.');
    return;
   }
+  if (!registering) {
+   setAgreementOpen(true);
+   return;
+  }
+  void submitAccount();
+ }
 
+ function cancelLogin() {
+  setAgreementOpen(false);
+  setPassword('');
+  setShowPassword(false);
+  setProof(null);
+  setCaptchaVersion(value => value + 1);
+  setError('');
+  setNotice('Login dibatalkan.');
+ }
+
+ async function submitAccount() {
+  if (busy) return;
   setBusy(true);
   setError('');
   setNotice('');
   try {
    const result = registering
     ? await register(email, password, name, hospital, phone, hospitalCode)
-    : await login(email, password);
+    : await login(email, password, proof ?? undefined);
    if (result.status === 'error') {
     setError(result.message);
+    if (!registering && loginCaptchaId) {
+     setProof(null);
+     setCaptchaVersion(value => value + 1);
+    }
    } else if (result.status === 'pending') {
     changeMode();
     setNotice('Pendaftaran berhasil. Akun dapat digunakan setelah disetujui admin.');
@@ -86,25 +115,16 @@ export default function LoginPage() {
       <circle cx="400" cy="156" r="4" fill="currentColor"/>
      </g>
     </svg>
-    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>UnitCOSt <span>PRO</span></strong><small>Analisis biaya layanan kesehatan</small></div></div>
+    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_METHOD}</small></div></div>
     <div className="uc-login-story-content">
-     <span className="uc-login-kicker">Ruang analisis rumah sakit</span>
-     <h1 id="login-story-title">Costing layanan<br/>rumah sakit</h1>
-     <p>Telusuri biaya per pasien, bandingkan tarif klaim, dan susun laporan untuk evaluasi layanan.</p>
+     <h1 id="login-story-title">Hitung biaya tiap pasien</h1>
+     <p>Biaya rumah sakit dialokasikan ke tiap kunjungan atau rawat inap. Bandingkan hasilnya dengan tarif klaim iDRG.</p>
     </div>
-    <ul className="uc-login-stages" aria-label="Alur analisis">
-     <li><Database size={17} aria-hidden /> Data sumber</li>
-     <li><Layers size={17} aria-hidden /> Alokasi biaya</li>
-     <li><ChartNoAxesCombined size={17} aria-hidden /> Hasil analisis</li>
-    </ul>
    </section>
    <section className="uc-login-form-panel" aria-labelledby="login-title">
     <div className="uc-login-form-wrap">
-     <span className="uc-login-kicker">Akses pengguna</span>
-     <h2 id="login-title">{registering ? 'Daftar akun UnitCOSt' : 'Masuk ke ruang kerja'}</h2>
-     <p className="uc-login-subtitle">
-      {registering ? 'Isi profil dan buat sandi. Admin akan meninjau pendaftaran Anda.' : 'Gunakan akun dan sandi Anda untuk memulai analisis.'}
-     </p>
+     <h2 id="login-title">{registering ? 'Daftar akun' : 'Masuk'}</h2>
+     {registering&&<p className="uc-login-subtitle">Akun bisa dipakai setelah disetujui admin.</p>}
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}
@@ -145,7 +165,7 @@ export default function LoginPage() {
        </div>
       </>}
       <div>
-       <label htmlFor="email">{registering ? 'Email' : 'Email atau nama pengguna Admin'}</label>
+       <label htmlFor="email">{registering ? 'Email' : 'Email atau nama pengguna admin'}</label>
        <div className="uc-login-field">
         <Mail size={18} aria-hidden />
         <input id="email" name="email" type={registering ? 'email' : 'text'} autoComplete="username" autoCapitalize="none"
@@ -166,8 +186,9 @@ export default function LoginPage() {
         </button>
        </div>
       </div>
-      <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured}>
-       {busy ? 'Memproses…' : registering ? 'Buat akun' : 'Masuk ke ruang kerja'} <ArrowRight size={18} aria-hidden />
+      {!registering && loginCaptchaId && <LoginCaptcha key={captchaVersion} onProof={setProof}/>}
+      <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured || Boolean(!registering && loginCaptchaId && !proof)}>
+       {busy ? 'Memproses…' : registering ? 'Buat akun' : 'Masuk'} <ArrowRight size={18} aria-hidden />
       </button>
       <p className="text-sm text-slate-600">
        {registering ? 'Sudah punya akun?' : 'Belum punya akun?'}{' '}
@@ -177,8 +198,8 @@ export default function LoginPage() {
        </button>
       </p>
      </form>
-     <div className="uc-login-session"><ShieldCheck size={20}/><p><strong>Sesi analisis sementara</strong><span>Data analisis dihapus saat logout, refresh, atau tab ditutup. Unduh hasil sebelum keluar.</span></p></div>
-   </div><p className="uc-login-form-footer"><Check size={14}/> Alokasi biaya · Unit cost · CW & HBR RS</p></section>
-  </div><p className="uc-login-bottom">UnitCOSt PRO · Ruang analisis biaya rumah sakit</p>
+   </div></section>
+  </div>
+  {agreementOpen && <LoginDataAgreement onCancel={cancelLogin} onAccept={() => { setAgreementOpen(false); void submitAccount(); }}/>}
  </main>;
 }

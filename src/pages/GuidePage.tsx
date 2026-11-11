@@ -157,6 +157,6 @@ export default function GuidePage(){
         {DATA_YANG_DISIAPKAN.map(data=>{const Icon=data.icon;return <section key={data.title} className="border border-slate-200 rounded-xl p-4 space-y-3"><h3 className="flex items-center gap-2 font-semibold text-sm"><Icon size={18}/>{data.title}</h3><span className={clsx('inline-block text-xs px-2 py-1 rounded-full',data.badgeColor)}>{data.badge}</span><p className="text-xs text-slate-500">{data.source}</p><ul className="space-y-2 text-sm text-slate-600">{data.items.map(item=><li className="flex items-start gap-2" key={item}><CheckCircle size={16} className="flex-none mt-0.5"/>{item}</li>)}</ul></section>;})}
       </div>
     </details>
-    <p className="text-xs text-slate-500 text-center">UnitCOSt PRO · Panduan ruang Analisis 18 Komponen · Referensi tarif bawaan masih ilustratif sampai diverifikasi.</p>
+    <p className="text-xs text-slate-500 text-center">Referensi tarif bawaan masih ilustratif sampai diverifikasi.</p>
   </div>;
 }

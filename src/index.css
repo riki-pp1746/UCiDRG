@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ============================================================
-   UNITCOST PRO — Teal, lime and cool neutrals
+   Biaya per Pasien — Teal, lime and cool neutrals
    System typography, accessible contrast and a calm hospital workspace.
    Palet diganti di level token, sehingga seluruh halaman ikut berubah.
    ============================================================ */
@@ -296,7 +296,7 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 .uc-table tbody tr:hover { background:#EDF7F4; }
 .uc-input { color:#172D2D; border-color:#C7D8D5; }
 .uc-workspace h1,.uc-panel h2,.uc-page-heading h1 { color:#172D2D; }
-/* Access screen and the shared UnitCOSt identity. */
+/* Access screen and shared branding. */
 .uc-login {
   min-height:100dvh; display:grid; align-content:center; justify-items:center;
   padding:clamp(16px, 5vw, 64px); background:#edf5f3;
@@ -318,25 +318,16 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 .uc-login-brand { display:flex; align-items:center; gap:12px; }
 .uc-login-brand svg { flex-shrink:0; }
 .uc-login-brand strong { display:block; font-size:21px; font-weight:750; letter-spacing:-.5px; }
-.uc-login-brand strong span { color:#d6ea87; }
 .uc-login-brand small { display:block; font-size:12px; color:#bbd6d1; }
-.uc-login-kicker { color:#14675e; font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
-.uc-login-story .uc-login-kicker { color:#d6ea87; }
-.uc-login-story-content { position:relative; margin:32px 0; }
+.uc-login-story-content { position:relative; margin:auto 0; padding:32px 0; }
 .uc-login-story h1 {
   max-width:480px; margin:16px 0; font-size:clamp(2.6rem, 5vw, 4.15rem);
   font-weight:720; line-height:1.06; color:#fff; letter-spacing:-.055em;
 }
 .uc-login-story-content>p { max-width:350px; font-size:15px; line-height:1.65; color:#d2e9e4; }
-.uc-login-stages {
-  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;
-  border-top:1px solid #ffffff36; padding-top:18px; color:#e1efed; font-size:12px; font-weight:550;
-}
-.uc-login-stages li { display:flex; align-items:center; gap:8px; }
-.uc-login-stages svg { color:#d6ea87; flex-shrink:0; }
-.uc-login-form-panel { display:flex; flex-direction:column; justify-content:space-between; padding:54px 44px 26px; }
+.uc-login-form-panel { display:flex; flex-direction:column; justify-content:center; padding:44px; }
 .uc-login-form-wrap { width:100%; max-width:360px; margin:auto; }
-.uc-login-form-panel h2 { font-size:28px; font-weight:700; color:#172d2d; line-height:1.25; margin:12px 0 10px; }
+.uc-login-form-panel h2 { font-size:28px; font-weight:700; color:#172d2d; line-height:1.25; margin:0 0 20px; }
 .uc-login-subtitle { color:#526b69; font-size:13px; margin-bottom:28px; }
 .uc-login-form { display:flex; flex-direction:column; gap:20px; }
 .uc-login-form label { display:block; font-size:12px; font-weight:650; color:#334b49; margin-bottom:8px; }
@@ -356,24 +347,13 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 }
 .uc-login-submit:hover:not(:disabled) { background:#005750; }
 .uc-login-submit:disabled { opacity:1; color:#526b69; background:#e8f0ee; }
-.uc-login-session {
-  display:flex; align-items:flex-start; gap:10px; margin-top:24px; padding:14px;
-  border:1px solid #dcead2; border-radius:10px; background:#f5faef; color:#365538;
-}
-.uc-login-session svg { flex-shrink:0; margin-top:2px; }
-.uc-login-session strong { display:block; font-size:12px; }
-.uc-login-session span { display:block; margin-top:3px; font-size:11px; line-height:1.6; }
-.uc-login-form-footer,.uc-login-bottom { font-size:11px; color:#526b69; }
-.uc-login-form-footer { display:flex; align-items:center; justify-content:center; gap:7px; margin-top:30px; }
-.uc-login-bottom { margin-top:22px; }
 .uc-workspace-header { box-shadow:inset 0 3px #007d76; }
 @media(max-width:800px) {
   .uc-login-shell { grid-template-columns:1fr; max-width:490px; border-radius:18px; }
   .uc-login-story { min-height:0; padding:24px; }
-  .uc-login-story-content { margin:22px 0 0; }
+  .uc-login-story-content { margin:14px 0 0; padding:0; }
   .uc-login-story h1 { font-size:34px; }
   .uc-login-story-content>p { font-size:13px; }
-  .uc-login-stages { display:none; }
   .uc-login-form-panel { padding:28px 24px 22px; }
   .uc-login-form-panel h2 { font-size:24px; }
 }

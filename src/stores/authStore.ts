@@ -2,6 +2,7 @@ import { createClient, type Session, type SupabaseClient } from '@supabase/supab
 import { create } from 'zustand';
 import { clearAnalysisSession } from '../lib/sessionData';
 import { isHospitalClass, type HospitalClass } from '../types/hospitalClass';
+import { loginCaptchaId, type LoginCaptchaProof } from '../lib/loginCaptcha';
 
 const supabaseUrl = 'https://vowutzxizrrywpwcobth.supabase.co';
 const publishableKey = import.meta.env.NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY?.trim()
@@ -38,7 +39,7 @@ interface AuthState {
   user: { username: string; namaRS: string; role: AccountRole; expiresAt: string | null; hospitalClass?: HospitalClass } | null;
   lastActivity: number;
   touch: () => void;
-  login: (email: string, password: string) => Promise<AuthResult>;
+  login: (email: string, password: string, proof?: LoginCaptchaProof) => Promise<AuthResult>;
   register: (email: string, password: string, name: string, hospital: string, phone: string, hospitalCode: string) => Promise<AuthResult>;
   logout: () => void;
 }
@@ -73,6 +74,9 @@ function authMessage(code: string | undefined) {
     case 'over_email_send_rate_limit': return 'Pendaftaran belum siap. Hubungi pengelola aplikasi.';
     case 'user_already_exists': return 'Email ini sudah terdaftar. Gunakan formulir Masuk.';
     case 'invalid_credentials': return 'Email atau sandi tidak sesuai.';
+    case 'captcha_required':
+    case 'captcha_invalid': return 'Verifikasi gambar gagal atau kedaluwarsa. Coba gambar baru.';
+    case 'captcha_unavailable': return 'Verifikasi gambar belum bisa digunakan. Coba lagi sebentar.';
     case 'weak_password': return 'Sandi belum memenuhi persyaratan keamanan proyek.';
     case 'signup_disabled':
     case 'email_provider_disabled': return 'Pendaftaran email belum diaktifkan oleh pengelola proyek.';
@@ -138,11 +142,20 @@ export const useAuthStore = create<AuthState>(set => ({
   user: null,
   lastActivity: 0,
   touch: () => set({ lastActivity: Date.now() }),
-  login: (identity, password) => {
-    const email = identity.trim();
-    return authenticate(connection =>
-      connection.auth.signInWithPassword({ email: email.toLowerCase() === 'admin' ? adminEmail : email, password }),
-    );
+  login: (identity, password, proof) => {
+    const trimmed = identity.trim();
+    const email = trimmed.toLowerCase() === 'admin' ? adminEmail : trimmed;
+    if (!loginCaptchaId) return authenticate(connection => connection.auth.signInWithPassword({ email, password }));
+    if (!proof) return Promise.resolve({ status: 'error', message: authMessage('captcha_required') });
+    return authenticate(async connection => {
+      const response = await fetch('/api/sign-in', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, proof }), cache: 'no-store', redirect: 'error',
+      });
+      const result = await response.json();
+      if (!response.ok) return { data: { session: null, user: null }, error: { code: result.code } };
+      return connection.auth.setSession({ access_token: result.access_token, refresh_token: result.refresh_token });
+    });
   },
   register: async (email, password, name, hospital, phone, hospitalCode) => {
     if (email.trim().toLowerCase() === adminEmail) {
