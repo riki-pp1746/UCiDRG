@@ -1,13 +1,10 @@
-import BaseRateComparisonPanel from '../components/costing/BaseRateComparisonPanel';
 import RupiahInput from '../components/ui/RupiahInput';
 import {shouldAutoAnalyse} from '../lib/largeData';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
 import {analysisStale} from '../lib/analysisController';
 import {useMethodologyStore,effectiveMethodology} from '../stores/methodologyStore';
 import {ensureAnalysisExport,appendAnalysisSheets} from '../lib/analysisExport';
-import TrimmingImpact from '../components/costing/TrimmingImpact';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
-import {displayDecimal} from '../v4/numbers';
 import {money,maskSEP} from '../v4/numbers';
 import * as XLSX from 'xlsx';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
@@ -19,7 +16,7 @@ import {buildBiayaRSMap,biayaRSMapToRVU} from '../stores/tarifPasienStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
-import { formatRupiah,formatNumber } from '../lib/calculations/patientLevelCosting';
+import { formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { 
   Calculator, Users, Download, Trash2, Plus, Info,
   AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
@@ -27,11 +24,11 @@ import {
 } from 'lucide-react';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_SHORT, KELAS_RAWAT_LABELS, KelasRawat, makeEmptyPatient } from '../types/tarifPasien.types';
 
-type Tab = 'input' | 'hasil' | 'tarif';
+type Tab = 'input' | 'hasil' | 'tarif' | 'proxy';
 
 export default function TarifPasienPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab: Tab = searchParams.get('tab') === 'tarif' ? 'tarif' : searchParams.get('tab') === 'hasil' ? 'hasil' : 'input';
+  const activeTab: Tab = searchParams.get('tab') === 'proxy' ? 'proxy' : searchParams.get('tab') === 'tarif' ? 'tarif' : searchParams.get('tab') === 'hasil' ? 'hasil' : 'input';
   const setActiveTab = (tab: Tab) => setSearchParams(tab === 'input' ? {} : {tab});
   const [inputPage, setInputPage] = useState(1);
   const [resultPage, setResultPage] = useState(1);
@@ -125,12 +122,7 @@ export default function TarifPasienPage() {
         <button disabled={page >= pages} onClick={() => setPage(page + 1)} className="p-1.5 rounded border border-gray-200 disabled:opacity-40 hover:bg-white"><ChevronRight className="w-4 h-4" /></button>
       </div>
 
-      {periodNormalization && (
-        <div className={`rounded-xl border px-4 py-3 text-sm ${(periodNormalization.yearMismatch || periodNormalization.fallbackCount > 0 || periodNormalization.invalidDateCount > 0) ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
-          <strong>Periode klaim:</strong> {periodNormalization.label} · faktor biaya {periodNormalization.effectiveMonths}/12 ({formatNumber(periodFactor * 100,1)}%).
-          {periodNormalization.fallbackCount > 0 && ` ${periodNormalization.fallbackCount.toLocaleString('id-ID')} pasien memakai admission_date sebagai fallback.`}
-        </div>
-      )}
+
     </div>
   );
 
@@ -138,17 +130,14 @@ export default function TarifPasienPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <PageIntro title="Langkah 3: Hasil Pasien" what="Telusuri hasil alokasi biaya RS, lalu hitung CW RS, casemix, dan HBR terpisah untuk inap dan jalan." result="Unit cost pasien dan biaya standar kelompok berasal dari costing RS. Perbandingan tarif tersedia pada menu terpisah." />
-      <label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setInputPage(1);setResultPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label>{activeTab !== 'tarif' && localCosting && <section className="uc-panel"><h2 className="font-semibold mb-3">HBR dari costing RS</h2><div className="grid sm:grid-cols-2 gap-3">{localCosting.pools.map(p=><div className="uc-inset" key={p.care}><strong>HBR {p.care==='inap'?'Inap':'Jalan'}: {money(p.hbr)}</strong><p className="text-sm mt-2">{p.count} kasus · pool JKN penuh {money(p.total)} · casemix {displayDecimal(p.casemix)} · outlier {p.outlierCount??0} kasus / {money(p.outlierCost??'0')}</p><TrimmingImpact pool={p}/></div>)}</div><p className="text-xs mt-3 text-slate-500">Periode: {localCosting.period} · HBR = pool HBR aktif sesuai kebijakan ÷ total casemix positif. Biaya dikecualikan ditampilkan pada tab CW, Casemix & HBR RS.</p></section>}
-      {activeTab!=='tarif'&&<BaseRateComparisonPanel result={localCosting} editable={proxyEditable} exportAllowed={!!localCosting}/>}
-      {activeTab!=='tarif'&&<ProxyCostWeightPanel records={rawRecords} local={localCosting} scope="main" editable={proxyEditable}/>}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <Calculator className="w-7 h-7 text-teal-600" />
-          18 Variabel Tarif Pasien (Patient Level Costing)
+          Hasil Pasien
         </h1>
         <p className="text-gray-500 mt-1">
-          Step 4: menghasilkan Cost per Pasien dari distribusi 18 variabel billing sesuai data TXT E-Klaim.
+          Tinjau data pasien, rincian alokasi biaya, serta CW dan HBR RS.
         </p>
       </div>
 
@@ -158,6 +147,7 @@ export default function TarifPasienPage() {
           { id: 'input', label: '1. Input Data Pasien (E-Klaim)', icon: Users },
           { id: 'hasil', label: '2. Rincian biaya dan unit cost', icon: Calculator },
           { id: 'tarif', label: '3. CW, Casemix & HBR RS', icon: Calculator },
+          { id: 'proxy', label: 'CW proxy (lanjutan)', icon: Calculator },
         ].map(tab => (
           <button
             key={tab.id}
@@ -172,10 +162,12 @@ export default function TarifPasienPage() {
         ))}
       </div>
 
-      {activeTab!=='tarif'&&<section className="uc-panel flex gap-3 flex-wrap"><label className="uc-label">Cari iDRG, deskripsi atau SEP masking<input className="uc-input" value={query} onChange={e=>{setQuery(e.target.value);setInputPage(1);setResultPage(1);}}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={careFilter} onChange={e=>{setCareFilter(e.target.value);setInputPage(1);setResultPage(1);}}><option value="all">Semua</option><option value="inap">Inap</option><option value="jalan">Jalan</option></select></label><p className="text-xs self-end">Filter tampilan tidak menghitung ulang pool atau HBR.</p></section>}
+      {(activeTab==='input'||activeTab==='hasil')&&<section className="uc-panel flex gap-3 flex-wrap"><label className="uc-label">Cari iDRG, deskripsi atau SEP masking<input className="uc-input" value={query} onChange={e=>{setQuery(e.target.value);setInputPage(1);setResultPage(1);}}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={careFilter} onChange={e=>{setCareFilter(e.target.value);setInputPage(1);setResultPage(1);}}><option value="all">Semua</option><option value="inap">Inap</option><option value="jalan">Jalan</option></select></label><p className="text-xs self-end">Filter tampilan tidak menghitung ulang pool atau HBR.</p></section>}
       {activeTab === 'tarif' && <IDRGTariffPage embedded />}
+      {activeTab === 'proxy' && <ProxyCostWeightPanel records={rawRecords} local={localCosting} scope="main" editable={proxyEditable}/>}
+      {(activeTab==='input'||activeTab==='hasil')&&<label className="uc-label print:hidden">Baris per halaman<select className="uc-input" value={pageSize} onChange={e=>{setPageSize(Number(e.target.value));setInputPage(1);setResultPage(1);}}>{[10,25,50,100].map(n=><option key={n} value={n}>{n}</option>)}</select></label>}
 
-      <div hidden={activeTab === 'tarif'} className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
+      <div hidden={activeTab === 'tarif'||activeTab === 'proxy'} className={`rounded-xl border p-4 ${hasValidationErrors ? 'bg-red-50 border-red-200' : validationIssues.length ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="flex items-start gap-3">
           {validationIssues.length ? <AlertTriangle className={`w-5 h-5 mt-0.5 flex-none ${hasValidationErrors ? 'text-red-600' : 'text-amber-600'}`} /> : <CheckCircle2 className="w-5 h-5 text-emerald-600 mt-0.5 flex-none" />}
           <div className="min-w-0 flex-1">

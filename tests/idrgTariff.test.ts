@@ -36,5 +36,5 @@ it('patient page renders local HBR and the new base rate comparison without pati
   useCostingStore.setState({patientResults:[result],rawRecords:[record],tarifIDRGConfig:config,rvuGlobalCosts:record.billing,isProcessing:false});
   useTarifPasienStore.setState({localCosting:calculateHospitalBaseRate([{id:'test',sep:record.sep,care:'inap',code:'A',uc:'600'}],{method:'18 Komponen',period:'2025-01'}),calculationVersion:1});
   const html=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(IDRGTariffPage)));
-  for(const text of ['CW, Casemix &amp; HBR RS','HBR Inap','HBR Jalan','Unit cost pasien','Rp 600'])expect(html).toContain(text);expect(html).toContain('Hospital Base Rate vs National Base Rate');expect(html).toContain('NBR belum tersedia');expect(html).not.toContain('SYNTHETIC');for(const text of ['Tarif INA-CBG','Tarif iDRG eksisting','PROFIT','DEFISIT','BEP'])expect(html).not.toContain(text);
+  for(const text of ['CW, Casemix &amp; HBR RS','HBR Inap','HBR Jalan','Unit cost pasien','Rp 600'])expect(html).toContain(text);expect(html).toContain('HBR RS dan Rancangan NBR iDRG');expect(html).not.toContain('NBR belum tersedia');expect(html).not.toContain('Kelola referensi NBR');expect(html).not.toContain('SYNTHETIC');for(const text of ['Tarif INA-CBG','Tarif iDRG eksisting','PROFIT','DEFISIT','BEP'])expect(html).not.toContain(text);
 });

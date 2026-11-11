@@ -1,6 +1,6 @@
 import {twoSDFlags,logIQRFlags} from './trimming';
 import type {Methodology} from '../../stores/methodologyStore';
-import {dec,sum,maskSEP} from '../../v4/numbers';
+import {dec,sum,maskSEP,money} from '../../v4/numbers';
 
 export type HospitalCare = 'inap'|'jalan';
 export interface HospitalCostCase {id:string;sep:string;code:string;description?:string;care:HospitalCare;uc:string|null;cwEligible?:boolean}
@@ -14,6 +14,12 @@ export interface HospitalCostResult {
 }
 const codeAvailable=(code:string)=>Boolean(code.trim())&&!['N/A','UNKNOWN','-','—'].includes(code.trim().toUpperCase());
 function validCost(value:string|null){try{return value!==null&&dec(value).isFinite()&&dec(value).gte(0);}catch{return false;}}
+
+function outlierExplanation(p:HospitalCostCase,bounds:{lower:string;upper:string}|undefined){
+ if(!bounds||p.uc===null)return 'Biaya pasien di luar rentang biaya kelompok; periksa rincian penanda outlier.';
+ const below=dec(p.uc).lt(bounds.lower);
+ return `Biaya pasien ${money(p.uc)} ${below?'di bawah batas bawah':'di atas batas atas'} kelompok ${money(below?bounds.lower:bounds.upper)}. Rentang biaya kelompok iDRG ${p.code.trim()} (rawat ${p.care}): ${money(bounds.lower)}–${money(bounds.upper)}. Kasus tetap dihitung dalam CW, biaya JKN dan casemix.`;
+}
 
 /** Local weights use allocated patient costs only; no external weights or tariff parameters. */
 export function calculateHospitalBaseRate(cases:HospitalCostCase[],context:{method:string;period:string;options?:Methodology;unassignedUnallocated?:string;pools?:{care:HospitalCare;total?:string;reserve:string;unallocated:string}[]}):HospitalCostResult {
@@ -50,7 +56,7 @@ export function calculateHospitalBaseRate(cases:HospitalCostCase[],context:{meth
   for(const group of careGroups){group.hbr=hbr?.toString()??null;group.standardCost=hbr&&group.cw!==null?dec(group.cw).mul(hbr).mul(options?.adjustment??1).toString():null;groups.push(group);lookup.set(care+'|'+group.code,group);}
   pools.push({care,count:coded.length,cwCount:included.length,cwCost:cwCost.toString(),...(options?{hbrPool:hbrPool.toString(),policyExcluded:policyExcluded.toString(),identityDelta:hbr&&casemix?hbrPool.minus(casemix.mul(hbr)).toString():'Tidak tersedia'}:{}),beforeHbr:beforeHbr?.toString()??null,unassignedShare:share.toString(),poolBasis:pool?.total!==undefined?'Pool JKN hasil alokasi per jenis rawat':unassigned.gt(0)?'Pool JKN 18 komponen; sisa bersama dibagi menurut biaya pasien, cadangan jumlah kasus bila biaya nol':'Pool JKN 18 komponen',total:total.toString(),average:average?.toString()??null,casemix:casemix?.toString()??null,hbr:hbr?.toString()??null,outlierCount:coded.filter(p=>outliers.has(p)).length,outlierCost:sum(coded.filter(p=>outliers.has(p)).map(p=>p.uc!)).toString(),excludedCount:excluded.length,excludedCost:sum(excluded.map(p=>p.uc!)).toString(),invalidCount:population.length-valid.length,allocated:allocated.toString(),reserve:pool?.reserve??'0',unallocated:pool?.unallocated??'0'});
  }
- return {schema:options?4:3,cwBasis:'all-cases',trimming:robust?'ln(UC positif), IQR per care/iDRG; one pass':'mean ±2 sample SD per care/iDRG; one pass',source:'Costing RS',method:context.method,period:context.period,adjustment:String(options?.adjustment??1),unassignedUnallocated:context.unassignedUnallocated??'0',trimStatistics:Array.from(trimming.statistics,([key,stats])=>({care:key.split('|')[0] as HospitalCare,code:key.slice(key.indexOf('|')+1),...stats})),pools,groups,patients:cases.map(p=>{const group=lookup.get(p.care+'|'+p.code.trim());const valid=validCost(p.uc);const outlier=outliers.has(p);return {...p,sep:maskSEP(p.sep),uc:valid?p.uc:null,outlier,groupCount:group?.count??0,groupMean:valid?group?.mean??null:null,cw:valid?group?.cw??null:null,casemix:valid?group?.casemix??null:null,hbr:valid?group?.hbr??null:null,standardCost:valid?group?.standardCost??null:null,reason:outlier?'Outlier; tetap masuk perhitungan CW, biaya JKN dan casemix':!valid?'Unit cost belum tersedia atau tidak valid':!codeAvailable(p.code)?'Kode iDRG tidak tersedia; biaya masuk pool JKN, kasus belum membentuk casemix':!group?.hbr?'HBR tidak dapat dihitung':null};})};
+ return {schema:options?4:3,cwBasis:'all-cases',trimming:robust?'ln(UC positif), IQR per care/iDRG; one pass':'mean ±2 sample SD per care/iDRG; one pass',source:'Costing RS',method:context.method,period:context.period,adjustment:String(options?.adjustment??1),unassignedUnallocated:context.unassignedUnallocated??'0',trimStatistics:Array.from(trimming.statistics,([key,stats])=>({care:key.split('|')[0] as HospitalCare,code:key.slice(key.indexOf('|')+1),...stats})),pools,groups,patients:cases.map(p=>{const group=lookup.get(p.care+'|'+p.code.trim());const valid=validCost(p.uc);const outlier=outliers.has(p);return {...p,sep:maskSEP(p.sep),uc:valid?p.uc:null,outlier,groupCount:group?.count??0,groupMean:valid?group?.mean??null:null,cw:valid?group?.cw??null:null,casemix:valid?group?.casemix??null:null,hbr:valid?group?.hbr??null:null,standardCost:valid?group?.standardCost??null:null,reason:outlier?outlierExplanation(p,trimming.statistics.get(p.care+'|'+p.code.trim())):!valid?'Unit cost belum tersedia atau tidak valid':!codeAvailable(p.code)?'Kode iDRG tidak tersedia; biaya masuk pool JKN, kasus belum membentuk casemix':!group?.hbr?'HBR tidak dapat dihitung':null};})};
 }
 
 export function hospitalBaseRateSheets(result:HospitalCostResult){

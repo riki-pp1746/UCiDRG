@@ -103,3 +103,15 @@ it('both allocation methods preserve source JKN pool with a costly outlier',()=>
  const r=calculate(input);expect(r.methods).toHaveLength(2);
  for(const m of r.methods){const local=m.localCosting!;near(sum(local.pools.map(p=>p.total)).toString(),m.total);expect(local.pools[0].outlierCount).toBeGreaterThan(0);expect(local.patients.find(p=>p.id==='OUTLIER')?.cw).not.toBe(null);near(sum(local.groups.map(g=>dec(g.standardCost!).mul(g.count))).toString(),m.total);}
 });
+
+it('explains high and low outliers using the actual care and DRG cost bounds',()=>{
+ const r=calculateHospitalBaseRate([...Array.from({length:20},(_,i)=>row('N'+i,'A','100')),row('HIGH','A','10000'),row('LOW','A','1')],{...context,options:defaultMethodology()});
+ const high=r.patients.find(p=>p.id==='HIGH')!,low=r.patients.find(p=>p.id==='LOW')!;
+ expect(high.outlier).toBe(true);expect(low.outlier).toBe(true);
+ expect(high.reason).toContain('di atas batas atas');expect(high.reason).toContain('10.000');
+ expect(low.reason).toContain('di bawah batas bawah');
+ for(const p of [high,low]){expect(p.reason).toContain('iDRG A (rawat inap)');expect(p.reason).toContain('Rentang biaya kelompok');expect(p.reason).toContain('Kasus tetap dihitung');}
+ expect(r.patients[0].outlier).toBe(false);expect(r.patients[0].reason).toBeNull();
+ const sheet=hospitalBaseRateSheets(r).Pasien_RS;
+ expect(sheet.find(row=>row[4]==='10000')?.[11]).toBe(high.reason);
+});

@@ -26,7 +26,7 @@ export default function SettingsPage() {
 
       <details className="uc-panel">
         <summary className="cursor-pointer font-semibold text-teal-950">Referensi tarif dan NBR</summary>
-        <div className="mt-3"><BaseRateComparisonPanel editable={role!=='Pembaca'}/></div>
+        <div className="mt-3"><BaseRateComparisonPanel manageReferences editable={role!=='Pembaca'}/></div>
       </details>
 
       <AnalysisBackupPanel />
