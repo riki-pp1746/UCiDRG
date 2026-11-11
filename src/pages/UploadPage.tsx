@@ -54,7 +54,6 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
     if (fileArray.length === 0) return;
     if(uploadAbort.current)return;
     const abort=new AbortController();uploadAbort.current=abort;
-    let progressInterval:ReturnType<typeof setInterval>|undefined;
 
     setPhase('Membaca file di latar belakang...');
     setUploadState('parsing');
@@ -141,7 +140,6 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
         }
       }
 
-      clearInterval(progressInterval);
       if(!combinedTxtRecords.length&&!processResult.excelFiles.length)throw new Error(processResult.errors.join('\n')||'Tidak ada data valid yang berhasil dibaca.');
       setProgress(60);
       setPhase('Memeriksa identitas dan duplikasi klaim...');
@@ -215,7 +213,6 @@ export default function UploadPage({disabled=false}:{disabled?:boolean}={}) {
       setErrorMsg(String(e));
       setUploadState('error');
     }finally{
-      if(progressInterval!==undefined)clearInterval(progressInterval);
       if(uploadAbort.current===abort)uploadAbort.current=null;
     }
   }, [setPeriodNormalization, setRawRecords,disabled,claimMode]);

@@ -2,7 +2,6 @@ import BaseRateComparisonPanel from '../components/costing/BaseRateComparisonPan
 import RupiahInput from '../components/ui/RupiahInput';
 import {shouldAutoAnalyse} from '../lib/largeData';
 import ProxyCostWeightPanel from '../components/costing/ProxyCostWeightPanel';
-import {proxyFromPatient} from '../lib/calculations/proxyCostWeight';
 import {analysisStale} from '../lib/analysisController';
 import {useMethodologyStore,effectiveMethodology} from '../stores/methodologyStore';
 import {ensureAnalysisExport,appendAnalysisSheets} from '../lib/analysisExport';
@@ -105,7 +104,7 @@ export default function TarifPasienPage() {
 
   useEffect(() => {
     if(shouldAutoAnalyse(rawRecords.length))validateAgainstHospital(config, periodFactor);
-  }, [patients, biayaRSMap, storedLocalCosting, config, periodFactor, validateAgainstHospital]);
+  }, [patients, biayaRSMap, storedLocalCosting, config, periodFactor, validateAgainstHospital, rawRecords.length]);
 
   const filteredPatients=useMemo(()=>{const q=query.trim().toLowerCase();if(careFilter==='all'&&!q)return patients;return patients.filter(p=>(careFilter==='all'||(careFilter==='jalan'?p.kelasRawat==='rawat_jalan':p.kelasRawat!=='rawat_jalan'))&&(!q||`${maskSEP(p.noSEP)} ${p.drg} ${p.idrgDescription||''} ${p.diagnosis}`.toLowerCase().includes(q)));},[patients,careFilter,query]);
   const inputTotalPages = Math.max(1, Math.ceil(filteredPatients.length / pageSize));

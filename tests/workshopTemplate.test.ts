@@ -9,7 +9,7 @@ import {parseExcelTemplate} from '../src/lib/parsers/excelCostingParser';
 const bytes=()=>readFileSync('public/Template_Costing_Standard.xlsx');
 function filled(){
  const book=XLSX.read(bytes(),{type:'buffer'});
- for(const [name,sheet]of Object.entries(book.Sheets))for(const [address,cell]of Object.entries(sheet))if(!address.startsWith('!')&&cell.f&&!(typeof cell.v==='string'&&cell.v)){cell.v=0;cell.t='n';}
+ for(const sheet of Object.values(book.Sheets))for(const [address,cell]of Object.entries(sheet))if(!address.startsWith('!')&&cell.f&&!(typeof cell.v==='string'&&cell.v)){cell.v=0;cell.t='n';}
  const sheet=book.Sheets['Costing Template'];
  const rows=XLSX.utils.sheet_to_json<unknown[]>(sheet,{header:1,defval:null});
  rows.forEach((r,i)=>{if(!/^\d+$/.test(String(r[0]))||!r[1])return;for(const col of [3,4,5,6,7,8,9,10,11,12,13,14,15,16,17])sheet[XLSX.utils.encode_cell({r:i,c:col})]={t:'n',v:col===3?10:col===9?1000000:0};});

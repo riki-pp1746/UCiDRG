@@ -2,7 +2,6 @@ import {baseRateComparisonRows} from './calculations/baseRateComparison';
 import {useBaseRateComparisonStore} from '../stores/baseRateComparisonStore';
 import {useProxyCWStore} from '../stores/proxyCWStore';
 import {useCostingStore} from '../stores/costingStore';
-import {proxyFromPatient,proxyFingerprint} from './calculations/proxyCostWeight';
 import {appendProxySheets} from './proxyCWExport';
 import * as XLSX from 'xlsx';
 import {useTarifPasienStore} from '../stores/tarifPasienStore';

@@ -45,17 +45,13 @@ function NumInput({ value, onChange, placeholder = '0', invalid = false, classNa
   invalid?: boolean;
   className?: string;
 }) {
-  const [local, setLocal] = useState(value > 0 ? String(value) : '');
-
-  useEffect(() => {
-    if (parseFloat(local || '0') !== value) {
-      setLocal(value > 0 ? String(value) : '');
-    }
-  }, [value]);
+  const [draft, setDraft] = useState({source:value,text:value>0?String(value):''});
+  const local=draft.source===value?draft.text:value>0?String(value):'';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocal(e.target.value);
-    onChange(parseFloat(e.target.value) || 0);
+    const next=parseFloat(e.target.value)||0;
+    setDraft({source:next,text:e.target.value});
+    onChange(next);
   };
 
   return (

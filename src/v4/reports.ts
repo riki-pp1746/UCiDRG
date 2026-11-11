@@ -2,7 +2,6 @@ import {baseRateComparisonRows} from '../lib/calculations/baseRateComparison';
 import {useBaseRateComparisonStore} from '../stores/baseRateComparisonStore';
 import {proxySheets} from '../lib/proxyCWExport';
 import {useProxyCWStore} from '../stores/proxyCWStore';
-import {proxyFromClaim,proxyFingerprint} from '../lib/calculations/proxyCostWeight';
 import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import * as XLSX from 'xlsx';
 import PptxGenJS from 'pptxgenjs';
