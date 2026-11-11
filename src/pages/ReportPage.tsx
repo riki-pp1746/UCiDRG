@@ -134,13 +134,13 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       ['Total biaya pada populasi ringkasan', summary.totalBiayaRS],
       [`Total Tarif ${viewMode}`, summary.totalTarif],
       ['Total Selisih', summary.totalSelisih],['CRR',summaryMetricText(summary,'crr')],['Status finansial agregat',financialLabel(summary.financialStatus)],['Populasi',summary.populationLabel||''],
-      ['Rata-rata CW lokal (normalisasi)', summaryMetricText(summary,'cmi',2)],
+      ['CMI RS (rata-rata CW RS)', summaryMetricText(summary,'cmi',2)],
       ['Reduction of Variance (ROV)', summaryMetricText(summary,'rov',2)],
       ['Rata-rata CoV DRG', formatNumber(summary.rataCov * 100,2) + '%'],
       ['% DRG Defisit', formatNumber(summary.persenRugi,1) + '%'],
       ['% DRG Profit', formatNumber(summary.persenUntung,1) + '%'],
     ];
-    for(const row of view.weightComparison)summaryData.push([`CMI iDRG TXT — ${row.care===1?'Rawat inap':'Rawat jalan'}`,row.source?.average??'Tidak tersedia'],[`Kasus dengan CW sumber — ${row.care===1?'Inap':'Jalan'}`,`${row.source?.count??0} / ${row.cases}`]);
+    for(const row of view.weightComparison)summaryData.push([`CMI RS (CW RS) — ${row.care===1?'Rawat inap':'Rawat jalan'}`,row.local?.average??'Tidak tersedia'],[`Kasus dengan CW RS — ${row.care===1?'Inap':'Jalan'}`,`${row.local?.count??0} / ${row.cases}`],[`CMI TXT (pembanding) — ${row.care===1?'Rawat inap':'Rawat jalan'}`,row.source?.average??'Tidak tersedia'],[`Kasus dengan CW TXT (pembanding) — ${row.care===1?'Inap':'Jalan'}`,`${row.source?.count??0} / ${row.cases}`]);
     summaryData.push(['Trimming','CW memakai metode pada lembar Metodologi; perbandingan memakai seluruh kasus UC valid'],['Kasus outlier pada filter',patientResults.filter(p=>p.outlier).length],['Biaya outlier pada filter',patientResults.filter(p=>p.outlier).reduce((v,p)=>v+p.unitCostDihitung,0)]);
     const local=useTarifPasienStore.getState().localCosting;if(local)for(const [name,rows] of Object.entries(hospitalBaseRateSheets(local)))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');

@@ -11,7 +11,7 @@ export default function BaseRateComparisonPanel({result=null,references,editable
  const refs=references??state.references,rows=compareBaseRates(result,refs,state.date);
  const simulation=compareSimulationBaseRates(rows);
  const source=result?.sourceWeights;
- const hbrLabel=source?'HBR berbasis CW TXT':'HBR lokal';
+ const hbrLabel='HBR RS';
  const save=()=>{try{const r:Reference={...draft,id:crypto.randomUUID(),kind:'base',care:draft.care as Reference['care'],value:parseNumber(draft.value),code:''};validateNBR(r);state.add(r);setDraft({...draft,value:'',verified:false});setError('');}catch(e){setError(e instanceof Error?e.message:String(e));}};
  const exportData=()=>{
   if(!result||!exportAllowed)return;
@@ -37,8 +37,8 @@ export default function BaseRateComparisonPanel({result=null,references,editable
      <div><p className="text-xs">{hbrLabel}</p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
      <div><p className="text-xs">Rancangan NBR iDRG</p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
     </div>
-    {source&&<p className="text-xs text-slate-600">{source.pools.find(p=>p.care===r.care)?.count.toLocaleString('id-ID')} dari {source.pools.find(p=>p.care===r.care)?.cases.toLocaleString('id-ID')} kasus memiliki CW yang dapat dipakai.</p>}
-    {r.percent===null?<p>{source?'HBR belum tersedia. Periksa CW iDRG pada TXT klaim.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {Number(r.difference)>0?'+':''}{money(r.difference)} ({Number(r.percent)>0?'+':''}{displayDecimal(r.percent,1)}%)</p>}
+    {source&&<p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"><span className="font-semibold text-slate-700">Pembanding (CW TXT):</span> HBR {r.txtHbr===null?'tidak tersedia':money(r.txtHbr)} · {source.pools.find(p=>p.care===r.care)?.count.toLocaleString('id-ID')} dari {source.pools.find(p=>p.care===r.care)?.cases.toLocaleString('id-ID')} kasus memiliki CW TXT.</p>}
+    {r.percent===null?<p>{source?'HBR RS belum tersedia. Hitung biaya RS terlebih dahulu.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {Number(r.difference)>0?'+':''}{money(r.difference)} ({Number(r.percent)>0?'+':''}{displayDecimal(r.percent,1)}%)</p>}
     {!showExport&&r.hbr!==null&&<div className="space-y-2 text-xs text-slate-600" aria-label="Grafik HBR dan NBR">{[[hbrLabel,r.hbr,'bg-teal-700'],['Rancangan NBR',r.nbr,'bg-amber-700']].map(([label,value,color])=><div key={label}><div className="mb-1">{label}</div><div className="h-2 rounded bg-slate-200"><div className={'h-2 rounded '+color} style={{width:(Number(value)/Math.max(1,Number(r.hbr),Number(r.nbr))*100)+'%'}}/></div></div>)}</div>}
 
    </article>;

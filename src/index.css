@@ -416,3 +416,31 @@ h1,h2,h3 { font-family:var(--font-sans); letter-spacing:-.025em; }
 @media (min-width: 64rem) {
   .uc-workspace-frame[data-sidebar="open"] .workflow-submenu { display: none; }
 }
+
+/* ============================================================
+   Lapisan desain modern (Tailwind @apply) — berlaku untuk seluruh halaman.
+   Menyegarkan kelas uc-* yang sudah dipakai tanpa mengubah perilaku.
+   ============================================================ */
+.uc-app { background:linear-gradient(180deg,#F4F8F7 0%,#EEF5F3 100%); }
+.uc-panel { @apply rounded-2xl border border-slate-200 bg-white shadow-sm transition-shadow duration-200; }
+.uc-panel:hover { @apply shadow-md; }
+.uc-panel h2 { @apply tracking-tight; }
+.uc-inset { @apply rounded-xl border border-teal-100 bg-teal-50/40; }
+.uc-primary,.uc-secondary { @apply rounded-xl font-semibold transition duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600; }
+.uc-primary { @apply shadow-sm hover:-translate-y-px hover:shadow-md active:translate-y-0; }
+.uc-secondary:hover { @apply border-teal-300 bg-teal-50; }
+.uc-input { @apply rounded-xl transition focus:border-teal-500 focus:ring-4 focus:ring-teal-100 focus:outline-none; }
+.uc-table-scroll { @apply rounded-xl border-slate-200 shadow-xs; }
+.uc-table th { @apply sticky top-0 z-[1] text-[11px] font-semibold uppercase tracking-wide; }
+.uc-table td,.uc-table th { @apply px-3 py-2.5; }
+.uc-table tbody tr { @apply transition-colors; }
+.uc-table td:nth-child(n+4) { font-variant-numeric:tabular-nums; }
+.uc-page-heading h1 { @apply bg-gradient-to-r from-teal-900 to-teal-600 bg-clip-text text-transparent; }
+.uc-badge { @apply rounded-full; }
+.uc-sidebar { @apply shadow-sm; }
+details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
+@media (prefers-reduced-motion:no-preference) {
+  .uc-workspace > * { animation:uc-fade-in .25s ease-out; }
+}
+@keyframes uc-fade-in { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+@media (max-width:640px) { .uc-panel { @apply p-4; } }

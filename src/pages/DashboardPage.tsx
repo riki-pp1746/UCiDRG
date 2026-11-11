@@ -210,14 +210,14 @@ export default function DashboardPage() {
 
       {view.weightComparison.length > 0 && (
         <details className="uc-panel space-y-3">
-          <summary className="cursor-pointer font-semibold text-teal-950">Rincian CW lokal dan bobot iDRG dari TXT</summary>
+          <summary className="cursor-pointer font-semibold text-teal-950">Rincian CW RS dan pembanding bobot iDRG TXT</summary>
           <p className="text-sm text-slate-600">
-            CW lokal membagi rata-rata biaya kelompok dengan rata-rata biaya acuan RS untuk jenis rawat yang sama.
-            Pada seluruh populasi pembentuk, rata-rata tertimbang CW lokal bernilai 1 secara matematis. CW masing-masing kelompok tetap dapat berbeda. CMI dari bobot TXT ditampilkan terpisah di atas.
+            CW RS = rata-rata biaya DRG ÷ rata-rata biaya seluruh DRG pada jenis rawat yang sama (rata-rata tertimbang kasus).
+            CMI = jumlah bobot kasus ÷ jumlah kasus. CMI RS dari CW RS adalah angka utama; bobot TXT hanya pembanding.
           </p>
           <div className="uc-table-scroll">
             <table className="uc-table">
-              <thead><tr><th scope="col">Jenis rawat</th><th scope="col">CW lokal RS</th><th scope="col">CW iDRG dari TXT</th></tr></thead>
+              <thead><tr><th scope="col">Jenis rawat</th><th scope="col">CW RS (utama)</th><th scope="col">CW iDRG TXT (pembanding)</th></tr></thead>
               <tbody>{view.weightComparison.map(({care,cases,local,source,sourceBaseCount}) => (
                 <tr key={care}>
                   <th scope="row">{care===1?'Rawat inap':'Rawat jalan'}</th>
@@ -239,7 +239,7 @@ export default function DashboardPage() {
             </table>
           </div>
           <p className="text-xs text-slate-600">Kolom TXT memakai total CW iDRG jika tersedia. Kasus dengan total CW kosong dapat memakai CW dasar dari TXT yang sama.</p>
-          <Link className="inline-block text-sm font-semibold text-teal-800 underline" to="/tarif-pasien?tab=tarif">Lihat CW lokal per kelompok iDRG</Link>
+          <Link className="inline-block text-sm font-semibold text-teal-800 underline" to="/tarif-pasien?tab=tarif">Lihat CW RS per kelompok iDRG</Link>
         </details>
       )}
 

@@ -9,13 +9,13 @@ export const SIMULATION_NBR_SOURCE = {
 };
 
 export function compareSimulationBaseRates(rows: BaseRateComparison[]) {
- return rows.map(({care,hbr}) => {
+ return rows.map(({care,hbr,txtHbr}) => {
   const nbr = String(care === 'inap' ? DEFAULT_TARIF_IDRG_CONFIG.baseRateInap : DEFAULT_TARIF_IDRG_CONFIG.baseRateJalan);
   const difference = hbr === null ? null : dec(hbr).minus(nbr);
-  return {care,hbr,nbr,difference:difference?.toString() ?? null,percent:difference?.div(nbr).mul(100).toString() ?? null};
+  return {care,hbr,txtHbr,nbr,difference:difference?.toString() ?? null,percent:difference?.div(nbr).mul(100).toString() ?? null};
  });
 }
-export interface BaseRateComparison {care:Care;hbr:string|null;nbr:string|null;difference:string|null;percent:string|null;ratio:string|null;status:string;reference:Reference|null}
+export interface BaseRateComparison {care:Care;hbr:string|null;txtHbr:string|null;nbr:string|null;difference:string|null;percent:string|null;ratio:string|null;status:string;reference:Reference|null}
 export const validComparisonDate=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s;
 export function validateNBR(r:Reference){
  if(typeof r.verified!=='boolean'||r.kind!=='base'||!['inap','jalan','semua'].includes(r.care)||!dec(r.value||'NaN').isFinite()||!dec(r.value||'NaN').gt(0))throw Error('NBR harus angka positif dengan jenis rawat yang sah.');
@@ -24,8 +24,9 @@ export function validateNBR(r:Reference){
 }
 export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[],date:string):BaseRateComparison[]{
  return (['inap','jalan'] as const).map(care=>{
-  const value=(result?.sourceWeights?.pools??result?.pools)?.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
-  const row:BaseRateComparison={care,hbr,nbr:null,difference:null,percent:null,ratio:null,status:'NBR belum tersedia',reference:null};
+  const value=result?.pools?.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
+  const txt=result?.sourceWeights?.pools?.find(p=>p.care===care)?.hbr;const txtHbr=txt!=null&&dec(txt).isFinite()&&dec(txt).gte(0)?txt:null;
+  const row:BaseRateComparison={care,hbr,txtHbr,nbr:null,difference:null,percent:null,ratio:null,status:'NBR belum tersedia',reference:null};
   if(!validComparisonDate(date))return {...row,status:'Pilih tanggal pembanding yang sah'};
   const candidates=refs.filter(r=>r.kind==='base'&&(r.care===care||r.care==='semua'));
   const active=candidates.filter(r=>{try{validateNBR(r);return r.from<=date&&(!r.until||date<=r.until);}catch{return false;}});
@@ -40,5 +41,5 @@ export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[]
  });
 }
 export function baseRateComparisonRows(result:HospitalCostResult,refs:Reference[],date:string):unknown[][]{
- return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan',result.sourceWeights?'HBR memakai CW klaim dari TXT. Cakupan bobot tersedia pada lembar HBR_CW_TXT.':'Perbandingan memakai HBR lokal dari biaya RS.'],['Rawat',result.sourceWeights?'HBR berbasis CW TXT':'HBR lokal','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi'],...compareBaseRates(result,refs,date).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false])];
+ return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan',result.sourceWeights?'HBR RS memakai CW RS dari unit cost. HBR berbasis CW TXT hanya pembanding (lembar HBR_CW_TXT).':'Perbandingan memakai HBR RS dari unit cost.'],['Rawat','HBR RS','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi','HBR CW TXT (pembanding)'],...compareBaseRates(result,refs,date).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false,r.txtHbr??''])];
 }
