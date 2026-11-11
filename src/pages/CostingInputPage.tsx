@@ -413,6 +413,9 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
         return { config: newConfig };
       });
 
+      if(parsedData.workbookSource?.demoJknProportion!==undefined){
+        useCostingStore.setState({jknProportion:parsedData.workbookSource.demoJknProportion});
+      }
       await shareSourceData({costs:true,excel:file});
       const importedSummary = [
         parsedData.overheadCenters?.length ? `${parsedData.overheadCenters.length} Overhead` : '',

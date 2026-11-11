@@ -41,6 +41,7 @@ it('imports the new demo inputs and preserves blank revenue instead of zero', as
     expect(parsed.dataDasar).toMatchObject({ hbrBasis: 2, hbrKasusInap: 19345, hbrKasusJalan: 399000, hbrAsumsiKeparahan: 1 });
     expect(parsed.dataDasar?.hbrProporsiInap).toBeCloseTo(50.14923233126891, 8);
     expect(parsed.dataDasar?.hbrPendapatanInap).toBeUndefined(); expect(parsed.importIssues).toEqual([]);
+    expect(parsed.workbookSource?.demoJknProportion).toBe(85);
     const book = XLSX.read(bytes, { type: 'buffer' });
     expect(book.Sheets['Data Dasar RS'].A73.v).toBe('Pendapatan rawat inap seluruh penjamin');
   } finally { vi.unstubAllGlobals(); }

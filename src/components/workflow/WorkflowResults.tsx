@@ -114,13 +114,13 @@ export default function WorkflowResults({section,snapshot}:{section:string;snaps
   if(section==='cw-idrg')return <GroupResults snapshot={snapshot} kind="cw"/>;
   if(section==='kualitas')return <GroupingQuality snapshot={snapshot}/>;
   if(section==='hbr-nbr')return <><BaseRateComparisonPanel result={result} showExport={false}/><Link className="text-sm font-semibold text-teal-800 underline" to="/references">Lihat referensi NBR di Administrasi</Link></>;
-  if(section==='hbr')return <><RevenueHospitalBaseRate snapshot={snapshot}/><details><summary className="cursor-pointer text-sm font-semibold">HBR lokal dari pool JKN</summary><section className="uc-panel space-y-4">
-    <p className="text-sm text-slate-600">{result.period} · faktor biaya {snapshot.period?`${snapshot.period.effectiveMonths}/12`:'—'}</p>
+  if(section==='hbr')return <><RevenueHospitalBaseRate snapshot={snapshot}/><details><summary className="cursor-pointer text-sm font-semibold">HBR khusus pool biaya JKN</summary><section className="uc-panel space-y-4">
+    <p className="text-sm text-slate-600">{result.period} · Pool JKN {formatRupiah(snapshot.pool)}{Number(snapshot.mapping?.periodCost)>0?` (${formatNumber(snapshot.pool/Number(snapshot.mapping?.periodCost)*100,2)}% dari biaya RS periode)`:''}</p>
     <div className="grid gap-4 sm:grid-cols-2">{result.pools.map(pool=>{
       const source=result.sourceWeights?.pools.find(item=>item.care===pool.care);
-      return <article className="uc-inset space-y-2" key={pool.care}><h2 className="font-semibold">{careLabel(pool.care)}</h2><p className="text-xs font-semibold uppercase tracking-wide text-teal-700">HBR RS (CW RS)</p><p className="text-3xl font-bold tabular-nums text-teal-900">{pool.hbr===null?'Tidak tersedia':formatRupiah(Number(pool.hbr))}</p><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"><span className="font-semibold">Pembanding (CW TXT):</span> {source?.hbr==null?'tidak tersedia':formatRupiah(Number(source.hbr))}</p></article>;
+      return <article className="uc-inset space-y-2" key={pool.care}><h2 className="font-semibold">{careLabel(pool.care)}</h2><p className="text-xs font-semibold uppercase tracking-wide text-teal-700">HBR pool JKN (CW RS)</p><p className="text-3xl font-bold tabular-nums text-teal-900">{pool.hbr===null?'Tidak tersedia':formatRupiah(Number(pool.hbr))}</p><p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600"><span className="font-semibold">Pembanding (CW TXT):</span> {source?.hbr==null?'tidak tersedia':formatRupiah(Number(source.hbr))}</p></article>;
     })}</div>
-    <details><summary className="cursor-pointer font-medium">Cara menghitung <HelpTip term="hbr"/></summary><p className="mt-2 text-sm text-slate-600">HBR = pool biaya JKN yang dipakai ÷ casemix pada jenis rawat yang sama. HBR utama memakai CW RS; HBR berbasis CW TXT hanya pembanding.</p></details>
+    <details><summary className="cursor-pointer font-medium">Cara menghitung <HelpTip term="hbr"/></summary><p className="mt-2 text-sm text-slate-600">HBR = pool biaya JKN yang dipakai ÷ casemix pada jenis rawat yang sama. Kedua angka pada rincian ini memakai biaya JKN, sehingga berbeda cakupan dari HBR seluruh penjamin di atas.</p></details>
   </section></details></>;
   return <div className="space-y-4">
     <nav className="flex flex-wrap gap-2" aria-label="Bagian cost weight">

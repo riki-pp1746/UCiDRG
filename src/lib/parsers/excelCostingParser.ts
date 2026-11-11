@@ -343,6 +343,11 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
         const simulation = isSimulationWorkbook(workbook);
         if(simulation&&parsedInfo.workbookSource&&workbook.Sheets['Ringkasan Dummy']){
           const settings=XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets['Ringkasan Dummy'],{header:1});
+          const share=settings.find(row=>row[3]==='Porsi JKN latihan')?.[4];
+          if(share!==undefined){
+            if(typeof share!=='number'||!Number.isFinite(share)||share<0||share>1)throw new Error('Porsi JKN latihan pada Excel harus berupa persentase 0–100%.');
+            parsedInfo.workbookSource.demoJknProportion=share*100;
+          }
           const basis=settings.find(row=>row[0]==='Dasar alokasi ICU')?.[1];
           if(basis!==undefined&&basis!=='Tagihan ICU (simulasi)')throw new Error('Dasar alokasi ICU pada ringkasan demo tidak didukung.');
           if(basis==='Tagihan ICU (simulasi)')parsedInfo.workbookSource.demoIntensiveBasis='billing';
