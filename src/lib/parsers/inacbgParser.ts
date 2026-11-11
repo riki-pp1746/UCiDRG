@@ -92,6 +92,28 @@ function parseNum(val: unknown): number {
   return n;
 }
 
+/** Source exports may encode top-ups as a list of procedures with tariff amounts. */
+export function parseIDRGTopUp(value: string): number|null {
+  const text=value.trim();
+  if(!text||['-','None'].includes(text))return null;
+  if(!text.startsWith('[')&&!text.startsWith('{'))return parseNum(text);
+  try {
+    const parsed:unknown=JSON.parse(text);
+    const items=Array.isArray(parsed)?parsed:[parsed];
+    let total=0;
+    for(const item of items){
+      if(!item||typeof item!=='object'||!('tariff' in item))return null;
+      const tariff=(item as {tariff:unknown}).tariff;
+      if(tariff==null||String(tariff).trim()==='')return null;
+      const amount=parseNum(tariff);
+      if(amount<0)return null;
+      total+=amount;
+      if(!Number.isFinite(total))return null;
+    }
+    return total;
+  }catch{return null;}
+}
+
 function parseDate(val: string | null | undefined): string {
   if (!val || val === 'None') return '';
   // Format dari file: DD/MM/YYYY → convert ke YYYY-MM-DD
@@ -185,7 +207,7 @@ export function parseRow(cols: string[]): PatientRecord | null {
   const admissionDate = parseDate(get(COLUMN_MAP.ADMISSION_DATE));
   
   return {
-    proxySource:{topup:get(87)!==''?parseNum(get(87)):null,missing:[0,1,4,6,10,11,19,27,39,41,42,50,52,80,82,87,91,92,...Array.from({length:18},(_,i)=>60+i)].filter(i=>!get(i)).map(i=>'Kolom '+i+' kosong')},
+    proxySource:{topup:parseIDRGTopUp(get(COLUMN_MAP.IDRG_TOP_UP)),missing:[0,1,4,6,10,11,19,27,39,41,42,50,52,80,82,87,91,92,...Array.from({length:18},(_,i)=>60+i)].filter(i=>!get(i)).map(i=>'Kolom '+i+' kosong')},
     pending:cols.slice(93).join(' ').toLowerCase().includes('pending'),
     disputed:cols.slice(93).join(' ').toLowerCase().includes('dispute'),
     kode_rs: get(COLUMN_MAP.KODE_RS),

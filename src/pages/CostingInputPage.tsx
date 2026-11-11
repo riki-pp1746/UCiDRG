@@ -1264,7 +1264,7 @@ export default function CostingInputPage() {
               <tbody className="divide-y divide-gray-100">
                 {distribusi.filter(d=>d.label.toLowerCase().includes(componentQuery.toLowerCase())&&(componentFlag==='all'||(componentFlag==='outlier'?d.outlier:!!d.warning))).map(d => (
                   <tr key={d.key} className="hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}<p className="text-xs font-normal mt-1">{d.metodeAlokasi} · {displayDecimal(String(d.denominator||0))} {d.unit} · {d.rate==null?'Tidak dapat dihitung':d.unit==='rupiah'?displayDecimal(String(d.rate))+' × tagihan':formatRupiah(d.rate)+'/'+d.unit}</p>{d.warning&&<p className="text-xs text-amber-700 mt-1">{d.warning}</p>}</td>
+                    <td className="px-4 py-2 font-medium text-gray-700">{d.label}<p className="text-xs font-normal mt-1">{d.metodeAlokasi} · {displayDecimal(String(d.denominator||0))} {d.unit} · {d.rate==null?(d.totalBiayaRS===0&&d.totalEKlaim===0?'Tidak ada biaya dan tagihan':'Pembagi alokasi belum tersedia'):d.unit==='rupiah'?displayDecimal(String(d.rate))+' × tagihan':formatRupiah(d.rate)+'/'+d.unit}</p>{d.warning&&<p className="text-xs text-amber-700 mt-1">{d.warning}</p>}</td>
                     <td className="px-4 py-2 text-right">
                       <div className="flex justify-end items-center gap-2">
                         <span className="text-xs text-gray-400">Rp</span>
@@ -1283,10 +1283,12 @@ export default function CostingInputPage() {
                     </td>
                     <td className="px-4 py-2 text-right text-gray-500 font-mono">{formatRupiah(d.totalEKlaim)}</td>
                     <td className="px-4 py-2 text-center text-xs">
-                      {d.rasio > 0 ? (
+                      {d.unit==='hari' ? (
+                        <span className="text-slate-600" title="Alokasi memakai jumlah hari, bukan rasio biaya/tagihan. Nilai per hari ditampilkan di bawah nama komponen.">{Number(d.denominator)>0?'Alokasi berbasis hari':'Pembagi hari belum tersedia'}</span>
+                      ) : d.totalEKlaim > 0 ? (
                         <span className={d.outlier?'bg-red-100 text-red-700 px-2 py-1 rounded font-mono':'bg-green-100 text-green-700 px-2 py-1 rounded font-mono'}>{displayDecimal(String(d.rasio))}</span>
                       ) : (
-                        <span className="text-gray-400 italic">Tidak dapat dihitung</span>
+                        <span className="text-gray-400 italic">{d.totalBiayaRS===0?'Tidak ada biaya dan tagihan':'Tagihan nol'}</span>
                       )}
                     </td>
                   </tr>
