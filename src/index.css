@@ -871,3 +871,72 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 @media (max-width: 800px) {
   .uc-login .uc-login-story h1 { font-size: clamp(1.9rem, 7vw, 2.65rem); }
 }
+
+.uc-term-wrap { display:inline-flex; max-width:100%; vertical-align:middle; }
+.uc-term-trigger { display:inline-flex; align-items:center; gap:5px; min-width:22px; min-height:24px; border-radius:4px; color:#086761; cursor:pointer; }
+.uc-term-trigger svg { flex:none; }
+.uc-term-label { color:inherit; text-align:inherit; }
+.uc-term-label > svg { color:#087d76; }
+.uc-term-trigger:hover > svg { color:#174b46; }
+.uc-term-column { display:inline-flex; align-items:center; gap:4px; }
+.uc-term-tooltip,.uc-term-panel { position:fixed; z-index:85; left:12px; top:12px; box-shadow:0 12px 36px #172d2d26; white-space:normal; text-align:left; overflow-wrap:anywhere; }
+.uc-term-tooltip { pointer-events:none; width:min(16rem,calc(100vw - 24px)); padding:9px 12px; border-radius:8px; background:#174b46; color:white; font-size:12px; line-height:1.5; }
+.uc-term-tooltip small { display:block; margin-top:4px; color:#def1e8; }
+.uc-term-panel { width:min(22rem,calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow:auto; padding:14px 16px 16px; border:1px solid #c7d8d5; border-radius:12px; background:#fff; color:#172d2d; font-size:13px; line-height:1.6; }
+.uc-term-panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:6px; color:#174b46; }
+.uc-term-panel-heading button { display:grid; place-items:center; flex:none; width:32px; height:32px; border-radius:6px; }
+.uc-term-panel-heading button:hover { background:#edf4f2; }
+.uc-term-panel p { margin-bottom:8px; white-space:pre-line; }
+.uc-term-panel a { color:#086761; font-weight:650; text-decoration:underline; }
+.uc-guide-subsections { display:flex; flex-wrap:wrap; gap:4px 14px; padding:0 0 10px 52px; font-size:12px; }
+.uc-guide-subsections li { display:flex; align-items:center; gap:2px; }
+.uc-guide-subsections a { color:#086761; text-decoration:underline; text-underline-offset:2px; }
+@media (pointer:coarse) {
+  .uc-term-trigger { min-width:32px; min-height:32px; }
+  .uc-term-panel-heading button { width:44px; height:44px; }
+}
+@media print { .uc-term-tooltip,.uc-term-panel,.uc-term-trigger > svg { display:none; } }
+
+.uc-episode-trigger { display:inline-flex; align-items:center; gap:5px; min-height:36px; padding:2px 6px; border-radius:6px; color:#086761; font-weight:650; white-space:nowrap; }
+.uc-episode-trigger:hover { background:#def1e8; }
+.uc-episode-dialog { position:fixed; inset:0 0 0 auto; margin:0; padding:0; border:0; width:min(44rem,100vw); max-width:none; height:100dvh; max-height:none; overflow:hidden; background:#fff; color:#172d2d; box-shadow:-16px 0 48px #172d2d26; }
+.uc-episode-dialog::backdrop { background:#102f2d80; }
+.uc-episode-shell { display:flex; flex-direction:column; height:100%; min-width:0; }
+.uc-episode-header { display:flex; align-items:flex-start; gap:12px; padding:22px 24px; border-bottom:1px solid #dbe7e5; background:#f1faf6; }
+.uc-episode-icon { display:grid; place-items:center; flex:none; width:42px; height:42px; border-radius:10px; background:#def1e8; color:#086761; }
+.uc-episode-header h2 { color:#174b46; font-size:clamp(18px,4.5vw,23px); font-weight:700; line-height:1.25; }
+.uc-episode-header p { margin-top:4px; color:#526b69; font-size:13px; overflow-wrap:anywhere; }
+.uc-episode-close { display:grid; place-items:center; flex:none; width:44px; height:44px; border:1px solid #c7d8d5; border-radius:8px; background:#fff; color:#174b46; }
+.uc-episode-close:hover { background:#def1e8; }
+.uc-episode-body { flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; padding:22px 24px 28px; display:flex; flex-direction:column; gap:20px; }
+.uc-episode-body > * { flex:none; }
+.uc-episode-group { border-left:3px solid #087d76; padding-left:12px; }
+.uc-episode-group p { color:#526b69; font-size:12px; }
+.uc-episode-group strong { color:#086761; }
+.uc-episode-group h3 { margin-top:2px; color:#174b46; font-size:17px; font-weight:650; overflow-wrap:anywhere; }
+.uc-episode-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.uc-episode-metrics > div { min-width:0; padding:12px; border:1px solid #dbe7e5; border-radius:10px; background:#fff; }
+.uc-episode-metrics .uc-episode-primary { border-color:#bfe2d4; background:#f1faf6; }
+.uc-episode-metrics dt,.uc-episode-facts dt { color:#526b69; font-size:12px; line-height:1.45; }
+.uc-episode-metrics dd { margin-top:4px; color:#174b46; font-size:clamp(14px,2.4vw,19px); font-weight:700; font-variant-numeric:tabular-nums; overflow-wrap:anywhere; }
+.uc-episode-facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(92px,1fr)); gap:10px; padding:12px; border-block:1px solid #dbe7e5; }
+.uc-episode-facts dd { margin-top:2px; font-size:13px; font-weight:600; }
+.uc-episode-breakdown h3 { color:#174b46; font-size:16px; font-weight:700; }
+.uc-episode-breakdown p { margin:6px 0 10px; color:#526b69; font-size:12px; }
+.uc-episode-table { width:100%; border-collapse:collapse; font-size:13px; }
+.uc-episode-table :is(th,td) { padding:8px 6px; border-bottom:1px solid #dbe7e5; text-align:right; overflow-wrap:anywhere; }
+.uc-episode-table tr > :first-child { width:46%; text-align:left; }
+.uc-episode-table tbody th { font-weight:500; }
+.uc-episode-table td { font-variant-numeric:tabular-nums; }
+.uc-episode-table thead { background:#edf4f2; color:#174b46; }
+.uc-episode-table tfoot { background:#f1faf6; color:#174b46; font-weight:700; }
+@media (max-width:600px) {
+  .uc-episode-dialog { inset:auto 0 0; width:100%; height:94dvh; border-radius:16px 16px 0 0; }
+  .uc-episode-header { padding:14px 12px; gap:8px; }
+  .uc-episode-icon { width:36px; height:36px; }
+  .uc-episode-body { padding:16px 12px max(20px,env(safe-area-inset-bottom)); gap:16px; }
+  .uc-episode-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .uc-episode-primary { grid-column:1/-1; }
+  .uc-episode-table { font-size:12px; }
+}
+@media print { .uc-episode-dialog { display:none; } }

@@ -4,14 +4,15 @@
 
 export interface GlossaryEntry {
   term: string;
+  summary?: string;
   plain: string;
   example?: string;
 }
 
-export const GLOSSARY: Record<string, GlossaryEntry> = {
-  hbr: {term:'Hospital Base Rate (HBR)',plain:'Biaya populasi pasien RS yang sama dibagi total casemix, terpisah inap/jalan, periode, dan metode. HBR lokal ini memakai CW RS yang dinormalisasi terhadap populasi sendiri; bukan NBR nasional.',example:'Biaya Rp10 juta / casemix 40 = HBR Rp250.000.'},
-  cwRS: {term:'Cost Weight RS',plain:'Rata-rata unit cost kelompok iDRG dibagi rata-rata unit cost seluruh kasus RS pada jenis rawat yang sama. Rata-rata seluruh kasus tertimbang jumlah kasus.',example:'Biaya rata-rata kelompok Rp100.000 / rata-rata RS Rp250.000 = CW RS 0,4.'},
-  casemixRS: {term:'Casemix RS',plain:'Jumlah CW RS kelompok dikalikan kasus kelompok. Populasi biaya dan kasus harus sama dengan pembentuk HBR.',example:'CW 0,4 × 10 kasus = casemix kelompok 4.'},
+export const GLOSSARY = {
+  hbr: {term:'Hospital Base Rate (HBR)',summary:'Biaya dasar RS dalam rupiah per satu poin casemix, dihitung terpisah untuk rawat inap dan rawat jalan.',plain:'Rumus: total biaya ÷ casemix untuk jenis rawat dan populasi yang sama. HBR lebih tinggi berarti biaya per satu poin casemix lebih besar. Periksa sumber CW sebelum membandingkan dua HBR. Sumber: hasil alokasi biaya dan CW sesuai label pada hasil.',example:'Biaya Rp10 juta ÷ casemix 40 = HBR Rp250.000.'},
+  cwRS: {term:'Cost Weight RS',summary:'Bobot biaya kelompok iDRG di RS tanpa satuan. Di atas 1 berarti biaya rata-rata kelompok lebih tinggi dari rata-rata jenis rawatnya.',plain:'Rumus: rata-rata unit cost kelompok ÷ rata-rata unit cost seluruh kasus berkode pada jenis rawat yang sama. Angka 1 berarti setara dengan rata-rata. Bandingkan kelompok pada dasar biaya dan jenis rawat yang sama. Sumber: hasil alokasi biaya per pasien dan kode iDRG.',example:'Rp100.000 ÷ Rp250.000 = CW RS 0,40.'},
+  casemixRS: {term:'Casemix RS',summary:'Jumlah poin bobot kasus RS. Nilainya bertambah ketika jumlah kasus atau bobot kasus meningkat.',plain:'Rumus: jumlah (CW kelompok × jumlah kasus). Gunakan populasi biaya dan kasus yang sepadan ketika menghitung HBR. Sumber: hasil CW RS dan jumlah episode berkode iDRG.',example:'CW 0,40 × 10 kasus = 4 poin casemix.'},
   overhead: {
     term: 'Biaya Penunjang Umum (Overhead)',
     plain: 'Biaya unit yang tidak merawat pasien langsung tetapi menopang seluruh RS, seperti administrasi, laundry, dapur, dan kebersihan.',
@@ -37,17 +38,19 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   unitCost: {
     term: 'Unit Cost',
-    plain: 'Biaya riil yang dikeluarkan RS untuk merawat satu pasien atau satu kasus.',
+    summary: 'Biaya yang dialokasikan ke satu episode layanan, dalam rupiah. Nilai lebih tinggi menunjukkan biaya alokasi per episode lebih besar.',
+    plain: 'Unit cost pasien adalah jumlah biaya komponen yang dialokasikan ke episode tersebut. Rata-rata kelompok diperoleh dengan membagi biaya kelompok dengan jumlah kasusnya. Tinjau dasar alokasi jika biaya terlihat tidak wajar. Sumber: biaya pusat biaya dan data layanan E-Klaim.',
     example: 'Unit cost satu kasus pneumonia Rp 4.200.000.',
   },
   crr: {
     term: 'CRR (Cost Recovery Rate)',
-    plain: 'Seberapa besar tarif klaim menutup biaya RS. CRR 100% berarti impas, di atas 100% untung, di bawah 100% rugi.',
+    summary: 'Persentase biaya yang ditutup tarif klaim. Di atas 100% berarti tarif lebih besar dari biaya.',
+    plain: 'Rumus: tarif pembanding ÷ biaya × 100%. Pada 100%, tarif sama dengan biaya. Di bawah 100%, tarif lebih kecil dari biaya. CRR perlu dibaca pada cakupan kasus yang sama dan dengan tarif yang telah diperiksa. Sumber: tarif TXT dan hasil alokasi biaya.',
     example: 'Tarif Rp 5 juta dan unit cost Rp 4 juta berarti CRR 125%.',
   },
   costWeight: {
     term: 'Cost Weight (CW)',
-    plain: 'Bobot biaya sebuah kelompok iDRG dibanding rata-rata. Semakin berat penyakitnya, semakin besar bobotnya.',
+    plain: 'Bobot relatif tanpa satuan untuk kelompok iDRG. Nilai lebih tinggi berarti bobot kelompok lebih besar menurut acuan yang dipakai. Periksa apakah hasil menggunakan CW dari TXT atau CW RS.',
     example: 'CW 1,20 berarti biayanya 1,2 kali kasus rata-rata.',
   },
   baseRate: {
@@ -88,8 +91,73 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
   statusKlaim: {
     term: 'Status UNTUNG / IMPAS / RUGI',
-    plain: 'UNTUNG jika tarif klaim lebih besar dari unit cost, IMPAS jika sama, RUGI jika tarif klaim lebih kecil.',
+    plain: 'Kategori perbandingan tarif dan biaya. Status mengikuti selisih, batas impas, dan ketersediaan data yang berlaku pada hasil.',
   },
-};
+  surplus: {term:'Untung atau surplus',plain:'Tarif pembanding lebih tinggi daripada biaya yang dialokasikan, dalam rupiah. Periksa cakupan kasus, dasar alokasi, dan kesesuaian tarif dengan pembayaran sebelum menarik kesimpulan keuangan.'},
+  deficit: {term:'Rugi atau defisit',plain:'Tarif pembanding lebih rendah daripada biaya yang dialokasikan, dalam rupiah. Tinjau komponen biaya, cakupan kasus, dan sumber tarif sebelum menarik kesimpulan keuangan.'},
+  balanced: {term:'Impas',plain:'Selisih tarif dan biaya masuk dalam batas impas yang dipakai analisis. Periksa ambang dan nilai selisih dalam rupiah pada hasil.'},
+  tariff: {term:'Tarif iDRG',plain:'Tarif pembanding iDRG dalam rupiah, dibaca dari TXT E-Klaim. Nilai lebih tinggi menambah potensi cakupan biaya. Konfirmasi dengan pembayaran klaim bila dipakai untuk keputusan keuangan.'},
+  difference: {term:'Selisih tarif dan biaya',plain:'Rumus: tarif pembanding − biaya, dalam rupiah. Positif berarti tarif di atas biaya; negatif berarti tarif di bawah biaya. Sumber: TXT E-Klaim dan hasil alokasi biaya.'},
+  cov: {term:'Koefisien variasi (CoV)',plain:'Simpangan baku unit cost ÷ rata-rata unit cost × 100%. Nilai lebih tinggi menunjukkan biaya antar kasus lebih beragam. Baca bersama jumlah kasus. Sumber: unit cost pasien dalam kelompok.'},
+  rov: {term:'Reduction of Variance (ROV)',plain:'Persentase variasi biaya yang berkurang setelah kasus dikelompokkan. Nilai lebih tinggi menunjukkan pengelompokan menjelaskan lebih banyak variasi biaya. Sumber: unit cost pasien dan kelompok iDRG.'},
+  cmi: {term:'Case Mix Index (CMI)',summary:'Rata-rata bobot per kasus, tanpa satuan. Nilai lebih tinggi menunjukkan bobot kasus rata-rata lebih besar pada acuan yang sama.',plain:'Rumus: casemix ÷ jumlah kasus yang memiliki CW. CMI lokal untuk seluruh kelompok pada jenis rawat yang sama umumnya 1,00 karena CW RS memakai rata-rata biaya populasi itu sebagai acuan. Saat hasil difilter, CMI lokal bisa berubah. CMI iDRG memakai CW dari TXT. Bandingkan CMI dengan sumber CW dan jenis rawat yang sepadan.'},
+  cwTxt: {term:'Cost Weight iDRG dari TXT',plain:'Bobot iDRG tanpa satuan yang dibaca dari TXT E-Klaim. Nilai lebih tinggi menunjukkan bobot lebih besar pada acuan sumber. Periksa cakupan klaim yang memiliki CW.'},
+  nbr: {term:'National Base Rate (NBR)',plain:'Nilai dasar nasional dalam rupiah per poin CW. Periksa apakah nilai yang ditampilkan merupakan rancangan atau referensi resmi serta periode berlakunya sebelum membandingkan dengan HBR.'},
+  idrg: {term:'Kelompok iDRG',plain:'Kode dan nama kelompok episode pada TXT E-Klaim. Kelompok dipakai untuk membaca hasil biaya dan tarif bersama. Urutan kode tidak menunjukkan besarnya biaya.'},
+  mdc: {term:'Major Diagnostic Category (MDC)',plain:'Kategori diagnostik utama dari data iDRG. Kategori membantu meninjau kelompok menurut sistem tubuh atau jenis layanan. Kode tidak memiliki satuan.'},
+  cases: {term:'Jumlah kasus',plain:'Jumlah episode E-Klaim pada populasi yang ditampilkan, dalam kasus. Jumlah lebih besar memberi lebih banyak data untuk membaca rata-rata kelompok.'},
+  groupCost: {term:'Total biaya per DRG',summary:'Jumlah unit cost seluruh kasus dalam satu kelompok DRG, dalam rupiah.',plain:'Jumlahkan unit cost pasien dalam kelompok DRG dan jenis rawat yang sama. Total lebih tinggi bisa dipengaruhi jumlah kasus atau biaya per kasus. Sumber: hasil alokasi biaya pasien yang membentuk kelompok.'},
+  annual: {term:'Biaya tahunan RS',plain:'Total biaya sumber rumah sakit dalam rupiah untuk satu tahun. Sumber: workbook costing atau isian pusat biaya aktif. Periksa periode sebelum membandingkan dengan klaim.'},
+  pool: {term:'Pool biaya JKN',plain:'Bagian biaya RS dalam rupiah yang disiapkan untuk dialokasikan pada klaim JKN periode analisis. Periksa porsi JKN dan faktor periode yang diterapkan.'},
+  billing: {term:'Tagihan RS',plain:'Nilai tagihan yang tercatat dalam E-Klaim, dalam rupiah. Tagihan dipakai sebagai dasar distribusi untuk komponen tertentu. Periksa kelengkapan komponen sumber.'},
+  reconciliation: {term:'Rekonsiliasi',plain:'Pencocokan data sumber dengan angka yang dipakai di aplikasi. Untuk pemeriksaan rupiah, selisih nol berarti kedua nilai cocok. Periksa rincian jika ada selisih.'},
+  allocation: {term:'Dasar dan bobot alokasi',plain:'Ukuran untuk membagi biaya, misalnya hari rawat, volume layanan, atau bobot persen. Semakin besar bagian dasar alokasi suatu penerima, semakin besar bagian biaya yang diterimanya.'},
+  lo: {term:'Laporan Operasional (LO)',plain:'Realisasi pendapatan dan beban RS dalam rupiah pada periode laporan. Sumber: sheet Data LO Lapkeu. Gunakan bagian cross-check untuk membandingkan beban dengan biaya pusat biaya.'},
+  revenueShare: {term:'Porsi pendapatan JKN dan Non-JKN',plain:'Pendapatan fungsional masing-masing penjamin ÷ total pendapatan fungsional JKN dan Non-JKN × 100%. Nilai lebih tinggi berarti porsi pendapatan lebih besar. Sumber: data keuangan RS.'},
+  chartCurrency: {term:'Sumbu nilai rupiah',plain:'Skala vertikal menunjukkan besar biaya atau tarif dalam rupiah. Baca satuan pada grafik dan arah perbandingannya dari tinggi batang.'},
+  quality: {term:'Kualitas pengelompokan',plain:'Pemeriksaan variasi unit cost di dalam dan antar kelompok iDRG. Gunakan CoV, ROV, dan jumlah kasus bersama sebelum menilai hasil.'},
+} satisfies Record<string, GlossaryEntry>;
 
 export type GlossaryKey = keyof typeof GLOSSARY;
+
+export const glossaryKeys = Object.keys(GLOSSARY) as GlossaryKey[];
+export const wordCount = (text:string) => text.trim().split(/\s+/u).filter(Boolean).length;
+
+export function glossaryText(key:GlossaryKey) {
+  const entry:GlossaryEntry = GLOSSARY[key];
+  const firstSentence = entry.plain.split(/(?<=\.)\s/u)[0];
+  const words = firstSentence.split(/\s+/u);
+  return {
+    summary:entry.summary ?? (words.length <= 25 ? firstSentence : `${words.slice(0,24).join(' ')}…`),
+    detail:[entry.plain,entry.example ? `Contoh: ${entry.example}` : ''].filter(Boolean).join('\n\n'),
+  };
+}
+
+const labelTerms: Record<string,GlossaryKey> = {
+  'cw rs':'cwRS', 'cw rs rata-rata / rentang':'cwRS', 'cost weight rs':'cwRS',
+  'cw idrg dari txt':'cwTxt', 'cw txt rata-rata / rentang':'cwTxt', 'cw rs vs cw idrg':'cwTxt',
+  'cost weight & casemix':'casemixRS', 'casemix rs':'casemixRS', 'casemix kelompok':'casemixRS',
+  'hbr':'hbr', 'hbr jkn':'hbr', 'hospital base rate (hbr)':'hbr', 'hbr vs nbr':'nbr', 'rancangan nbr idrg':'nbr',
+  'unit cost':'unitCost', 'unit cost pasien':'unitCost', 'unit cost rata-rata':'unitCost', 'rata-rata biaya':'unitCost', 'rata-rata biaya per drg':'unitCost',
+  'per pasien':'unitCost', 'per kelompok drg':'unitCost', 'rata-rata biaya kelompok':'unitCost', 'unit cost per volume':'unitCost',
+  'tarif idrg':'tariff', 'unit cost vs tarif idrg':'tariff', 'crr':'crr', 'crr terhadap uc':'crr', 'cov':'cov',
+  'rov':'rov', 'rov disesuaikan':'rov', 'cmi idrg':'cmi', 'cmi lokal':'cmi',
+  'idrg':'idrg', 'kode idrg':'idrg', 'nama drg':'idrg', 'deskripsi idrg':'idrg', 'mdc':'mdc', 'nama mdc':'mdc',
+  'kasus':'cases', 'jumlah kasus':'cases', 'kasus e-klaim':'cases', 'kasus kelompok':'cases', 'alos':'alos', 'bor':'bor', 'lama rawat':'lhr',
+  'total biaya per drg':'groupCost', 'biaya kelompok':'groupCost',
+  'biaya tahunan rs':'annual', 'total biaya rs':'annual', 'pool biaya jkn':'pool', 'biaya jkn':'pool',
+  'selisih tarif dan biaya':'difference', 'surplus/(defisit)':'difference', 'dampak total':'difference', 'status':'statusKlaim',
+  'tagihan':'billing', 'total tagihan':'billing', 'pemeriksaan & rekonsiliasi':'reconciliation',
+  'dasar & bobot alokasi':'allocation', 'dasar alokasi':'allocation', 'dasar distribusi':'allocation',
+  'alokasi overhead':'overhead', 'alokasi intermediate':'intermediate', 'pusat biaya utama':'final',
+  'data pasien (18 komponen)':'variabel18', 'distribusi 18 komponen':'variabel18',
+  'laporan operasional (lo)':'lo', 'porsi pendapatan jkn':'revenueShare', 'porsi pendapatan non-jkn':'revenueShare',
+  'kualitas pengelompokan':'quality',
+  'hbr rs':'hbr', 'hbr lokal':'hbr', 'cw txt':'cwTxt', 'defisit':'deficit', 'drg defisit':'deficit',
+  'impas':'balanced', 'drg impas':'balanced', 'surplus':'surplus', 'drg surplus':'surplus',
+};
+
+export function glossaryKeyForLabel(label:string):GlossaryKey|undefined {
+  const normalized=label.split(' · ')[0].trim().toLowerCase().replace(/\s*\((?:rp|%|hari)\)$/u,'');
+  return Object.prototype.hasOwnProperty.call(labelTerms,normalized) ? labelTerms[normalized] : undefined;
+}

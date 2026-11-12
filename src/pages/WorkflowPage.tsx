@@ -21,6 +21,7 @@ import WorkflowTable from '../components/workflow/WorkflowTable';
 import WorkflowOverview from '../components/workflow/WorkflowOverview';
 import WorkflowOperatingStatement from '../components/workflow/WorkflowOperatingStatement';
 import LocalizedNumberInput from '../components/ui/LocalizedNumberInput';
+import { GlossaryLabel } from '../components/ui/HelpTip';
 import { APP_METHOD } from '../lib/appBrand';
 
 type Workflow = ReturnType<typeof useAnalysisWorkflow>;
@@ -83,11 +84,13 @@ export function WorkflowHome() {
                   <span className="uc-home-stage-copy">
                     <strong>{stage.title}</strong>
                     <span>{stage.description}</span>
-                    {tab==='guide'&&<small>{stage.sections.map(([,label])=>label).join(' · ')}</small>}
                   </span>
                   <span className="uc-home-stage-status" data-status={status}>{status}</span>
                   <ArrowRight className="uc-home-stage-arrow" size={16} aria-hidden/>
                 </Link>
+                {tab==='guide'&&<ul className="uc-guide-subsections">{stage.sections.map(([slug,label])=><li key={slug}>
+                  <Link to={workflowPath(slug)}>{label}</Link><GlossaryLabel label={label} iconOnly/>
+                </li>)}</ul>}
               </li>;
             })}
           </ol>
@@ -110,7 +113,7 @@ function FinancialContext({section,workflow}:{section:string;workflow:Workflow})
     const share=(amount:number)=>revenue>0?formatNumber(amount/revenue*100,2)+'%':'Belum tersedia';
     return <div className="space-y-4">
       <section className="uc-panel space-y-3"><h2 className="font-semibold">SDM per profesi</h2><div className="grid gap-3 sm:grid-cols-3">{fields.map(([key,label])=><label className="uc-label" key={key}>{label}<LocalizedNumberInput ariaLabel={label} className="uc-input text-right" decimals={0} value={config.dataDasar[key]} onChange={value=>useHospitalCostStore.getState().updateDataDasar({[key]:value})}/></label>)}</div></section>
-      <section className="uc-panel"><h2 className="font-semibold">Ringkasan data RS</h2><p className="mt-1 text-sm text-slate-600">Porsi pendapatan dihitung dari pendapatan fungsional JKN dan Non-JKN.</p>{workflow.annual>0&&config.sourceOrigin!=='contoh'?<dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,2)+'%'],['ALOS',formatNumber(config.dataDasar.alos,2)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Porsi pendapatan JKN',share(config.dataDasar.pendapatanJKN)],['Porsi pendapatan Non-JKN',share(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{value}{(label==='Porsi pendapatan JKN'||label==='Porsi pendapatan Non-JKN')&&<span className="mt-1 block text-sm font-normal text-slate-600">{formatRupiah(label==='Porsi pendapatan JKN'?config.dataDasar.pendapatanJKN:config.dataDasar.pendapatanNonJKN)}</span>}</dd></div>)}</dl>:<p className="mt-3 text-sm text-slate-600">Impor data rumah sakit untuk menampilkan indikator operasional dan ringkasan biaya.</p>}</section>
+      <section className="uc-panel"><h2 className="font-semibold">Ringkasan data RS</h2><p className="mt-1 text-sm text-slate-600">Porsi pendapatan dihitung dari pendapatan fungsional JKN dan Non-JKN.</p>{workflow.annual>0&&config.sourceOrigin!=='contoh'?<dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,2)+'%'],['ALOS',formatNumber(config.dataDasar.alos,2)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Porsi pendapatan JKN',share(config.dataDasar.pendapatanJKN)],['Porsi pendapatan Non-JKN',share(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600"><GlossaryLabel label={label}/></dt><dd className="mt-1 font-semibold">{value}{(label==='Porsi pendapatan JKN'||label==='Porsi pendapatan Non-JKN')&&<span className="mt-1 block text-sm font-normal text-slate-600">{formatRupiah(label==='Porsi pendapatan JKN'?config.dataDasar.pendapatanJKN:config.dataDasar.pendapatanNonJKN)}</span>}</dd></div>)}</dl>:<p className="mt-3 text-sm text-slate-600">Impor data rumah sakit untuk menampilkan indikator operasional dan ringkasan biaya.</p>}</section>
     </div>;
   }
   if(section==='laporan-operasional')return <WorkflowOperatingStatement config={config}/>;

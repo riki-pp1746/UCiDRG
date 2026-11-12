@@ -1,50 +1,109 @@
-import { useState, useRef, useEffect } from 'react';
-import { HelpCircle } from 'lucide-react';
-import { GLOSSARY, GlossaryKey } from '../../lib/glossary';
+import {useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode} from 'react';
+import {createPortal} from 'react-dom';
+import {Info, X} from 'lucide-react';
+import {Link} from 'react-router-dom';
+import {GLOSSARY, glossaryKeyForLabel, type GlossaryKey} from '../../lib/glossary';
+import {useGlossaryText} from '../../hooks/useGlossaryContent';
 
-/** Ikon "?" dengan penjelasan istilah dalam bahasa awam. */
-export default function HelpTip({ term, className = '' }: { term: GlossaryKey; className?: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  const entry = GLOSSARY[term];
+export default function HelpTip({term,className='',children}:{term:GlossaryKey;className?:string;children?:ReactNode}) {
+  const entry=GLOSSARY[term];
+  const {summary,detail}=useGlossaryText(term);
+  const [layer,setLayer]=useState<'summary'|'detail'|null>(null);
+  const [touchHint,setTouchHint]=useState(false);
+  const anchor=useRef<HTMLButtonElement>(null);
+  const overlay=useRef<HTMLDivElement>(null);
+  const closeButton=useRef<HTMLButtonElement>(null);
+  const pointerType=useRef('');
+  const suppressFocus=useRef(false);
+  const id=useId();
 
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+  function closeAndRestoreFocus(){
+    suppressFocus.current=true;
+    anchor.current?.focus();
+    setLayer(null);
+    suppressFocus.current=false;
+  }
+
+  useLayoutEffect(()=>{
+    if(!layer)return;
+    const position=()=>{
+      if(!overlay.current||!anchor.current)return;
+      const panel=overlay.current;
+      const rect=anchor.current.getBoundingClientRect();
+      const margin=12;
+      const gap=8;
+      const width=panel.offsetWidth;
+      const height=panel.offsetHeight;
+      const maxX=Math.max(margin,window.innerWidth-width-margin);
+      const maxY=Math.max(margin,window.innerHeight-height-margin);
+      const right=rect.right+gap;
+      const left=rect.left-width-gap;
+      const beside=layer==='detail'&&(right<=maxX||left>=margin);
+      const x=beside?(right<=maxX?right:left):rect.left;
+      const below=rect.bottom+gap;
+      const y=beside?rect.top:below<=maxY?below:rect.top-height-gap;
+      panel.style.left=`${Math.min(maxX,Math.max(margin,x))}px`;
+      panel.style.top=`${Math.min(maxY,Math.max(margin,y))}px`;
     };
-    const escape=(event:KeyboardEvent)=>{if(event.key==='Escape')setOpen(false);};
-    document.addEventListener('mousedown', close);
+    position();
+    if(layer==='detail')closeButton.current?.focus({preventScroll:true});
+    const resize=new ResizeObserver(position);
+    if(overlay.current)resize.observe(overlay.current);
+    window.addEventListener('resize',position);
+    window.addEventListener('scroll',position,true);
+    return ()=>{
+      resize.disconnect();
+      window.removeEventListener('resize',position);
+      window.removeEventListener('scroll',position,true);
+    };
+  },[layer]);
+
+  useEffect(()=>{
+    if(!layer)return;
+    function outside(event:PointerEvent){
+      if(event.target instanceof Node && !anchor.current?.contains(event.target) && !overlay.current?.contains(event.target))setLayer(null);
+    }
+    function escape(event:KeyboardEvent){
+      if(event.key!=='Escape')return;
+      if(layer==='detail')closeAndRestoreFocus();
+      else setLayer(null);
+    }
+    document.addEventListener('pointerdown',outside);
     document.addEventListener('keydown',escape);
-    return () => {document.removeEventListener('mousedown', close);document.removeEventListener('keydown',escape);};
-  }, [open]);
+    return ()=>{
+      document.removeEventListener('pointerdown',outside);
+      document.removeEventListener('keydown',escape);
+    };
+  },[layer]);
 
-  if (!entry) return null;
+  return <span className={`uc-term-wrap ${className}`}>
+    <button ref={anchor} type="button" className={`uc-term-trigger${children?' uc-term-label':''}`}
+      aria-label={`Penjelasan: ${entry.term}`} aria-haspopup="dialog" aria-expanded={layer==='detail'}
+      aria-controls={layer==='detail'?id:undefined} aria-describedby={layer==='summary'?id:undefined}
+      onPointerEnter={event=>{if(event.pointerType==='mouse'){setTouchHint(false);setLayer(current=>current??'summary');}}}
+      onPointerLeave={()=>{if(document.activeElement!==anchor.current)setLayer(current=>current==='summary'?null:current);}}
+      onPointerDown={event=>{pointerType.current=event.pointerType;}}
+      onFocus={event=>{if(!suppressFocus.current&&event.currentTarget.matches(':focus-visible'))setLayer(current=>current??'summary');}}
+      onBlur={()=>{if(pointerType.current!=='touch')setLayer(current=>current==='summary'?null:current);}}
+      onClick={event=>{
+        const touch=event.detail>0&&pointerType.current==='touch';
+        setTouchHint(touch);
+        setLayer(current=>current==='detail'?null:touch&&!current?'summary':'detail');
+      }}>
+      {children}<Info size={15} strokeWidth={1.8} aria-hidden />
+    </button>
+    {layer&&createPortal(layer==='summary'
+      ? <div ref={overlay} id={id} role="tooltip" className="uc-term-tooltip">{summary}{touchHint&&<small>Ketuk lagi untuk penjelasan lengkap.</small>}</div>
+      : <div ref={overlay} id={id} role="dialog" aria-labelledby={`${id}-title`} className="uc-term-panel">
+          <div className="uc-term-panel-heading"><strong id={`${id}-title`}>{entry.term}</strong><button ref={closeButton} type="button" aria-label="Tutup penjelasan" onClick={closeAndRestoreFocus}><X size={18} aria-hidden/></button></div>
+          {detail.split(/\n\s*\n/u).map((part,index)=><p key={index}>{part}</p>)}
+          <Link to={`/references#istilah-${term}`} onClick={()=>setLayer(null)}>Lihat glosarium</Link>
+        </div>,document.body)}
+  </span>;
+}
 
-  return (
-    <span ref={ref} className={`relative inline-flex align-middle ${className}`}>
-      <button
-        type="button"
-        aria-label={`Penjelasan: ${entry.term}`}
-        aria-expanded={open}
-        title={entry.plain}
-        onClick={() => setOpen(o => !o)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        className="text-[#965238] hover:text-[#17645D] transition-colors"
-      >
-        <HelpCircle className="w-4 h-4" strokeWidth={1.75} />
-      </button>
-      {open && (
-        <span
-          role="tooltip"
-          className="absolute z-50 left-1/2 -translate-x-1/2 top-6 w-64 rounded-xl bg-[#17645D] text-white text-xs leading-relaxed p-3 shadow-xl ring-1 ring-[#568D7E]/40 text-left font-normal normal-case tracking-normal"
-        >
-          <strong className="block text-[#F7DCC6] mb-1">{entry.term}</strong>
-          {entry.plain}
-          {entry.example && <span className="block mt-1.5 text-white/70">Contoh: {entry.example}</span>}
-        </span>
-      )}
-    </span>
-  );
+export function GlossaryLabel({label,iconOnly=false}:{label:string;iconOnly?:boolean}) {
+  const term=glossaryKeyForLabel(label);
+  if(!term)return iconOnly?null:<>{label}</>;
+  return <HelpTip term={term}>{iconOnly?undefined:label}</HelpTip>;
 }

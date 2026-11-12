@@ -14,6 +14,7 @@ import WorkflowTable, { WorkflowPager } from './WorkflowTable';
 import HelpTip from '../ui/HelpTip';
 import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
+import { dec, money, sum } from '../../v4/numbers';
 
 const careLabel=(value:number|string)=>value===1||value==='inap'?'Rawat inap':'Rawat jalan';
 const weight=(value:string|null|undefined)=>value==null?'—':formatNumber(Number(value),2);
@@ -84,6 +85,10 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
       {kind!=='cw'&&<nav className="flex flex-wrap gap-2" aria-label="Tampilan kelompok"><button type="button" className={!chart?'uc-primary':'uc-secondary'} aria-pressed={!chart} onClick={()=>setChart(false)}>Tabel</button><button type="button" className={chart?'uc-primary':'uc-secondary'} aria-pressed={chart} onClick={()=>setChart(true)}>{kind==='cost'?'Sebaran CoV':'Grafik'}</button></nav>}
       {chart? <div className="min-w-0 space-y-2">
         <p className="text-sm text-slate-600">{kind==='comparison'?'Sepuluh DRG dengan dampak total terbesar. Nilai per kasus dalam rupiah.':'Sumbu mendatar menunjukkan jumlah kasus. Sumbu tegak menunjukkan CoV dalam persen.'}</p>
+        <div className="flex flex-wrap gap-4 text-xs text-slate-600">{kind==='comparison'
+          ? <HelpTip term="chartCurrency">Sumbu vertikal · Rupiah</HelpTip>
+          : <><HelpTip term="cases">Sumbu horizontal · Kasus</HelpTip><HelpTip term="cov">Sumbu vertikal · CoV (%)</HelpTip></>}
+        </div>
         <ResponsiveContainer width="100%" height={310}>{kind==='comparison'?<BarChart data={tariffChart} accessibilityLayer><CartesianGrid stroke="#E3E9EF" vertical={false}/><XAxis dataKey="name" hide/><YAxis width={80} tickFormatter={value=>formatNumber(value)}/><Tooltip formatter={value=>formatRupiah(Number(value))}/><Legend/><Bar dataKey="cost" name="Unit cost" fill="#075C61" isAnimationActive={false}/><Bar dataKey="tariff" name="Tarif iDRG" fill="#637487" isAnimationActive={false}/></BarChart>:<ScatterChart accessibilityLayer><CartesianGrid stroke="#E3E9EF"/><XAxis type="number" dataKey="cases" name="Kasus"/><YAxis type="number" dataKey="cov" name="CoV (%)"/><Tooltip/><Scatter data={groups.map(group=>({name:group.group_code,cases:group.jumlahKasus,cov:group.cov*100}))} fill="#075C61" isAnimationActive={false}/></ScatterChart>}</ResponsiveContainer>
       </div>:<>
         {kind==='comparison'&&<p className="text-xs text-slate-500">Hijau: untung. Merah: defisit. Amber: impas dalam toleransi ±{formatNumber(snapshot.options.bep*100,1)}%. Nilai selisih tetap menunjukkan surplus atau defisit aktual.</p>}
@@ -147,15 +152,49 @@ function LocalWeights({snapshot}:{snapshot:AnalysisSnapshot}) {
   const [sort,setSort]=useState<{column:number;direction:'asc'|'desc'}>({column:-1,direction:'desc'});
   const groups=snapshot.local.groups.filter(group=>(!care||group.care===care)&&`${group.code} ${group.description||''}`.toLowerCase().includes(query.trim().toLowerCase()));
   if(sort.column>=0)groups.sort((left,right)=>{
-    const a=sort.column===0?left.code:sort.column===3?left.count:sort.column===4?Number(left.mean):Number(left.cw??-1);
-    const b=sort.column===0?right.code:sort.column===3?right.count:sort.column===4?Number(right.mean):Number(right.cw??-1);
-    const order=typeof a==='string'&&typeof b==='string'?a.localeCompare(b):Number(a)-Number(b);
+    const sortValue=(group:typeof left)=>{
+      if(sort.column===3)return group.count;
+      if(sort.column===4)return group.total;
+      if(sort.column===5)return group.mean;
+      return group.cw??'-1';
+    };
+    const order=sort.column===0?left.code.localeCompare(right.code):dec(sortValue(left)).cmp(sortValue(right));
     return sort.direction==='asc'?order:-order;
   });
   const safePage=Math.min(page,Math.max(0,Math.ceil(groups.length/25)-1));
+  const totalCases=groups.reduce((count,group)=>count+group.count,0);
+  const totalCost=sum(groups.map(group=>group.total)).toString();
+  const weighted=groups.filter(group=>group.casemix!=null);
+  const totalCasemix=weighted.length?sum(weighted.map(group=>group.casemix!)).toString():null;
+  const careSummaries=(['inap','jalan'] as const).flatMap(kind=>{
+    const careGroups=groups.filter(group=>group.care===kind);
+    if(!careGroups.length)return [];
+    const weightedGroups=careGroups.filter(group=>group.casemix!=null);
+    const cases=weightedGroups.reduce((total,group)=>total+group.count,0);
+    const casemix=sum(weightedGroups.map(group=>group.casemix!));
+    return [{kind,cases,casemix:cases>0?casemix.toString():null,cmi:cases>0?casemix.div(cases).toString():null}];
+  });
   return <>
     <div className="uc-result-filters"><label className="uc-label grow">Cari kode atau nama iDRG<input className="uc-input" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={event=>{setCare(event.target.value);setPage(0);}}><option value="">Semua</option><option value="inap">Rawat inap</option><option value="jalan">Rawat jalan</option></select></label>{(query||care)&&<button type="button" className="uc-secondary" onClick={()=>{setQuery('');setCare('');setPage(0);}}>Hapus filter</button>}</div>
-    <WorkflowTable emptyMessage="Tidak ada kelompok iDRG yang sesuai dengan filter. Ubah pencarian atau jenis rawat." label="Cost weight RS" sort={{...sort,columns:[0,3,4,5],onChange:column=>{setSort(current=>({column,direction:current.column===column&&current.direction==='asc'?'desc':'asc'}));setPage(0);}}} columns={['Kode iDRG','Nama DRG','Jenis rawat','Kasus','Rata-rata biaya (Rp)','CW RS','Casemix RS']} numeric={[3,4,5,6]} rows={groups.slice(safePage*25,safePage*25+25).map(group=>({key:group.care+group.code,cells:[group.code,group.description||'—',careLabel(group.care),formatNumber(group.count),formatNumber(Number(group.mean)),weight(group.cw),weight(group.casemix)]}))}/>
+    <WorkflowTable label="Cost weight RS" minWidth={970}
+      emptyMessage="Tidak ada kelompok iDRG yang sesuai dengan filter. Ubah pencarian atau jenis rawat."
+      sort={{...sort,columns:[0,3,4,5,6],onChange:column=>{setSort(current=>({column,direction:current.column===column&&current.direction==='asc'?'desc':'asc'}));setPage(0);}}}
+      columns={['Kode iDRG','Nama DRG','Jenis rawat','Kasus','Total Biaya per DRG (Rp)','Rata-rata biaya (Rp)','CW RS','Casemix RS']}
+      numeric={[3,4,5,6,7]}
+      totals={['Total sesuai filter','','',formatNumber(totalCases),money(totalCost),'','',weight(totalCasemix)]}
+      rows={groups.slice(safePage*25,safePage*25+25).map(group=>({key:group.care+group.code,cells:[
+        group.code,group.description||'—',careLabel(group.care),formatNumber(group.count),money(group.total),
+        formatNumber(Number(group.mean)),weight(group.cw),weight(group.casemix),
+      ]}))}/>
     <WorkflowPager count={groups.length} page={safePage} setPage={setPage}/>
+    {careSummaries.length>0&&<section aria-label="Perhitungan CMI lokal" className="uc-inset space-y-2">
+      <h3 className="font-semibold text-teal-950">Perhitungan CMI lokal <HelpTip term="cmi"/></h3>
+      <p className="text-sm text-slate-600">Casemix = jumlah (CW RS × kasus). CMI = total casemix ÷ jumlah kasus yang memiliki CW RS. Hasil mengikuti filter dan dihitung terpisah menurut jenis rawat.</p>
+      <dl className="grid gap-2 text-sm sm:grid-cols-2">{careSummaries.map(row=><div key={row.kind}>
+        <dt className="font-semibold">{careLabel(row.kind)}</dt>
+        <dd>{row.cmi==null?'CMI belum tersedia':<>{weight(row.casemix)} poin ÷ {formatNumber(row.cases)} kasus = <strong>{weight(row.cmi)}</strong></>}</dd>
+      </div>)}</dl>
+      <p className="text-xs text-slate-600">Rumus memakai CW RS dengan presisi penuh. CMI berdasarkan CW dari TXT tersedia di tab Casemix.</p>
+    </section>}
   </>;
 }

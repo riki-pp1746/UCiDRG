@@ -66,17 +66,33 @@ it('waits for approval even when registration returns a Supabase session', async
   });
   const { useAuthStore } = await import('../src/stores/authStore');
 
-  await expect(useAuthStore.getState().register('user@example.test', 'test-password', ' Test User ', ' RS ABC ', '0812-3456-7890', ' 0012345 '))
+  await expect(useAuthStore.getState().register('user@example.test', 'Abcde1!2', ' Test User ', ' RS ABC ', '0812-3456-7890', ' 0012345 '))
     .resolves.toEqual({ status: 'pending' });
   expect(sdk.auth.signUp).toHaveBeenCalledWith({
     email: 'user@example.test',
-    password: 'test-password',
+    password: 'Abcde1!2',
     options: {
       data: { display_name: 'Test User', hospital_name: 'RS ABC', hospital_code: '0012345', phone_number: '081234567890' },
     },
   });
   expect(useAuthStore.getState()).toMatchObject({ isAuthenticated: false, user: null });
   expect(sdk.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+});
+
+it('rejects registration with any missing field or an incomplete password combination before contacting Supabase', async () => {
+  const { useAuthStore } = await import('../src/stores/authStore');
+  const register = useAuthStore.getState().register;
+  const valid = ['user@example.test', 'Abcde1!2', 'Test User', 'RS ABC', '081234567890', '0012345'] as const;
+  for (let index = 0; index < valid.length; index++) {
+    const fields: Parameters<typeof register> = [...valid];
+    fields[index] = index === 1 ? '' : '   ';
+    await expect(register(...fields)).resolves.toMatchObject({ status: 'error', message: 'Lengkapi semua kolom pendaftaran.' });
+  }
+  for (const password of ['Ab1!', 'abcde1!2', 'ABCDE1!2', 'Abcdef!?', 'Abcdef12', 'Abcdef1 ']) {
+    await expect(register(valid[0], password, valid[2], valid[3], valid[4], valid[5]))
+      .resolves.toMatchObject({ status: 'error', message: expect.stringContaining('Minimal 8 karakter') });
+  }
+  expect(sdk.auth.signUp).not.toHaveBeenCalled();
 });
 
 it.each(['pending', 'expired'])('blocks login for a %s account', async status => {

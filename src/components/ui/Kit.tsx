@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import {GlossaryLabel} from './HelpTip';
 
 const tones = {
   teal: 'bg-teal-50 text-teal-800 ring-teal-200',
@@ -17,7 +18,7 @@ export function StatCard({label, value, hint, primary = false, badge}: {label: s
   return (
     <div className="uc-stat-card" data-primary={primary||undefined}>
       <div className="flex items-start justify-between gap-2">
-        <p className="uc-stat-label">{label}</p>
+        <p className="uc-stat-label"><GlossaryLabel label={label}/></p>
         {badge}
       </div>
       <p className="uc-stat-value">{value}</p>

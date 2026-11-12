@@ -1,3 +1,4 @@
+import { GlossaryLabel } from '../ui/HelpTip';
 import {useState} from 'react';
 import * as XLSX from 'xlsx';
 import {useBaseRateComparisonStore} from '../../stores/baseRateComparisonStore';
@@ -34,8 +35,8 @@ export default function BaseRateComparisonPanel({result=null,references,editable
    return <article key={r.care} className="uc-inset uc-nbr-card space-y-3">
     <h3 className="font-semibold">{r.care==='inap'?'Rawat inap':'Rawat jalan'}</h3>
     <div className="uc-nbr-values">
-     <div><p className="text-xs">{hbrLabel}</p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
-     <div><p className="text-xs">Rancangan NBR iDRG</p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
+     <div><p className="text-xs"><GlossaryLabel label={hbrLabel}/></p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
+     <div><p className="text-xs"><GlossaryLabel label="Rancangan NBR iDRG"/></p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
     </div>
     {source&&<p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600"><span className="font-semibold text-slate-700">Pembanding (CW TXT):</span> HBR {r.txtHbr===null?'tidak tersedia':money(r.txtHbr)} · {source.pools.find(p=>p.care===r.care)?.count.toLocaleString('id-ID')} dari {source.pools.find(p=>p.care===r.care)?.cases.toLocaleString('id-ID')} kasus memiliki CW TXT.</p>}
     {r.percent===null?<p>{source?'HBR RS belum tersedia. Hitung biaya RS terlebih dahulu.':'HBR belum tersedia. Hitung biaya RS untuk melihat selisih.'}</p>:<p>Selisih {Number(r.difference)>0?'+':''}{money(r.difference)} ({Number(r.percent)>0?'+':''}{displayDecimal(r.percent,1)}%)</p>}

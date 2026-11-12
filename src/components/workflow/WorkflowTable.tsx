@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react';
+import { GlossaryLabel } from '../ui/HelpTip';
 
 export default function WorkflowTable({ label, columns, rows, totals, numeric = [], minWidth, sort, emptyMessage='Belum ada data untuk ditampilkan.' }: {
   label: string;
   columns: ReactNode[];
-  rows: { key: string; cells: ReactNode[] }[];
+  rows: { key: string; cells: ReactNode[]; onClick?: (event:MouseEvent<HTMLTableRowElement>)=>void }[];
   totals?: ReactNode[];
   numeric?: number[];
   minWidth?: number;
@@ -18,10 +19,10 @@ export default function WorkflowTable({ label, columns, rows, totals, numeric = 
         const selected=sorting?.column===index;
         const SortIcon=selected?(sorting?.direction==='asc'?ArrowUp:ArrowDown):ChevronsUpDown;
         return <th key={index} scope="col" aria-sort={selected?(sorting?.direction==='asc'?'ascending':'descending'):undefined} className={index===0?'sticky left-0 z-10 bg-slate-100':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>
-          {sorting?<button type="button" className="uc-table-sort" onClick={()=>sorting.onChange(index)}>{column}<SortIcon size={13} aria-hidden/></button>:column}
+          {sorting?<span className="uc-term-column"><button type="button" className="uc-table-sort" onClick={()=>sorting.onChange(index)}>{column}<SortIcon size={13} aria-hidden/></button>{typeof column==='string'&&<GlossaryLabel label={column} iconOnly/>}</span>:typeof column==='string'?<GlossaryLabel label={column}/>:column}
         </th>;
       })}</tr></thead>
-      <tbody>{rows.map(row=><tr key={row.key}>{row.cells.map((cell,index)=><td key={index} className={index===0?'sticky left-0 bg-white font-medium text-teal-950':numeric.includes(index)?'whitespace-nowrap tabular-nums':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr>)}</tbody>
+      <tbody>{rows.map(row=><tr key={row.key} onClick={row.onClick} className={row.onClick?'cursor-pointer':undefined}>{row.cells.map((cell,index)=><td key={index} className={index===0?'sticky left-0 bg-white font-medium text-teal-950':numeric.includes(index)?'whitespace-nowrap tabular-nums':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr>)}</tbody>
       {rows.length>0&&totals&&<tfoot><tr>{totals.map((cell,index)=>index===0
         ? <th key={index} scope="row">{cell}</th>
         : <td key={index} className="whitespace-nowrap tabular-nums" style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr></tfoot>}

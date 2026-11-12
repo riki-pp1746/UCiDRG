@@ -1,5 +1,6 @@
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
+import HelpTip from '../ui/HelpTip';
 
 export default function CostTariffChart({cost,tariff}:{cost:number;tariff:number}) {
   const rows=[{label:'Biaya JKN',value:cost,fill:'#087D76'},{label:'Tarif iDRG',value:tariff,fill:'#57713F'}];
@@ -17,6 +18,6 @@ export default function CostTariffChart({cost,tariff}:{cost:number;tariff:number
         </Bar>
       </BarChart>
     </ResponsiveContainer>
-    <figcaption>Sumbu vertikal dalam {scale.label}. {rows.map(row=>`${row.label} ${formatRupiah(row.value)}`).join(' · ')}.</figcaption>
+    <figcaption><HelpTip term="chartCurrency">Sumbu vertikal dalam {scale.label}</HelpTip>. {rows.map(row=>`${row.label} ${formatRupiah(row.value)}`).join(' · ')}.</figcaption>
   </figure>;
 }

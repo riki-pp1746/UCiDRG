@@ -3,6 +3,8 @@ import { create } from 'zustand';
 import { clearAnalysisSession } from '../lib/sessionData';
 import { isHospitalClass, type HospitalClass } from '../types/hospitalClass';
 import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
+import { meetsRegistrationPasswordRules, registrationPasswordHelp } from '../lib/registrationPassword';
+import { GLOSSARY, wordCount, type GlossaryKey } from '../lib/glossary';
 
 const supabaseUrl = 'https://vowutzxizrrywpwcobth.supabase.co';
 const publishableKey = import.meta.env.NEXT_PUBLIC_AkunSUPABASE_PUBLISHABLE_KEY?.trim()
@@ -46,6 +48,30 @@ interface AuthState {
 }
 
 let client: SupabaseClient | undefined;
+export type GlossaryOverride = {summary:string;detail:string};
+
+export async function loadGlossaryOverrides() {
+  if (!client || !useAuthStore.getState().isAuthenticated) return {};
+  const {data,error}=await client.rpc('unitcost_glossary_entries');
+  if(error || !Array.isArray(data))throw new Error('Glosarium bersama belum dapat dimuat.');
+  const result:Partial<Record<GlossaryKey,GlossaryOverride>>={};
+  for(const row of data){
+    if(typeof row?.term_key==='string' && Object.prototype.hasOwnProperty.call(GLOSSARY,row.term_key)
+      && typeof row.summary==='string' && typeof row.detail==='string'){
+      result[row.term_key as GlossaryKey]={summary:row.summary,detail:row.detail};
+    }
+  }
+  return result;
+}
+
+export async function saveGlossaryOverride(key:GlossaryKey,text:GlossaryOverride|null) {
+  if(!client || useAuthStore.getState().user?.role!=='admin')throw new Error('Hanya Admin yang dapat menyunting glosarium.');
+  if(text && (!text.summary.trim() || !text.detail.trim() || wordCount(text.summary)>25 || wordCount(text.detail)>100)){
+    throw new Error('Isi ringkasan hingga 25 kata dan panel hingga 100 kata.');
+  }
+  const {error}=await client.rpc('unitcost_set_glossary_entry',{p_term_key:key,p_summary:text?.summary??null,p_detail:text?.detail??null});
+  if(error)throw new Error('Perubahan belum tersimpan. Periksa sesi dan ketersediaan glosarium bersama.');
+}
 let verifiedAt = 0;
 let verification: {connection:SupabaseClient;promise:Promise<boolean>} | undefined;
 
@@ -170,22 +196,37 @@ export const useAuthStore = create<AuthState>(set => ({
     return authenticate(connection => connection.auth.signInWithPassword({ email, password }));
   },
   register: async (email, password, name, hospital, phone, hospitalCode) => {
-    if (email.trim().toLowerCase() === adminEmail) {
+    const address = email.trim();
+    const displayName = name.trim();
+    const hospitalName = hospital.trim();
+    const code = hospitalCode.trim();
+    if (![address, password, displayName, hospitalName, phone.trim(), code].every(Boolean)) {
+      return { status: 'error', message: 'Lengkapi semua kolom pendaftaran.' };
+    }
+    if (address.toLowerCase() === adminEmail) {
       return { status: 'error', message: 'Gunakan alamat email pengguna.' };
+    }
+    if (!/^[^\s@]+@[^\s@]+$/.test(address)) {
+      return { status: 'error', message: 'Masukkan alamat email yang valid.' };
+    }
+    if (displayName.length > 120 || hospitalName.length > 120) {
+      return { status: 'error', message: 'Nama lengkap dan nama rumah sakit masing-masing maksimal 120 karakter.' };
+    }
+    if (!meetsRegistrationPasswordRules(password)) {
+      return { status: 'error', message: registrationPasswordHelp };
     }
     const phoneNumber = phone.trim().replace(/[\s()-]/g, '');
     if (!/^\+?[0-9]{8,15}$/.test(phoneNumber)) {
       return { status: 'error', message: 'Masukkan nomor HP yang valid, misalnya 081234567890.' };
     }
-    const code = hospitalCode.trim();
     if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,31}$/.test(code)) {
       return { status: 'error', message: 'Masukkan kode RS yang valid, misalnya 3372165.' };
     }
     return authenticate(connection => connection.auth.signUp({
-      email: email.trim(), password,
+      email: address, password,
       options: { data: {
-        display_name: name.trim(),
-        hospital_name: hospital.trim(),
+        display_name: displayName,
+        hospital_name: hospitalName,
         hospital_code: code,
         phone_number: phoneNumber,
       } },

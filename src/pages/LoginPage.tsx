@@ -5,6 +5,7 @@ import { APP_METHOD, APP_NAME } from '../lib/appBrand';
 import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 import LoginCaptcha from '../components/auth/LoginCaptcha';
 import LoginDataAgreement from '../components/auth/LoginDataAgreement';
+import { registrationPasswordHelp, registrationPasswordMinLength } from '../lib/registrationPassword';
 import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -48,10 +49,6 @@ export default function LoginPage() {
   if (busy) return;
   if (!registering && !isLoginCaptchaProofValid(proof)) {
    setError('Selesaikan verifikasi gambar sebelum masuk.');
-   return;
-  }
-  if (registering && (!name.trim() || !hospital.trim())) {
-   setError('Isi nama lengkap dan nama rumah sakit.');
    return;
   }
   if (!registering) {
@@ -119,7 +116,7 @@ export default function LoginPage() {
    <section className="uc-login-form-panel" aria-labelledby="login-title">
     <div className="uc-login-form-wrap">
      <h2 id="login-title">{registering ? 'Daftar akun' : 'Masuk'}</h2>
-     <p className="uc-login-subtitle">{registering ? 'Akun bisa dipakai setelah disetujui admin.' : `Gunakan akun ${APP_NAME} Anda untuk membuka ruang analisis.`}</p>
+     <p className="uc-login-subtitle">{registering ? 'Semua kolom wajib diisi. Akun bisa dipakai setelah disetujui admin.' : `Gunakan akun ${APP_NAME} Anda untuk membuka ruang analisis.`}</p>
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}
@@ -175,12 +172,15 @@ export default function LoginPage() {
         <Lock size={18} aria-hidden />
         <input id="password" name="password" type={showPassword ? 'text' : 'password'}
          autoComplete={registering ? 'new-password' : 'current-password'} required
-         minLength={registering ? 6 : undefined} value={password} onChange={event => setPassword(event.target.value)} />
+         minLength={registering ? registrationPasswordMinLength : undefined}
+         aria-describedby={registering ? 'registration-password-help' : undefined}
+         value={password} onChange={event => setPassword(event.target.value)} />
         <button type="button" onClick={() => setShowPassword(value => !value)}
          aria-label={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'} aria-pressed={showPassword}>
          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
        </div>
+       {registering && <p id="registration-password-help" className="mt-2 text-xs leading-5 text-slate-600">{registrationPasswordHelp}</p>}
       </div>
       {!registering && <LoginCaptcha key={captchaVersion} onProof={setProof}/>}
       <button className="uc-login-submit" type="submit" disabled={busy || !authConfigured || Boolean(!registering && !isLoginCaptchaProofValid(proof))}>

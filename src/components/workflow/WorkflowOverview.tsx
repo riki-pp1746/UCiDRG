@@ -4,6 +4,7 @@ import { ArrowUpRight, BarChart3, CircleDollarSign, ClipboardList, Landmark } fr
 import type { AnalysisWorkflow } from '../../hooks/useAnalysisWorkflow';
 import { analysisView } from '../../lib/analysisSnapshot';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
+import { GlossaryLabel } from '../ui/HelpTip';
 
 const CostTariffChart = lazy(() => import('./CostTariffChart'));
 
@@ -20,7 +21,7 @@ export default function WorkflowOverview({ workflow }: { workflow: AnalysisWorkf
   return <section aria-label="Ikhtisar analisis" className="uc-overview">
     <div className="uc-overview-metrics">
       {metrics.map(({label,value,detail,icon:Icon,tone})=><article className="uc-panel uc-metric-card" key={label} data-tone={tone}>
-        <div><h2>{label}</h2><span className="uc-metric-icon"><Icon size={17} aria-hidden/></span></div>
+        <div><h2><GlossaryLabel label={label}/></h2><span className="uc-metric-icon"><Icon size={17} aria-hidden/></span></div>
         <p className="uc-metric-value">{value}</p><p>{detail}</p>
       </article>)}
     </div>
@@ -37,9 +38,9 @@ export default function WorkflowOverview({ workflow }: { workflow: AnalysisWorkf
           return <div key={pool.care} className="uc-inset uc-overview-service">
             <h3>{pool.care==='inap'?'Rawat inap':'Rawat jalan'}</h3>
             <dl>
-              <div><dt>Unit cost rata-rata</dt><dd>{pool.average==null?'—':formatRupiah(Number(pool.average))}</dd></div>
-              <div><dt>HBR JKN</dt><dd>{pool.hbr==null?'—':formatRupiah(Number(pool.hbr))}</dd></div>
-              <div><dt>CMI iDRG</dt><dd>{source?.cmi==null?'—':formatNumber(Number(source.cmi),2)}</dd></div>
+              <div><dt><GlossaryLabel label="Unit cost rata-rata"/></dt><dd>{pool.average==null?'—':formatRupiah(Number(pool.average))}</dd></div>
+              <div><dt><GlossaryLabel label="HBR JKN"/></dt><dd>{pool.hbr==null?'—':formatRupiah(Number(pool.hbr))}</dd></div>
+              <div><dt><GlossaryLabel label="CMI iDRG"/></dt><dd>{source?.cmi==null?'—':formatNumber(Number(source.cmi),2)}</dd></div>
             </dl>
           </div>;
         })}

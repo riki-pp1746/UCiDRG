@@ -1,4 +1,5 @@
 import { FinancialBadge } from '../components/ui/FinancialStatus';
+import { GlossaryLabel } from '../components/ui/HelpTip';
 import {AnalysisReportDetails,AnalysisReportVersions} from '../components/ui/AnalysisControls';
 import {analysisPdf} from '../lib/analysisPdf';
 import {APP_NAME} from '../lib/appBrand';
@@ -34,13 +35,6 @@ import clsx from 'clsx';
 import type { BillingGroup } from '../types/costing.types';
 import { reportSections, useWorkflowReportStore } from '../stores/workflowReportStore';
 import type { ReportSection } from '../stores/workflowReportStore';
-
-const STATUS_BADGE = {
-  TIDAK_TERSEDIA: 'text-slate-600 bg-slate-100',
-  UNTUNG: 'text-green-700 bg-green-50',
-  IMPAS: 'text-amber-700 bg-amber-50',
-  RUGI: 'text-red-700 bg-red-50',
-};
 
 const STATUS_LABEL = {
   UNTUNG: 'PROFIT',
@@ -366,7 +360,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
         ].map(kpi=><div key={kpi.label} className={clsx('uc-panel min-w-0',kpi.currency&&'col-span-2 sm:col-span-1')}><p className="text-sm text-slate-500">{kpi.label}</p><p className={clsx('mt-2 break-words font-semibold tracking-tight text-teal-950',kpi.currency?'text-lg':'text-2xl')}>{kpi.value}</p>{kpi.hint&&<p className="mt-2 text-xs text-slate-500">{kpi.hint}</p>}</div>)}</div>
         <p className="text-sm text-slate-600">Biaya seluruh RS pada periode ini: {formatRupiah(totalBiayaLaporan)}. Pool JKN: {formatRupiah(poolJKN)}{totalBiayaLaporan>0?` (${formatNumber(poolJKN/totalBiayaLaporan*100,2)}% dari biaya RS periode)` : ''}. HBR dan CRR menggunakan pool biaya JKN.</p>
         <SourceCaseMixIndex rows={view.weightComparison}/>
-        <section className="uc-panel space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-teal-950">Perbandingan biaya dan tarif</h2><p className="mt-1 text-sm text-slate-600">Tarif klaim JKN dikurangi biaya JKN pada populasi laporan. Angka selisih dapat negatif; CRR adalah rasio tarif terhadap biaya.</p></div><span className={clsx('rounded-full px-3 py-1 text-sm font-semibold',STATUS_BADGE[summary.financialStatus||'IMPAS'])}>{financialLabel(summary.financialStatus)}</span></div><p className={clsx('break-words text-3xl font-semibold',summary.totalSelisih<0?'text-red-700':'text-teal-800')}>{summary.totalSelisih>0?'+':''}{formatRupiah(summary.totalSelisih)}</p><div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">{[{label:'DRG defisit',value:summary.jumlahDRGRugi},{label:'DRG impas',value:summary.jumlahDRGImpas},{label:'DRG surplus',value:summary.jumlahDRGUntung}].map(item=><div key={item.label}><p className="text-xl font-semibold text-slate-800">{item.value}</p><p className="text-xs text-slate-500">{item.label}</p></div>)}</div></section>
+        <section className="uc-panel space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-teal-950">Perbandingan biaya dan tarif</h2><p className="mt-1 text-sm text-slate-600">Tarif klaim JKN dikurangi biaya JKN pada populasi laporan. Angka selisih dapat negatif; CRR adalah rasio tarif terhadap biaya.</p></div><FinancialBadge status={summary.financialStatus} label={financialLabel(summary.financialStatus)}/></div><p className={clsx('break-words text-3xl font-semibold',summary.totalSelisih<0?'text-red-700':'text-teal-800')}>{summary.totalSelisih>0?'+':''}{formatRupiah(summary.totalSelisih)}</p><div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">{[{label:'DRG defisit',value:summary.jumlahDRGRugi},{label:'DRG impas',value:summary.jumlahDRGImpas},{label:'DRG surplus',value:summary.jumlahDRGUntung}].map(item=><div key={item.label}><p className="text-xl font-semibold text-slate-800">{item.value}</p><p className="text-xs text-slate-500"><GlossaryLabel label={item.label}/></p></div>)}</div></section>
         <div className="grid gap-4 lg:grid-cols-2">{([['5 DRG dengan defisit terbesar',summary.top10Rugi,'text-red-700'],['5 DRG dengan surplus terbesar',summary.top10Untung,'text-teal-800']] as const).map(([label,groups,color])=><section className="uc-panel space-y-3" key={label}>
           <h2 className="text-lg font-semibold text-teal-950">{label}</h2>
           {!groups.length?<p className="text-sm text-slate-600">Belum ada kelompok dengan jumlah kasus dan kepastian statistik yang memadai.</p>:<ul className="divide-y divide-slate-100">{groups.slice(0,5).map(group=><li key={group.ptd+'|'+group.group_code} className="flex flex-wrap justify-between gap-2 py-3 text-sm"><span className="min-w-0 flex-1 text-slate-700"><strong className="block font-medium">{group.group_code}</strong>{group.group_description}</span><strong className={color}>{group.totalTarif>group.totalBiayaRS?'+':''}{formatRupiah(group.totalTarif-group.totalBiayaRS)}</strong></li>)}</ul>}

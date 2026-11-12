@@ -10,6 +10,7 @@ import UserManagementPage from './pages/UserManagementPage';
 import UserProfilePage from './pages/UserProfilePage';
 import { V4Page } from './v4/Pages';
 import { SessionGuard } from './components/layout/SessionGuard';
+import { GlossaryContent } from './components/ui/GlossaryContent';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
@@ -42,7 +43,7 @@ export function AppRoutes() {
           path="/"
           element={
             <ProtectedRoute>
-              <AppLayout />
+              <GlossaryContent><AppLayout /></GlossaryContent>
             </ProtectedRoute>
           }
         >
