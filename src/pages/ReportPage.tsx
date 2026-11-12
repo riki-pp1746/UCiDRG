@@ -12,6 +12,7 @@ import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
 import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
 import ReportDataChecks from '../components/reports/ReportDataChecks';
+import WorkflowTable, { WorkflowPager } from '../components/workflow/WorkflowTable';
 import {analysisStale} from '../lib/analysisController';
 import {reportChecks} from '../lib/reportChecks';
 import {Link} from 'react-router-dom';
@@ -74,6 +75,8 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
   const view=useAnalysisView();
   const filteredResults=view.rows;
   const drgResults=view.groups;
+  const [groupPagination,setGroupPagination]=useState<{groups:typeof drgResults;page:number}|null>(null);
+  const groupPage=groupPagination?.groups===drgResults?Math.min(groupPagination.page,Math.max(0,Math.ceil(drgResults.length/25)-1)):0;
   const summary=view.summary;
   const patientResults = filteredResults;
   const periodNormalization = useCostingStore(s => s.periodNormalization);
@@ -310,15 +313,18 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
 
   // Print / PDF
   const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass,variant==='print'?reportSelection:undefined).save(`Ringkasan-${APP_NAME}-DRAFT.pdf`);};
-  if(variant==='export')return <section className="uc-panel space-y-4">
-    <h2 className="font-semibold text-teal-950">Workbook hasil analisis</h2>
-    <p className="text-sm text-slate-600">Memuat perbandingan tarif, HBR vs NBR, CW, distribusi 18 komponen, dan jejak audit. Untuk mempertahankan hasil setelah keluar atau memuat ulang, unduh berkas saat sesi masih aktif.</p>
-    <div className="flex flex-wrap gap-2"><button type="button" onClick={exportExcel} className="uc-primary"><FileSpreadsheet size={16}/>Unduh Excel</button><button type="button" onClick={exportPptx} className="uc-secondary"><Presentation size={16}/>Unduh PowerPoint</button></div>
-  </section>;
+  if(variant==='export')return <div className="space-y-4">
+    <section className="uc-panel uc-section-heading"><div><h2>Unduh hasil analisis</h2><p>{config.namaRS||user?.namaRS||'Rumah sakit'} · {summary.periodeData} · {formatNumber(summary.totalKasus)} kasus</p></div><span className="uc-result-source">{viewMode==='IDRG'?'iDRG':'INA-CBG'}</span></section>
+    <div className="uc-export-grid">
+      <section className="uc-panel uc-export-card"><span className="uc-metric-icon"><FileSpreadsheet size={20} aria-hidden/></span><h2>Workbook hasil analisis</h2><p>Rincian kasus dan kelompok DRG, distribusi 18 komponen, CW, HBR, pembanding NBR, serta jejak audit.</p><button type="button" onClick={exportExcel} className="uc-primary"><FileSpreadsheet size={16} aria-hidden/>Unduh Excel</button></section>
+      <section className="uc-panel uc-export-card"><span className="uc-metric-icon"><Presentation size={20} aria-hidden/></span><h2>Presentasi ringkasan</h2><p>Ringkasan indikator, perbandingan biaya dan tarif, serta kelompok DRG untuk pembahasan hasil.</p><button type="button" onClick={exportPptx} className="uc-secondary"><Presentation size={16} aria-hidden/>Unduh PowerPoint</button></section>
+    </div>
+    <p className="uc-notice">Unduh berkas saat sesi masih aktif agar hasil tersedia setelah keluar atau memuat ulang halaman.</p>
+  </div>;
   if(variant==='print')return <div className="space-y-4">
     <section className="uc-panel space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold text-teal-950">Bagian laporan</h2><p className="mt-1 text-sm text-slate-600">{config.namaRS||user?.namaRS||'Rumah sakit'} · {summary.periodeData} · {viewMode==='IDRG'?'iDRG':'INA-CBG'}</p></div><button className="uc-primary" onClick={handlePrint}><Printer size={16}/>Cetak PDF</button></div>
-      <fieldset className="grid gap-3 sm:grid-cols-2"><legend className="mb-3 text-sm font-medium">Pilih lampiran ringkasan</legend>{(Object.entries(reportSections) as [ReportSection,string][]).map(([id,label])=><label key={id} className="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" checked={reportSelection.includes(id)} onChange={()=>toggleReportSection(id)}/>{label}</label>)}</fieldset>
+      <fieldset className="grid gap-3 sm:grid-cols-2"><legend className="mb-3 text-sm font-medium">Pilih lampiran ringkasan</legend>{(Object.entries(reportSections) as [ReportSection,string][]).map(([id,label])=><label key={id} className="uc-report-choice"><input type="checkbox" checked={reportSelection.includes(id)} onChange={()=>toggleReportSection(id)}/>{label}</label>)}</fieldset>
       <p className="text-xs text-slate-600">Ringkasan utama, periode, asumsi, dan pemeriksaan data selalu disertakan. Rincian seluruh kasus dan kelompok tersedia pada Ekspor Excel.</p>
       <button type="button" className="uc-secondary" aria-expanded={preview} onClick={()=>setPreview(value=>!value)}>{preview?'Tutup pratinjau':'Lihat pratinjau'}</button>
       {preview&&<div className="uc-inset space-y-3"><h3 className="font-semibold">Ringkasan Eksekutif</h3><p className="text-sm">{formatNumber(summary.totalKasus)} kasus · {formatRupiah(summary.totalBiayaRS)} biaya · CRR {summaryMetricText(summary,'crr')}</p><ul className="list-disc pl-5 text-sm">{reportSelection.map(id=><li key={id}>{reportSections[id]}</li>)}</ul></div>}
@@ -368,7 +374,17 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
         <p className="px-1 text-xs text-slate-500">Filter hanya mengubah ringkasan laporan. Perhitungan CW RS dan HBR memakai populasi awal, termasuk kasus outlier yang memenuhi syarat.</p>
       </section>}
 
-      {section==='groups'&&<section className="uc-panel space-y-4" aria-label="Rincian DRG laporan"><div><h2 className="text-lg font-semibold text-teal-950">Rincian kelompok DRG</h2><p className="mt-1 text-sm text-slate-600">{drgResults.length.toLocaleString('id-ID')} kelompok sesuai filter. Unit cost dan tarif ditampilkan sebagai rata-rata per kasus.</p></div><div className="uc-table-scroll max-h-[640px] overflow-y-auto"><table className="uc-table min-w-[800px]"><thead className="sticky top-0 bg-slate-50"><tr>{['Kode','Kelompok kasus','Kasus','Unit cost','Tarif pembanding','Selisih per kasus','Status'].map(label=><th key={label} scope="col">{label}</th>)}</tr></thead><tbody>{drgResults.map((drg,i)=><tr key={drg.group_code+'|'+i}><td className="font-mono font-semibold text-teal-800">{drg.group_code}</td><td className="min-w-48 max-w-72">{drg.group_description}</td><td>{formatNumber(drg.jumlahKasus)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataUnitCost)}</td><td className="whitespace-nowrap">{formatRupiah(drg.rataTarif)}</td><td className={drg.selisih<0?'text-red-700':'text-teal-800'}>{formatRupiah(drg.selisih)}<span className="mt-1 block text-xs">{formatNumber(drg.selisihPersen,1)}%</span></td><td><FinancialBadge status={drg.decisionStatus||drg.status} label={statusLabel(drg)}/><details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Kepastian data</summary><p className="mt-2">{drg.statisticalLabel}; interval selisih 95%: {drg.ci?formatRupiah(drg.ci.low)+' sampai '+formatRupiah(drg.ci.high):'Belum tersedia'}.</p></details></td></tr>)}</tbody></table></div>{!drgResults.length&&<p className="text-sm text-slate-500">Tidak ada kelompok yang sesuai filter laporan.</p>}</section>}
+      {section==='groups'&&<section className="uc-panel space-y-4" aria-label="Rincian DRG laporan">
+        <div className="uc-section-heading"><div><h2>Rincian kelompok DRG</h2><p>{formatNumber(drgResults.length)} kelompok sesuai filter. Unit cost dan tarif ditampilkan sebagai rata-rata per kasus.</p></div></div>
+        <WorkflowTable label="Kelompok DRG laporan" minWidth={1000} columns={['Kode','Kelompok kasus','Kasus','Unit cost','Tarif pembanding','Selisih per kasus','Status']} numeric={[2,3,4,5]}
+          emptyMessage="Tidak ada kelompok yang sesuai filter laporan."
+          rows={drgResults.slice(groupPage*25,groupPage*25+25).map(drg=>({key:drg.ptd+'|'+drg.group_code,cells:[
+            drg.group_code,drg.group_description,formatNumber(drg.jumlahKasus),formatRupiah(drg.rataUnitCost),formatRupiah(drg.rataTarif),
+            <span key="difference" className={drg.selisih<0?'text-red-700':'text-teal-800'}>{formatRupiah(drg.selisih)}<span className="mt-1 block text-xs">{formatNumber(drg.selisihPersen,1)}%</span></span>,
+            <div key="status"><FinancialBadge status={drg.decisionStatus||drg.status} label={statusLabel(drg)}/><details className="mt-2 text-xs text-slate-600"><summary className="cursor-pointer">Kepastian data</summary><p className="mt-2">{drg.statisticalLabel}; interval selisih 95%: {drg.ci?formatRupiah(drg.ci.low)+' sampai '+formatRupiah(drg.ci.high):'Belum tersedia'}.</p></details></div>,
+          ]}))}/>
+        <WorkflowPager count={drgResults.length} page={groupPage} setPage={page=>setGroupPagination({groups:drgResults,page})}/>
+      </section>}
       {section==='checks'&&<ReportDataChecks checks={checks}/>}
       {section==='methods'&&<div className="space-y-4"><AnalysisReportDetails/><AnalysisReportVersions/></div>}
     </div>

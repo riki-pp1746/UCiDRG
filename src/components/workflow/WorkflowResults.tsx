@@ -25,7 +25,9 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
   const [care,setCare]=useState('');
   const [status,setStatus]=useState('');
   const [chart,setChart]=useState(false);
+  const [sort,setSort]=useState<{column:number;direction:'asc'|'desc'}>({column:-1,direction:'desc'});
   const [page,setPage]=useState(0);
+  const title=kind==='cost'?'Unit cost per kelompok iDRG':kind==='cw'?'Perbandingan cost weight':'Unit cost dan tarif iDRG';
   const source=new Map(snapshot.local.sourceWeights?.groups.map(group=>[group.care+'|'+group.code,group]));
   const local=new Map(snapshot.local.groups.map(group=>[group.care+'|'+group.code,group]));
   const los=useMemo(()=>{
@@ -41,6 +43,19 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
     return result;
   },[kind,snapshot]);
   const groups=view.groups.filter(group=>(!care||String(group.ptd)===care)&&(!status||(group.decisionStatus||group.status)===status)&&[group.group_code,group.group_description,group.mdc_description,String(group.mdc_number??'')].some(value=>value?.toLowerCase().includes(query.trim().toLowerCase())));
+  const sortValue=(group:typeof groups[number])=>{
+    if(sort.column===0)return group.group_code;
+    if(kind==='comparison')return sort.column===3?group.jumlahKasus:sort.column===5?group.rataUnitCost:sort.column===6?group.rataTarif:group.totalTarif-group.totalBiayaRS;
+    if(sort.column===4)return group.jumlahKasus;
+    if(kind==='cost')return group.rataUnitCost;
+    return Number((sort.column===5?local:source).get((group.ptd===1?'inap':'jalan')+'|'+group.group_code)?.cw??-1);
+  };
+  if(sort.column>=0)groups.sort((a,b)=>{
+    const left=sortValue(a),right=sortValue(b);
+    const order=typeof left==='string'&&typeof right==='string'?left.localeCompare(right):Number(left)-Number(right);
+    return (sort.direction==='asc'?order:-order)||a.group_code.localeCompare(b.group_code)||a.ptd-b.ptd;
+  });
+  const changeSort=(column:number)=>{setSort(current=>({column,direction:current.column===column&&current.direction==='asc'?'desc':'asc'}));setPage(0);};
   const safePage=Math.min(page,Math.max(0,Math.ceil(groups.length/25)-1));
   const metrics=kind==='cw'?['CW RS','CW iDRG dari TXT','Selisih CW (%)']:kind==='comparison'?['Status','Unit cost (Rp)','Tarif iDRG (Rp)','Surplus/(Defisit) (Rp)','Dampak total (Rp)','CRR (%)','CoV (%)','Kepastian statistik']:['Unit cost rata-rata (Rp)','CoV (%)','ALOS (hari)'];
   const rows=groups.slice(safePage*25,safePage*25+25).map(group=>{
@@ -59,18 +74,20 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
       <p className="text-sm text-slate-600">CW RS memakai biaya RS. CW iDRG memakai bobot pada TXT. Perbedaan skala bobot dan cakupan klaim perlu diperhatikan saat membaca selisih.</p>
     </section>}
     <section className="uc-panel space-y-4">
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="uc-section-heading"><div><h2>{title} {kind==='cw'&&<HelpTip term="cwRS"/>}</h2><p>{formatNumber(groups.length)} kelompok dari {formatNumber(view.groups.length)} kelompok pada hasil analisis aktif.</p></div><span className="uc-result-source">{snapshot.period?.label||snapshot.local.period}</span></div>
+      <div className="uc-result-filters">
         <label className="uc-label grow">Cari kode iDRG, nama, atau MDC<input className="uc-input" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label>
         <label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={event=>{setCare(event.target.value);setPage(0);}}><option value="">Semua</option><option value="1">Rawat inap</option><option value="2">Rawat jalan</option></select></label>
         {kind==='comparison'&&<label className="uc-label">Status<select className="uc-input" value={status} onChange={event=>{setStatus(event.target.value);setPage(0);}}><option value="">Semua</option><option value="UNTUNG">Untung</option><option value="IMPAS">Impas</option><option value="RUGI">Defisit</option><option value="DATA_TIDAK_CUKUP">Data tidak cukup</option><option value="TIDAK_TERSEDIA">Tidak tersedia</option></select></label>}
+        {(query||care||status)&&<button type="button" className="uc-secondary" onClick={()=>{setQuery('');setCare('');setStatus('');setPage(0);}}>Hapus filter</button>}
       </div>
       {kind!=='cw'&&<nav className="flex flex-wrap gap-2" aria-label="Tampilan kelompok"><button type="button" className={!chart?'uc-primary':'uc-secondary'} aria-pressed={!chart} onClick={()=>setChart(false)}>Tabel</button><button type="button" className={chart?'uc-primary':'uc-secondary'} aria-pressed={chart} onClick={()=>setChart(true)}>{kind==='cost'?'Sebaran CoV':'Grafik'}</button></nav>}
       {chart? <div className="min-w-0 space-y-2">
         <p className="text-sm text-slate-600">{kind==='comparison'?'Sepuluh DRG dengan dampak total terbesar. Nilai per kasus dalam rupiah.':'Sumbu mendatar menunjukkan jumlah kasus. Sumbu tegak menunjukkan CoV dalam persen.'}</p>
-        <ResponsiveContainer width="100%" height={310}>{kind==='comparison'?<BarChart data={tariffChart}><CartesianGrid strokeDasharray="3 3"/><XAxis dataKey="name" hide/><YAxis tickFormatter={value=>formatNumber(value)}/><Tooltip formatter={value=>formatRupiah(Number(value))}/><Legend/><Bar dataKey="cost" name="Unit cost" fill="#17645d"/><Bar dataKey="tariff" name="Tarif iDRG" fill="#9a7051"/></BarChart>:<ScatterChart><CartesianGrid strokeDasharray="3 3"/><XAxis type="number" dataKey="cases" name="Kasus"/><YAxis type="number" dataKey="cov" name="CoV (%)"/><Tooltip/><Scatter data={groups.map(group=>({name:group.group_code,cases:group.jumlahKasus,cov:group.cov*100}))} fill="#17645d"/></ScatterChart>}</ResponsiveContainer>
+        <ResponsiveContainer width="100%" height={310}>{kind==='comparison'?<BarChart data={tariffChart} accessibilityLayer><CartesianGrid stroke="#E3E9EF" vertical={false}/><XAxis dataKey="name" hide/><YAxis width={80} tickFormatter={value=>formatNumber(value)}/><Tooltip formatter={value=>formatRupiah(Number(value))}/><Legend/><Bar dataKey="cost" name="Unit cost" fill="#075C61" isAnimationActive={false}/><Bar dataKey="tariff" name="Tarif iDRG" fill="#637487" isAnimationActive={false}/></BarChart>:<ScatterChart accessibilityLayer><CartesianGrid stroke="#E3E9EF"/><XAxis type="number" dataKey="cases" name="Kasus"/><YAxis type="number" dataKey="cov" name="CoV (%)"/><Tooltip/><Scatter data={groups.map(group=>({name:group.group_code,cases:group.jumlahKasus,cov:group.cov*100}))} fill="#075C61" isAnimationActive={false}/></ScatterChart>}</ResponsiveContainer>
       </div>:<>
         {kind==='comparison'&&<p className="text-xs text-slate-500">Hijau: untung. Merah: defisit. Amber: impas dalam toleransi ±{formatNumber(snapshot.options.bep*100,1)}%. Nilai selisih tetap menunjukkan surplus atau defisit aktual.</p>}
-        <WorkflowTable label="Rincian kelompok iDRG" minWidth={kind==='comparison'?1400:1100} columns={['Kode iDRG','Nama DRG',...(kind==='comparison'?[]:['MDC']),'Jenis rawat','Kasus',...metrics.map(metric=>metric==='CW RS'?<span key={metric}>CW RS <HelpTip term="cwRS"/></span>:metric)]} rows={rows} numeric={kind==='comparison'?[3,5,6,7,8,9,10]:[4,5,6,7]}/>
+        <WorkflowTable emptyMessage="Tidak ada kelompok iDRG yang sesuai dengan filter. Ubah pencarian atau jenis rawat." label="Rincian kelompok iDRG" minWidth={kind==='comparison'?1400:1100} sort={{...sort,columns:kind==='comparison'?[0,3,5,6,8]:kind==='cw'?[0,4,5,6]:[0,4,5],onChange:changeSort}} columns={['Kode iDRG','Nama DRG',...(kind==='comparison'?[]:['MDC']),'Jenis rawat','Kasus',...metrics]} rows={rows} numeric={kind==='comparison'?[3,5,6,7,8,9,10]:[4,5,6,7]}/>
         <WorkflowPager count={groups.length} page={safePage} setPage={setPage}/>
       </>}
     </section>
@@ -125,9 +142,20 @@ export default function WorkflowResults({section,snapshot}:{section:string;snaps
 
 function LocalWeights({snapshot}:{snapshot:AnalysisSnapshot}) {
   const [page,setPage]=useState(0);
-  const groups=snapshot.local.groups;
+  const [query,setQuery]=useState('');
+  const [care,setCare]=useState('');
+  const [sort,setSort]=useState<{column:number;direction:'asc'|'desc'}>({column:-1,direction:'desc'});
+  const groups=snapshot.local.groups.filter(group=>(!care||group.care===care)&&`${group.code} ${group.description||''}`.toLowerCase().includes(query.trim().toLowerCase()));
+  if(sort.column>=0)groups.sort((left,right)=>{
+    const a=sort.column===0?left.code:sort.column===3?left.count:sort.column===4?Number(left.mean):Number(left.cw??-1);
+    const b=sort.column===0?right.code:sort.column===3?right.count:sort.column===4?Number(right.mean):Number(right.cw??-1);
+    const order=typeof a==='string'&&typeof b==='string'?a.localeCompare(b):Number(a)-Number(b);
+    return sort.direction==='asc'?order:-order;
+  });
+  const safePage=Math.min(page,Math.max(0,Math.ceil(groups.length/25)-1));
   return <>
-    <WorkflowTable label="Cost weight RS" columns={['Kode iDRG','Nama DRG','Jenis rawat','Kasus','Rata-rata biaya (Rp)','CW RS','Casemix RS']} numeric={[3,4,5,6]} rows={groups.slice(page*25,page*25+25).map(group=>({key:group.care+group.code,cells:[group.code,group.description||'—',careLabel(group.care),formatNumber(group.count),formatNumber(Number(group.mean)),weight(group.cw),weight(group.casemix)]}))}/>
-    <WorkflowPager count={groups.length} page={page} setPage={setPage}/>
+    <div className="uc-result-filters"><label className="uc-label grow">Cari kode atau nama iDRG<input className="uc-input" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);}}/></label><label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={event=>{setCare(event.target.value);setPage(0);}}><option value="">Semua</option><option value="inap">Rawat inap</option><option value="jalan">Rawat jalan</option></select></label>{(query||care)&&<button type="button" className="uc-secondary" onClick={()=>{setQuery('');setCare('');setPage(0);}}>Hapus filter</button>}</div>
+    <WorkflowTable emptyMessage="Tidak ada kelompok iDRG yang sesuai dengan filter. Ubah pencarian atau jenis rawat." label="Cost weight RS" sort={{...sort,columns:[0,3,4,5],onChange:column=>{setSort(current=>({column,direction:current.column===column&&current.direction==='asc'?'desc':'asc'}));setPage(0);}}} columns={['Kode iDRG','Nama DRG','Jenis rawat','Kasus','Rata-rata biaya (Rp)','CW RS','Casemix RS']} numeric={[3,4,5,6]} rows={groups.slice(safePage*25,safePage*25+25).map(group=>({key:group.care+group.code,cells:[group.code,group.description||'—',careLabel(group.care),formatNumber(group.count),formatNumber(Number(group.mean)),weight(group.cw),weight(group.casemix)]}))}/>
+    <WorkflowPager count={groups.length} page={safePage} setPage={setPage}/>
   </>;
 }

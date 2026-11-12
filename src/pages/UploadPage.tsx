@@ -18,7 +18,7 @@ import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {readExcelClaims} from '../lib/excelClaimsJob';
 import { detectPeriodNormalizationAsync, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
-import { Upload, FileText, CheckCircle, AlertCircle, X, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 type UploadState = 'idle' | 'dragging' | 'parsing' | 'done' | 'error';
@@ -67,7 +67,7 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
     const excelFiles = fileArray.filter(f => f.name.toLowerCase().endsWith('.xlsx') || f.name.toLowerCase().endsWith('.xls'));
 
     if (txtFiles.length === 0 && excelFiles.length === 0) {
-      setErrorMsg('Format file tidak didukung. Mohon unggah file .TXT (Klaim JKN (INA-CBG/iDRG)) atau .XLSX (Template Costing).');
+      setErrorMsg('Format berkas tidak didukung. Gunakan .TXT, .CSV, .XLSX, atau .XLS sesuai format E-Klaim atau template costing.');
       setUploadState('error');
       uploadAbort.current=null;
       return;
@@ -99,7 +99,7 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
             if(claims.errors.length)processResult.errors.push(...claims.errors);
             continue;
           }
-          if(claimsOnly)throw new Error('Impor template biaya melalui Tahap 1 · Data RS & Keuangan.');
+          if(claimsOnly)throw new Error('Impor template biaya melalui Tahap 1 · Persiapan Data RS.');
           if(file.size>5*1024*1024)throw new Error('Excel ini tidak dikenali sebagai klaim. Untuk costing gunakan template enam sheet; untuk klaim gunakan XLSX dengan judul KODE_RS/PTD/SEP atau TXT asli.');
           const parsedData = await parseExcelTemplate(file);
           useHospitalCostStore.setState(s => ({
@@ -293,30 +293,32 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
         {activeImport?.importNotes?.length&&uploadState!=='done'?<details><summary className="cursor-pointer text-sm font-medium">Catatan impor terakhir</summary><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-600">{activeImport.importNotes.map((note,index)=><li key={index}>{note}</li>)}</ul></details>:null}
       </section>}
       {uploadState === 'done' && result ? (
-        <div className="bg-white rounded-[24px] border border-green-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden">
-          <div className="bg-green-50 px-6 py-8 text-center">
-            <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8" />
+        <div className="uc-import-result">
+          <div className="uc-import-result-header">
+            <div className="uc-metric-icon">
+              <CheckCircle size={21} aria-hidden/>
             </div>
-            <h2 className="text-xl font-bold text-green-800">Ringkasan impor</h2>
-            <p className="text-green-700 mt-1">
+            <div><h2>Ringkasan impor</h2>
+            <p role="status">
               {rawRecords.length > 0
                 ? `${rawRecords.length.toLocaleString('id-ID')} klaim aktif di sesi ini.`
                 : 'Belum ada klaim aktif di sesi ini. Periksa hasil pembacaan TXT di bawah.'}
             </p>
+            </div>
           </div>
           
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className={clsx('grid grid-cols-1 gap-4 mb-6',!claimsOnly&&'md:grid-cols-2')}>
               <div className="bg-gray-50 rounded-[16px] p-4 border border-gray-100">
                 <div className="flex items-center gap-2 text-gray-700 font-semibold mb-3">
                   <FileText className="w-5 h-5 text-blue-500" />
-                  Data Klaim JKN (INA-CBG/iDRG) (.TXT)
+                  Data klaim E-Klaim
                 </div>
                 {result.txtFiles.length > 0 ? (
                   <>
                     <p className="text-sm text-gray-600">Berhasil membaca <strong>{result.txtFiles.length} file</strong>.</p>
-                    <p className="text-2xl font-bold text-[#17645D] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">pasien valid dari {result.totalTxtRows.toLocaleString('id-ID')} baris</span></p>
+                    <p className="text-2xl font-bold text-[#17645D] mt-1">{result.totalParsedTxtRows.toLocaleString('id-ID')} <span className="text-sm font-normal text-gray-500">episode terbaca dari {result.totalTxtRows.toLocaleString('id-ID')} baris</span></p>
+                    <ul className="mt-3 space-y-1 text-xs text-slate-600" aria-label="Berkas klaim yang diproses">{result.txtFiles.map((name,index)=><li key={index} className="break-all">{name}</li>)}</ul>
                     {result.totalTxtRows > result.totalParsedTxtRows && (
                       <div className="mt-2 text-xs font-semibold text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -409,17 +411,15 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
           </div>
         </div>
       ) : uploadState === 'error' ? (
-        <div className="bg-red-50 border border-red-200 rounded-[24px] p-8 text-center shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <X className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-bold text-red-800">Proses Gagal</h2>
-          <p className="text-red-600 mt-2 mb-6 max-w-lg mx-auto">{errorMsg}</p>
+        <div className="uc-panel uc-import-error" role="alert">
+          <AlertCircle size={24} aria-hidden/>
+          <h2 className="text-lg font-semibold">Berkas belum dapat diimpor</h2>
+          <p>{errorMsg}</p>
           <button
             onClick={reset}
-            className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 font-medium transition-all"
+            className="uc-secondary"
           >
-            Coba Lagi
+            Pilih berkas lain
           </button>
         </div>
       ) : (
@@ -428,19 +428,19 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           className={clsx(
-            'border-2 border-dashed rounded-xl px-5 py-8 text-center transition-colors relative overflow-hidden bg-white sm:px-10 sm:py-10',
+            'uc-upload-drop border-2 border-dashed rounded-xl px-5 py-8 text-center transition-colors relative overflow-hidden bg-white sm:px-10 sm:py-10',
             uploadState === 'dragging' 
               ? 'border-teal-500 bg-teal-50' 
               : 'border-gray-200 hover:border-teal-400 hover:bg-gray-50'
           )}
         >
           {uploadState === 'parsing' && (
-            <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+            <div className="uc-upload-progress absolute inset-0 bg-white flex flex-col items-center justify-center z-10" aria-busy="true">
               <Loader2 className="w-12 h-12 text-teal-500 animate-spin mb-4" />
-              <p className="text-gray-900 font-semibold mb-2">{phase}</p>
-              <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <p className="text-gray-900 font-semibold mb-2" role="status">{phase}</p>
+              <div className="w-64 h-2 bg-gray-100 rounded-full overflow-hidden" role="progressbar" aria-label="Kemajuan impor klaim" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}>
                 <div 
-                  className="h-full bg-teal-500 transition-all duration-300 rounded-full"
+                  className="h-full bg-teal-700 transition-all duration-200 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>

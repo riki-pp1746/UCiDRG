@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Building2, Check, ChevronLeft, ClipboardList, FileSpreadsheet, LockKeyhole, Scale, ChartNoAxesCombined, ReceiptText } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, Check, ChevronLeft, ClipboardList, FileSpreadsheet, LockKeyhole, Scale, ChartNoAxesCombined, ReceiptText, Shield } from 'lucide-react';
 import { useAnalysisWorkflow, workflowStatus } from '../hooks/useAnalysisWorkflow';
 import { workflowPath, workflowSection, workflowStages } from '../lib/workflowNavigation';
 import { formatNumber, formatRupiah } from '../lib/calculations/patientLevelCosting';
@@ -18,6 +18,7 @@ import WorkflowPatients from '../components/workflow/WorkflowPatients';
 import WorkflowAllocation from '../components/workflow/WorkflowAllocation';
 import WorkflowResults from '../components/workflow/WorkflowResults';
 import WorkflowTable from '../components/workflow/WorkflowTable';
+import WorkflowOverview from '../components/workflow/WorkflowOverview';
 import { APP_METHOD } from '../lib/appBrand';
 
 type Workflow = ReturnType<typeof useAnalysisWorkflow>;
@@ -30,11 +31,13 @@ const sequence=workflowStages.flatMap(stage=>stage.sections.map(section=>section
 export function WorkflowHome() {
   const workflow=useAnalysisWorkflow();
   const [tab,setTab]=useState<'progress'|'guide'|'template'>('progress');
-  const next=workflowStatus(workflow,1)==='Belum'?'profil-rs':!workflow.raw.length?'unggah-klaim':!workflow.canCalculate||workflow.resultBlockers.length?'pemeriksaan':!workflow.canReadResults?'dasar-alokasi':'ringkasan-eksekutif';
+  const next=workflowStatus(workflow,1)==='Belum dimulai'?'profil-rs':!workflow.raw.length?'unggah-klaim':!workflow.canCalculate||workflow.resultBlockers.length?'pemeriksaan':!workflow.canReadResults?'dasar-alokasi':'ringkasan-eksekutif';
   const action=workflowSection(next)!;
   const actionLabel=next==='profil-rs'?'Mulai Tahap 1':next==='pemeriksaan'?'Periksa data':next==='ringkasan-eksekutif'?'Buka Ringkasan Eksekutif':`Lanjut ke Tahap ${action.step}`;
   const blockers=workflow.raw.length?workflow.sourceBlockers.length+workflow.resultBlockers.length:0;
   const stageIcons = [Building2, ClipboardList, Scale, ReceiptText, ChartNoAxesCombined, FileSpreadsheet];
+  const stages=workflowStages.map((stage,index)=>({stage,status:workflowStatus(workflow,index+1),Icon:stageIcons[index]}));
+  const completed=stages.filter(({status})=>status==='Selesai').length;
   const sessionDetails = [
     ['Tahun biaya', String(workflow.config.tahunData)],
     ['Periode klaim', workflow.period?.label ?? 'Belum diunggah'],
@@ -45,10 +48,12 @@ export function WorkflowHome() {
       <div>
         <p className="uc-home-method">{APP_METHOD}</p>
         <h1>Beranda analisis</h1>
-        <p>Hitung biaya pasien JKN, dari data keuangan rumah sakit dan klaim E-Klaim hingga perbandingan tarif iDRG.</p>
-        <Link className="uc-primary" to={workflowPath(next)}>{actionLabel}<ArrowRight size={16}/></Link>
+        <p>Tinjau kesiapan data rumah sakit, kemajuan analisis, dan hasil costing JKN dalam sesi ini.</p>
       </div>
+      <div className="uc-home-next"><p>Tahap berikutnya</p><strong>{action.section[1]}</strong><Link className="uc-primary" to={workflowPath(next)}>{actionLabel}<ArrowRight size={16} aria-hidden/></Link></div>
     </section>
+
+    <WorkflowOverview workflow={workflow}/>
 
     <div className="uc-home-grid">
       <section className="uc-panel uc-home-workflow">
@@ -66,12 +71,10 @@ export function WorkflowHome() {
           </ol>
           <div className="flex flex-wrap gap-2"><a className="uc-primary" href={template} download>Unduh template Excel</a><a className="uc-secondary" href={example} download>Unduh contoh RS ABC</a></div>
         </div> : <div className="uc-home-tab-content">
-          <h2>{tab==='guide' ? 'Panduan per tahap' : 'Tahapan analisis'}</h2>
+          <div className="uc-section-heading"><h2>{tab==='guide' ? 'Panduan per tahap' : 'Tahapan analisis'}</h2>{tab==='progress'&&<span className="uc-completion">{completed} dari {stages.length} selesai</span>}</div>
           {blockers>0&&<Link to="/alur/pemeriksaan" className="inline-flex rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">{formatNumber(blockers)} temuan memblokir · Buka pemeriksaan</Link>}
           <ol className="uc-home-stages">
-            {workflowStages.map((stage,index)=>{
-              const status=workflowStatus(workflow,index+1);
-              const Icon=stageIcons[index];
+            {stages.map(({stage,status,Icon})=>{
               return <li key={stage.title}>
                 <Link className="uc-home-stage" to={workflowPath(stage.sections[0][0])}>
                   <span className="uc-home-stage-icon"><Icon size={19} strokeWidth={1.7} aria-hidden/></span>
@@ -89,7 +92,7 @@ export function WorkflowHome() {
         </div>}
       </section>
       <section className="uc-panel uc-home-session">
-        <h2>Data sesi</h2>
+        <div className="uc-section-heading"><h2>Data sesi</h2><Shield size={17} aria-hidden/></div>
         <dl>{sessionDetails.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
         <p>Unduh hasil sebelum keluar atau memuat ulang halaman. Data analisis hanya tersimpan selama sesi.</p>
       </section>
@@ -103,7 +106,7 @@ function FinancialContext({section,workflow}:{section:string;workflow:Workflow})
     const fields=[['jumlahSDMDokter','Dokter'],['jumlahSDMNakes','Tenaga kesehatan'],['jumlahSDMNonNakes','Tenaga non kesehatan']] as const;
     return <div className="space-y-4">
       <section className="uc-panel space-y-3"><h2 className="font-semibold">SDM per profesi</h2><div className="grid gap-3 sm:grid-cols-3">{fields.map(([key,label])=><label className="uc-label" key={key}>{label}<input className="uc-input" type="number" min="0" value={config.dataDasar[key]} onChange={event=>useHospitalCostStore.getState().updateDataDasar({[key]:Math.max(0,Number(event.target.value)||0)})}/></label>)}</div></section>
-      <section className="uc-panel"><h2 className="font-semibold">Ringkasan otomatis</h2><dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,1)+'%'],['ALOS',formatNumber(config.dataDasar.alos,1)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Pendapatan JKN',formatRupiah(config.dataDasar.pendapatanJKN)],['Pendapatan Non-JKN',formatRupiah(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl></section>
+      <section className="uc-panel"><h2 className="font-semibold">Ringkasan data RS</h2>{workflow.annual>0&&config.sourceOrigin!=='contoh'?<dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,1)+'%'],['ALOS',formatNumber(config.dataDasar.alos,1)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Pendapatan JKN',formatRupiah(config.dataDasar.pendapatanJKN)],['Pendapatan Non-JKN',formatRupiah(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl>:<p className="mt-3 text-sm text-slate-600">Impor data rumah sakit untuk menampilkan indikator operasional dan ringkasan biaya.</p>}</section>
     </div>;
   }
   if(section==='laporan-operasional')return <section className="uc-panel space-y-3">
@@ -118,6 +121,7 @@ function FinancialContext({section,workflow}:{section:string;workflow:Workflow})
 function OperationalDetails({config}:{config:Workflow['config']}) {
   const [tab,setTab]=useState<'rooms'|'visits'|'support'>('rooms');
   const [saved,setSaved]=useState(false);
+  const [drafts,setDrafts]=useState<Record<string,string>>({});
   const rooms=config.finalCenters.filter(row=>row.kategori==='rawat_inap'||row.kategori==='icu');
   const daysInYear=(Date.UTC(config.tahunData+1,0)-Date.UTC(config.tahunData,0))/86400000;
   const alos=(days:number,patients:number)=>patients>0?formatNumber(days/patients,1):'—';
@@ -135,10 +139,10 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
   const input=(name:string,label:string,value:number,decimal=false)=><input
     key={`${name}-${value}`} name={name} aria-label={label} type="text" inputMode={decimal?'decimal':'numeric'}
     pattern={`(?:[0-9]+|[0-9]{1,3}(?:\\.[0-9]{3})+)${decimal?'(?:,[0-9]+)?':''}`}
-    title={decimal?'Contoh 12.345,5':'Contoh 12.345'} defaultValue={displayNumber(value)}
-    onChange={()=>setSaved(false)} onBlur={event=>{
+    title={decimal?'Contoh 12.345,5':'Contoh 12.345'} defaultValue={drafts[name]??displayNumber(value)}
+    onChange={event=>{setSaved(false);setDrafts(current=>({...current,[name]:event.target.value}));}} onBlur={event=>{
       const field=event.currentTarget;
-      if(field.value&&field.validity.valid)field.value=displayNumber(readNumber(field.value));
+      if(field.value&&field.validity.valid){field.value=displayNumber(readNumber(field.value));setDrafts(current=>({...current,[name]:field.value}));}
     }} className="uc-input w-24 text-right tabular-nums"/>;
   function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
@@ -156,6 +160,8 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
         {dataLayanan:config.dataLayanan.map((row,index)=>({...row,kunjunganJKN:value(index+'-jkn',row.kunjunganJKN),kunjunganNonJKN:value(index+'-non',row.kunjunganNonJKN),hariRawatJKN:value(index+'-days-jkn',row.hariRawatJKN),hariRawatNonJKN:value(index+'-days-non',row.hariRawatNonJKN)}))};
       return {config:runStepDownCalculation({...config,...updates})};
     });
+    const savedNames=new Set(data.keys());
+    setDrafts(current=>Object.fromEntries(Object.entries(current).filter(([name])=>!savedNames.has(name))));
     setSaved(true);
   }
   return <section className="uc-panel space-y-4">
@@ -185,6 +191,7 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
         rows={config.intermediateCenters.map(row=>({key:row.id,cells:[row.nama,row.dasarAlokasi?.replace(/_/g,' ')||'—',input(row.id+'-volume','Volume '+row.nama,row.jumlahKunjungan,true)]}))}/>}
       <button type="submit" className="uc-secondary" disabled={tab==='rooms'?!rooms.length:tab==='visits'?!config.dataLayanan.length:!config.intermediateCenters.length}>Simpan data operasional</button>
       {saved&&<p role="status" className="text-sm text-teal-800">Data operasional tersimpan dalam sesi.</p>}
+      {Object.keys(drafts).length>0&&<p role="status" className="uc-notice">Ada isian yang belum disimpan. Draf tetap tersedia saat berpindah tab di halaman ini. Simpan pada setiap tab yang Anda ubah.</p>}
     </form>
   </section>;
 }
@@ -225,7 +232,7 @@ export default function WorkflowPage() {
   const finance=financeSections[section as keyof typeof financeSections];
   return <div className="mx-auto max-w-7xl space-y-5" key={section}>
     <header className="uc-workflow-heading flex flex-wrap items-end justify-between gap-3">
-      <div><p className="text-xs font-semibold text-teal-800">Tahap {step} dari 6 · {stage.title}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-teal-950 sm:text-3xl">{step}.{subsection+1} {label}</h1></div>
+      <div><p className="text-xs font-semibold text-teal-800">Tahap {step} dari 6 · {stage.title}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-teal-950 sm:text-3xl">{step}.{subsection+1} {label}</h1>{section==='profil-rs'&&<p className="mt-2 text-sm text-slate-600">Tetapkan identitas rumah sakit dan siapkan sumber biaya untuk periode analisis.</p>}</div>
       {!locked&&reportMapping[section]&&<IncludeReport section={reportMapping[section]}/>}
     </header>
     <nav className="workflow-submenu flex flex-wrap gap-1.5 text-sm" aria-label="Submenu tahap">{stage.sections.map(([key,name],index)=><Link key={key} aria-current={key===section?'page':undefined} className={'rounded-md border px-3 py-2 '+(key===section?'border-teal-200 bg-teal-50 font-semibold text-teal-900':'border-slate-200 bg-white text-slate-700 hover:border-teal-300')} to={workflowPath(key)}>{step}.{index+1} {name}</Link>)}</nav>

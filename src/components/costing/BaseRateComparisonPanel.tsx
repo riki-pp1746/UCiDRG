@@ -31,9 +31,9 @@ export default function BaseRateComparisonPanel({result=null,references,editable
  <p className="text-xs text-slate-600">Periode costing {result?.period||'belum tersedia'}. Rancangan ini digunakan sebagai pembanding simulasi.</p>
  <div className="grid gap-4 md:grid-cols-2">
   {simulation.map(r=>{
-   return <article key={r.care} className="uc-inset space-y-3">
+   return <article key={r.care} className="uc-inset uc-nbr-card space-y-3">
     <h3 className="font-semibold">{r.care==='inap'?'Rawat inap':'Rawat jalan'}</h3>
-    <div className="grid grid-cols-2 gap-3">
+    <div className="uc-nbr-values">
      <div><p className="text-xs">{hbrLabel}</p><p className="text-xl font-bold">{money(r.hbr)}</p></div>
      <div><p className="text-xs">Rancangan NBR iDRG</p><p className="text-xl font-bold">{money(r.nbr)}</p></div>
     </div>

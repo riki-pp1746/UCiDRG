@@ -15,12 +15,12 @@ export function Badge({tone = 'slate', children}: {tone?: Tone; children: ReactN
 /** Highlighted figure card. `primary` marks the RS value; comparison cards stay muted. */
 export function StatCard({label, value, hint, primary = false, badge}: {label: string; value: ReactNode; hint?: ReactNode; primary?: boolean; badge?: ReactNode}) {
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm transition hover:shadow-md ${primary ? 'border-teal-200 bg-gradient-to-br from-teal-50 to-white' : 'border-slate-200 bg-white'}`}>
+    <div className="uc-stat-card" data-primary={primary||undefined}>
       <div className="flex items-start justify-between gap-2">
-        <p className={`text-xs font-semibold uppercase tracking-wide ${primary ? 'text-teal-700' : 'text-slate-500'}`}>{label}</p>
+        <p className="uc-stat-label">{label}</p>
         {badge}
       </div>
-      <p className={`mt-2 text-3xl font-bold tabular-nums ${primary ? 'text-teal-900' : 'text-slate-700'}`}>{value}</p>
+      <p className="uc-stat-value">{value}</p>
       {hint && <p className="mt-2 text-xs leading-relaxed text-slate-500">{hint}</p>}
     </div>
   );
@@ -56,7 +56,7 @@ export function CompareBar({rs, txt, rsLabel = 'RS', txtLabel = 'TXT (pembanding
   const row = (label: string, value: number | null, color: string) => (
     <div className="flex items-center gap-3 text-xs">
       <span className="w-28 shrink-0 text-slate-600">{label}</span>
-      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{width: value === null ? '0%' : `${Math.min(100, (value / max) * 100)}%`}}/></div>
+      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100"><div className={`h-full rounded-full transition-all duration-200 ${color}`} style={{width: value === null ? '0%' : `${Math.min(100, (value / max) * 100)}%`}}/></div>
       <span className="w-12 text-right font-semibold tabular-nums text-slate-700">{value === null ? '—' : value.toLocaleString('id-ID', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
     </div>
   );

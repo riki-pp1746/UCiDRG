@@ -27,7 +27,7 @@ import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {
   Building2, Database, Plus, Trash2, RotateCcw,
   CheckCircle, AlertCircle, Info, HelpCircle, Upload as UploadIcon,
-  FileSpreadsheet, ArrowRight, Layers, Activity, RefreshCw, X
+  FileSpreadsheet, ArrowRight, Layers, Activity, RefreshCw, X, ChevronDown
 } from 'lucide-react';
 import clsx from 'clsx';
 import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
@@ -38,12 +38,13 @@ import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.ty
 const RpInput=RupiahInput;
 
 // ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
-function NumInput({ value, onChange, placeholder = '0', invalid = false, className }: {
+function NumInput({ value, onChange, placeholder = '0', invalid = false, className, ariaLabel }: {
   value: number;
   onChange: (v: number) => void;
   placeholder?: string;
   invalid?: boolean;
   className?: string;
+  ariaLabel?: string;
 }) {
   const [draft, setDraft] = useState({source:value,text:value>0?String(value):''});
   const local=draft.source===value?draft.text:value>0?String(value):'';
@@ -57,6 +58,7 @@ function NumInput({ value, onChange, placeholder = '0', invalid = false, classNa
   return (
     <input
       type="number"
+      aria-label={ariaLabel}
       value={local}
       onChange={handleChange}
       placeholder={placeholder}
@@ -159,12 +161,12 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
   ].filter(f => f.show);
 
   const biayaFields = [
-    { field: 'biayaPegawai',        label: '① Biaya Gaji & Remunerasi Pegawai' },
-    { field: 'biayaJasaMedis',      label: '② Biaya Jasa Medis Dokter' },
-    { field: 'biayaJasaMedisLain',  label: '③ Biaya Jasa Tenaga Medis Lain' },
-    { field: 'biayaOperasional',    label: '④ Biaya Operasional (Persediaan, Pemeliharaan, dll)' },
-    { field: 'hargaPeralatan5Tahun',label: '⑤ Nilai Perolehan Peralatan (5 thn terakhir)' },
-    { field: 'biayaInvestasiGedung',label: '⑥ Nilai Investasi Gedung (40 thn terakhir)' },
+    { field: 'biayaPegawai',        label: 'Biaya gaji dan remunerasi pegawai' },
+    { field: 'biayaJasaMedis',      label: 'Biaya jasa medis dokter' },
+    { field: 'biayaJasaMedisLain',  label: 'Biaya jasa tenaga medis lain' },
+    { field: 'biayaOperasional',    label: 'Biaya operasional' },
+    { field: 'hargaPeralatan5Tahun',label: 'Nilai perolehan peralatan (5 tahun terakhir)' },
+    { field: 'biayaInvestasiGedung',label: 'Nilai investasi gedung (40 tahun terakhir)' },
   ];
 
   return (
@@ -172,14 +174,16 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
       {/* Header row — klik untuk expand biaya */}
       <button
         type="button"
+        aria-expanded={open}
+        aria-label={`Rincian biaya ${data.nama}`}
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors"
       >
         <span className="flex items-center gap-2">
           {label}
-          {total > 0 && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">Total: {formatRupiah(total)}</span>}
+          {total > 0 && <span className="text-xs bg-teal-100 text-teal-700 px-2 py-0.5 rounded-full">{formatRupiah(total)}</span>}
         </span>
-        <span className="text-xs text-gray-400">{open ? '▲ Tutup' : '▼ Input Biaya'}</span>
+        <ChevronDown size={16} aria-hidden className={open?'rotate-180':''}/>
       </button>
 
       {/* Data Statistik — selalu tampil ringkas */}
@@ -189,6 +193,7 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
             <div key={f.field} className="flex items-center gap-1.5 min-w-[100px]">
               <span className="text-xs text-gray-400 whitespace-nowrap">{f.label}:</span>
               <NumInput
+                ariaLabel={`${f.label} ${data.nama}`}
                 value={data[f.field] || 0}
                 onChange={v => onChange(f.field, v)}
                 placeholder="0"
@@ -207,7 +212,7 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
               <div key={f.field}>
                 <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
                 <div className={hasAllocationError || (f.field === 'biayaPegawai' && hasBiayaGajiError) ? '[&>input]:border-red-400 [&>input]:bg-red-50 [&>input]:text-red-800' : ''}>
-                  <RpInput value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
+                  <RpInput ariaLabel={`${f.label} ${data.nama}`} value={data[f.field] || 0} onChange={v => onChange(f.field, v)} />
                 </div>
                 {f.field === 'biayaPegawai' && hasBiayaGajiError && <p className="mt-1 text-[11px] text-red-600">Tidak sesuai total Biaya Gaji pada Data Dasar RS.</p>}
               </div>
@@ -216,11 +221,11 @@ function BiayaForm({ label, type, data, onChange, hasBiayaGajiError = false, has
           {/* Auto-calculated fields */}
           <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-100">
             <div className="bg-gray-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-400">⑦ Dep. Peralatan (÷5)</p>
+              <p className="text-xs text-gray-500">Penyusutan alat per tahun</p>
               <p className="text-sm font-semibold text-gray-700">{formatRupiah(depAlat)}</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-2 text-center">
-              <p className="text-xs text-gray-400">⑧ Dep. Gedung (÷40)</p>
+              <p className="text-xs text-gray-500">Penyusutan gedung per tahun</p>
               <p className="text-sm font-semibold text-gray-700">{formatRupiah(depGedung)}</p>
             </div>
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-2 text-center">
@@ -248,6 +253,10 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
     result: number;
   }>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const importing = useRef(false);
+  const [importStatus,setImportStatus]=useState<{phase:'reading'|'complete'|'error';message:string}>();
+  const [dragging,setDragging]=useState(false);
+  const role=useMethodologyStore(s=>s.role);
 
   const {
     config,
@@ -378,9 +387,14 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
     toast('✅ Sinkronisasi Berhasil!\n\nMapping 18 variabel yang terlihat di halaman ini sekarang menjadi sumber perhitungan Dashboard, Perbandingan, dan seluruh file laporan.');
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const importExcel = async (file: File) => {
+    if (role==='Pembaca' || importing.current) return;
+    if (!/\.xlsx?$/i.test(file.name)) {
+      setImportStatus({phase:'error',message:'Pilih file Excel berformat .xlsx atau .xls.'});
+      return;
+    }
+    importing.current=true;
+    setImportStatus({phase:'reading',message:`Membaca ${file.name}…`});
     try {
       const parsedData = await parseExcelTemplate(file);
 
@@ -424,24 +438,44 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
         parsedData.dataLayanan ? 'Data Operasional' : '',
       ].filter(Boolean).join(', ');
 
-      toast(`✅ Import berhasil!\n\nData yang diimport: ${importedSummary}\n\nTinjau data di Pemeriksaan & Rekonsiliasi sebelum menghitung unit cost.`);
-    } catch (err: any) {
-      console.error(err);
-      toast(`❌ Gagal membaca file Excel:\n${err?.message || 'Pastikan format kolom sesuai template.'}`);
+      setImportStatus({phase:'complete',message:`${file.name} telah diimpor. ${importedSummary}.`});
+      if(section!=='profile') toast.success('Excel telah diimpor. Tinjau hasil pemeriksaan sebelum menghitung unit cost.');
+    } catch (err: unknown) {
+      const message=err instanceof Error?err.message:'Periksa format kolom sesuai template.';
+      setImportStatus({phase:'error',message:`Impor belum selesai. ${message}`});
+      if(section!=='profile') toast.error('Impor Excel belum selesai. Periksa format berkas.');
     } finally {
-      if (e.target) {
-        e.target.value = ''; // Reset input agar bisa upload file yang sama lagi
-      }
+      importing.current=false;
     }
+  };
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file=event.currentTarget.files?.[0];
+    event.currentTarget.value='';
+    if(file) void importExcel(file);
   };
 
   const handleDownloadTemplate = downloadStandardCostingTemplate;
 
   return (
-    <div className="space-y-5">
+    <div className={clsx('space-y-5',section==='centers'&&'uc-cost-input')}>
       {(!section||section==='centers')&&<label className="uc-label">Cari pusat biaya<input className="uc-input" value={centerQuery} onChange={e=>setCenterQuery(e.target.value)}/></label>}
       {!section&&<PageIntro title="Langkah 2: Isi biaya Rumah Sakit" what="Isi biaya dari laporan keuangan RS. Periksa biaya Penunjang Umum (Overhead), Penunjang Medis (Intermediate), dan Pusat Biaya Utama. Pada ruang ini biaya penunjang dibagikan langsung ke 18 komponen tagihan pasien." prepare={['Laporan keuangan RS yang sudah diaudit', 'Data dasar: BOR, ALOS, tempat tidur, hari rawat, SDM']} result="Seluruh biaya RS terbagi ke 18 variabel tarif dan siap dihitung per pasien."><p>Isi tab dari kiri ke kanan. Tab yang kosong ditandai agar mudah ditemukan.</p></PageIntro>}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+      {section==='profile'?<section className="uc-panel uc-profile-import" aria-labelledby="uc-profile-import-title">
+        <div className="uc-section-heading"><div><h2 id="uc-profile-import-title">Sumber data costing</h2><p>Gunakan Excel untuk mengisi profil, data operasional, dan pusat biaya dalam satu langkah.</p></div><button type="button" className="uc-secondary" onClick={handleDownloadTemplate}><FileSpreadsheet size={16} aria-hidden/> Unduh template</button></div>
+        <div className="uc-profile-drop" data-dragging={dragging||undefined} aria-busy={importStatus?.phase==='reading'} onDragOver={event=>{event.preventDefault();if(role!=='Pembaca'&&!importing.current)setDragging(true);}} onDragLeave={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node|null))setDragging(false);}} onDrop={event=>{
+          event.preventDefault();setDragging(false);
+          if(role==='Pembaca'||importing.current)return;
+          if(event.dataTransfer.files.length>1){setImportStatus({phase:'error',message:'Unggah satu file Excel setiap kali impor.'});return;}
+          const file=event.dataTransfer.files[0];if(file)void importExcel(file);
+        }}>
+          <span className="uc-metric-icon"><UploadIcon size={19} aria-hidden/></span>
+          <div><p className="font-semibold">{config.sourceFilename||'Seret file Excel ke sini'}</p><p className="text-sm text-slate-600">.xlsx atau .xls · Data berlaku untuk sesi ini</p></div>
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" aria-label="File Excel costing" onChange={handleImport} className="hidden" disabled={importStatus?.phase==='reading'}/>
+          <button type="button" className="uc-primary" disabled={importStatus?.phase==='reading'} onClick={()=>fileRef.current?.click()}>{importStatus?.phase==='reading'?'Membaca Excel…':config.sourceFilename?'Ganti file Excel':'Pilih file Excel'}</button>
+        </div>
+        {importStatus&&<p role={importStatus.phase==='error'?'alert':'status'} className={importStatus.phase==='error'?'uc-error':'uc-notice'}>{importStatus.message}</p>}
+        <details className="text-sm text-slate-600"><summary className="cursor-pointer">Opsi biaya</summary><button type="button" className="uc-secondary mt-2" onClick={()=>{if(window.confirm('Reset semua data ke template default?')){resetToDefault();setImportStatus(undefined);}}}><RotateCcw size={16} aria-hidden/> Reset input biaya</button></details>
+      </section>:<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
         {!section&&<div>
           <h1 className="text-2xl font-bold text-[#17645D] tracking-tight flex items-center gap-2">
             <Layers className="w-6 h-6 text-teal-600" />
@@ -471,7 +505,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
             </button>
           </details>
         </div>
-      </div>
+      </div>}
 
       {!section&&<><AnalysisCalculationPanel />
 
@@ -623,37 +657,38 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'info' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
-            <h2 className="font-bold text-[#17645D] text-lg mb-4 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-teal-600" /> Identitas Rumah Sakit
-            </h2>
+          <div className="uc-panel space-y-4">
+            <div className="uc-section-heading"><div><h2>Identitas rumah sakit</h2><p>Identitas dan tahun biaya digunakan pada hasil analisis dan laporan sesi ini.</p></div><Building2 size={19} aria-hidden/></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nama Rumah Sakit</label>
+                <label htmlFor="costing-hospital-name" className="block text-sm font-medium text-gray-700 mb-1">Nama rumah sakit</label>
                 <input
+                  id="costing-hospital-name"
                   type="text"
                   value={config.namaRS}
                   onChange={e => updateInfo({ namaRS: e.target.value })}
                   placeholder="Masukkan nama RS..."
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="uc-input"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipe RS</label>
+                <label htmlFor="costing-hospital-type" className="block text-sm font-medium text-gray-700 mb-1">Kelas rumah sakit</label>
                 <select
+                  id="costing-hospital-type"
                   value={config.tipeRS}
                   onChange={e => updateInfo({ tipeRS: e.target.value as 'A' | 'B' | 'C' | 'D' })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="uc-input"
                 >
                   {['A', 'B', 'C', 'D'].map(t => <option key={t} value={t}>Tipe {t}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kepemilikan RS</label>
+                <label htmlFor="costing-hospital-owner" className="block text-sm font-medium text-gray-700 mb-1">Kepemilikan rumah sakit</label>
                 <select
+                  id="costing-hospital-owner"
                   value={config.kepemilikan}
                   onChange={e => updateInfo({ kepemilikan: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="uc-input"
                 >
                   {['Pemerintah Pusat', 'Pemerintah Daerah', 'TNI/Polri', 'BUMN', 'Swasta'].map(k => (
                     <option key={k} value={k}>{k}</option>
@@ -661,12 +696,13 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tahun Data</label>
+                <label htmlFor="costing-hospital-year" className="block text-sm font-medium text-gray-700 mb-1">Tahun biaya</label>
                 <input
+                  id="costing-hospital-year"
                   type="number"
                   value={config.tahunData}
                   onChange={e => updateInfo({ tahunData: parseInt(e.target.value) || 2024 })}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
+                  className="uc-input"
                 />
               </div>
             </div>
@@ -801,15 +837,15 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'overhead' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <div className="uc-cost-intro">
             <p className="text-sm text-blue-800 font-medium">
-              📋 <strong>Pusat Biaya Penunjang Umum (Overhead)</strong> — Masukkan biaya langsung dan dasar alokasi unit penunjang umum.
+              <strong>Penunjang umum</strong> · Isi biaya langsung dan dasar alokasi setiap unit.
             </p>
           </div>
 
           <div className="flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">Total Overhead: <span className="font-bold text-blue-700">{formatRupiah(config.totalOverheadCost)}</span></p>
+              <p className="text-sm text-gray-500">Total penunjang umum <span className="font-bold text-blue-700">{formatRupiah(config.totalOverheadCost)}</span></p>
             </div>
             <button
               onClick={addOverhead}
@@ -827,13 +863,14 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                 <input
                   type="text"
                   value={center.nama}
+                  aria-label={`Nama pusat biaya ${center.nama}`}
                   onChange={e => updateOverhead(center.id, { nama: e.target.value })}
                   className="flex-1 text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none focus:ring-0 min-w-0"
                 />
                 <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
                   {OVERHEAD_DASAR_LABELS[center.dasarAlokasi]}
                 </span>
-                <button onClick={() => removeOverhead(center.id)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+                <button type="button" aria-label={`Hapus pusat biaya ${center.nama}`} onClick={() => removeOverhead(center.id)} className="text-red-400 hover:text-red-600 flex-shrink-0">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -856,11 +893,11 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
-                    <NumInput value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
+                    <NumInput ariaLabel={`Jumlah staf ${center.nama}`} value={center.jumlahStaf} onChange={v => updateOverhead(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
-                    <NumInput value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
+                    <NumInput ariaLabel={`Luas lantai ${center.nama}`} value={center.luasLantai} onChange={v => updateOverhead(center.id, { luasLantai: v })} invalid={validation.errors.has(`overhead-${center.id}`)} />
                   </div>
                   <div className="flex items-end">
                     <div className="w-full bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
@@ -872,7 +909,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
 
                 {/* Biaya */}
                 <BiayaForm
-                  label="Komponen Biaya (klik untuk expand)"
+                  label="Komponen biaya"
                   type="overhead"
                   data={center}
                   onChange={(field, val) => updateOverhead(center.id, { [field]: val })}
@@ -895,14 +932,14 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'intermediate' && (
         <div className="space-y-4">
-          <div className="bg-violet-50 border border-violet-200 rounded-2xl p-4">
+          <div className="uc-cost-intro">
             <p className="text-sm text-violet-800 font-medium">
-              🔬 <strong>Intermediate Cost</strong> — Masukkan biaya langsung dan volume layanan unit penunjang medis.
+              <strong>Penunjang medis</strong> · Isi biaya langsung serta volume layanan setiap unit.
             </p>
           </div>
 
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">Total Intermediate Cost: <span className="font-bold text-violet-700">{formatRupiah(config.totalIntermediateCost)}</span></p>
+            <p className="text-sm text-gray-500">Total penunjang medis <span className="font-bold text-violet-700">{formatRupiah(config.totalIntermediateCost)}</span></p>
             <button onClick={addIntermediate} className="flex items-center gap-1.5 px-4 py-2 bg-violet-50 text-violet-600 rounded-xl text-sm font-semibold hover:bg-violet-100 transition-colors">
               <Plus className="w-4 h-4" /> Tambah
             </button>
@@ -915,13 +952,14 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                 <input
                   type="text"
                   value={center.nama}
+                  aria-label={`Nama pusat biaya ${center.nama}`}
                   onChange={e => updateIntermediate(center.id, { nama: e.target.value })}
                   className="flex-1 text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none min-w-0"
                 />
                 <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0 hidden sm:block">
                   {INTERMEDIATE_DASAR_LABELS[center.dasarAlokasi]}
                 </span>
-                <button onClick={() => removeIntermediate(center.id)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+                <button type="button" aria-label={`Hapus pusat biaya ${center.nama}`} onClick={() => removeIntermediate(center.id)} className="text-red-400 hover:text-red-600 flex-shrink-0">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -942,11 +980,11 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
-                    <NumInput value={center.jumlahStaf} onChange={v => updateIntermediate(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
+                    <NumInput ariaLabel={`Jumlah staf ${center.nama}`} value={center.jumlahStaf} onChange={v => updateIntermediate(center.id, { jumlahStaf: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500 mb-1">{INTERMEDIATE_DASAR_LABELS[center.dasarAlokasi]}</label>
-                    <NumInput value={center.jumlahKunjungan} onChange={v => updateIntermediate(center.id, { jumlahKunjungan: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
+                    <NumInput ariaLabel={`Volume layanan ${center.nama}`} value={center.jumlahKunjungan} onChange={v => updateIntermediate(center.id, { jumlahKunjungan: v })} invalid={validation.errors.has(`intermediate-${center.id}`)} />
                   </div>
                   <div className="flex items-end">
                     <div className="w-full bg-violet-50 border border-violet-200 rounded-lg p-2 text-center">
@@ -957,7 +995,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                 </div>
 
                 <BiayaForm
-                  label="Komponen Biaya (klik untuk expand)"
+                  label="Komponen biaya"
                   type="intermediate"
                   data={center}
                   onChange={(field, val) => updateIntermediate(center.id, { [field]: val })}
@@ -980,9 +1018,9 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
       ════════════════════════════════════════════════════════ */}
       {activeTab === 'final' && (
         <div className="space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-2xl p-4">
+          <div className="uc-cost-intro">
             <p className="text-sm text-green-800 font-medium">
-              🛏️ <strong>Pusat Biaya Utama (Layanan Pasien)</strong> — Unit yang langsung melayani pasien. Unit Cost per Hari Rawat / Kunjungan dihitung dari biaya langsung sebagai informasi transparansi; biaya tidak menerima alokasi Overhead maupun Intermediate.
+              <strong>Pusat biaya utama</strong> · Isi biaya langsung dan volume layanan pasien. Hasil pembagian biaya per hari rawat atau kunjungan tersedia pada Tahap 3.
             </p>
           </div>
 
@@ -1011,7 +1049,8 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                         <input
                           type="text"
                           value={center.nama}
-                          onChange={e => updateFinal(center.id, { nama: e.target.value })}
+                          aria-label={`Nama pusat biaya ${center.nama}`}
+                  onChange={e => updateFinal(center.id, { nama: e.target.value })}
                           className="flex-1 text-sm font-semibold text-gray-800 bg-transparent border-none focus:outline-none min-w-0"
                         />
                         <div className="flex items-center gap-2 flex-shrink-0">
@@ -1024,7 +1063,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                               <option key={k} value={k}>{v}</option>
                             ))}
                           </select>
-                          <button onClick={() => removeFinal(center.id)} className="text-red-400 hover:text-red-600">
+                          <button type="button" aria-label={`Hapus pusat biaya ${center.nama}`} onClick={() => removeFinal(center.id)} className="text-red-400 hover:text-red-600">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
@@ -1047,36 +1086,36 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Jumlah Staf</label>
-                            <NumInput value={center.jumlahStaf} onChange={v => updateFinal(center.id, { jumlahStaf: v })} />
+                            <NumInput ariaLabel={`Jumlah staf ${center.nama}`} value={center.jumlahStaf} onChange={v => updateFinal(center.id, { jumlahStaf: v })} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Hari Rawat</label>
-                            <NumInput value={center.jumlahHariRawat} onChange={v => updateFinal(center.id, { jumlahHariRawat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-lhr')} />
+                            <NumInput ariaLabel={`Hari rawat ${center.nama}`} value={center.jumlahHariRawat} onChange={v => updateFinal(center.id, { jumlahHariRawat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-lhr')} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Jumlah Kunjungan</label>
-                            <NumInput value={center.jumlahKunjungan} onChange={v => updateFinal(center.id, { jumlahKunjungan: v })} />
+                            <NumInput ariaLabel={`Volume layanan ${center.nama}`} value={center.jumlahKunjungan} onChange={v => updateFinal(center.id, { jumlahKunjungan: v })} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Pasien Pulang</label>
-                            <NumInput value={center.jumlahPasienPulang} onChange={v => updateFinal(center.id, { jumlahPasienPulang: v })} />
+                            <NumInput ariaLabel={`Pasien pulang ${center.nama}`} value={center.jumlahPasienPulang} onChange={v => updateFinal(center.id, { jumlahPasienPulang: v })} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Jumlah TT</label>
-                            <NumInput value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-tt')} />
+                            <NumInput ariaLabel={`Tempat tidur ${center.nama}`} value={center.jumlahTempat} onChange={v => updateFinal(center.id, { jumlahTempat: v })} invalid={validation.errors.has(`final-${center.id}`) || validation.errors.has('final-tt')} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">ALOS (hari)</label>
-                            <NumInput value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
+                            <NumInput ariaLabel={`ALOS ${center.nama}`} value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
-                            <NumInput value={center.luasLantai} onChange={v => updateFinal(center.id, { luasLantai: v })} />
+                            <NumInput ariaLabel={`Luas lantai ${center.nama}`} value={center.luasLantai} onChange={v => updateFinal(center.id, { luasLantai: v })} />
                           </div>
                         </div>
 
                         <BiayaForm
-                          label="Komponen Biaya (klik untuk expand)"
+                          label="Komponen biaya"
                           type="final"
                           data={center}
                           onChange={(field, val) => updateFinal(center.id, { [field]: val })}

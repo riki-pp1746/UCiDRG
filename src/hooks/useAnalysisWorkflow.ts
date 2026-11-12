@@ -47,10 +47,20 @@ export function useAnalysisWorkflow() {
 export type AnalysisWorkflow = ReturnType<typeof useAnalysisWorkflow>;
 
 export function workflowStatus(workflow: AnalysisWorkflow, step: number) {
-  if (step === 1) return workflow.annual > 0 && workflow.config.sourceOrigin !== 'contoh'
-    ? (workflow.sourceBlockers.some(issue => issue.source === '/costing' || ['/alur/laporan-operasional','/alur/operasional','/alur/pusat-biaya'].includes(issue.source)) ? 'Perlu diperiksa' : 'Siap')
-    : 'Belum';
-  if (step === 2) return !workflow.raw.length ? 'Belum' : workflow.canCalculate ? 'Siap' : 'Perlu diperiksa';
-  if (step === 3) return !workflow.canCalculate ? 'Terkunci' : workflow.resultBlockers.length ? 'Perlu diperiksa' : workflow.canReadResults ? 'Siap' : 'Belum dihitung';
-  return workflow.canReadResults ? 'Siap' : 'Terkunci';
+  const { annual, config, raw, sourceBlockers, resultBlockers, canCalculate, canReadResults } = workflow;
+  if (step === 1) {
+    if (annual <= 0 || config.sourceOrigin === 'contoh') return 'Belum dimulai';
+    return sourceBlockers.some(issue => ['/costing','/alur/laporan-operasional','/alur/operasional','/alur/pusat-biaya'].includes(issue.source)) ? 'Perlu perbaikan' : 'Selesai';
+  }
+  if (step === 2) {
+    if (!raw.length) return 'Belum dimulai';
+    return sourceBlockers.some(issue => ['/upload','/alur/unggah-klaim','/alur/pemeriksaan'].includes(issue.source)) ? 'Perlu perbaikan' : 'Selesai';
+  }
+  if (step === 3) {
+    if (!canCalculate) return 'Belum dimulai';
+    if (resultBlockers.length) return 'Perlu perbaikan';
+    return canReadResults ? 'Selesai' : 'Sedang dikerjakan';
+  }
+  if (!canReadResults) return 'Belum dimulai';
+  return step === 4 ? 'Selesai' : 'Siap dilanjutkan';
 }

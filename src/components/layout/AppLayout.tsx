@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  BarChart3, BookOpen, Calculator, ChevronDown, FileText, LayoutDashboard,
+  BarChart3, BookOpen, Building2, Calculator, CalendarDays, Check, ChevronDown, ChevronRight, FileText, LayoutDashboard,
   Home, LibraryBig, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Settings, Upload, UserRound, Users, X,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -49,6 +49,7 @@ export default function AppLayout() {
   const toggleMode = useCostingStore(s => s.toggleViewMode);
   const [menuOpen, setMenuOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(true);
+  const [stageDisclosure, setStageDisclosure] = useState<{path:string;step:number|null}>();
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const sidebar = useRef<HTMLElement>(null);
@@ -56,6 +57,7 @@ export default function AppLayout() {
   const integrated = pathname.startsWith('/revisi4');
   const workflow = useAnalysisWorkflow();
   const activeStage = pathname.startsWith('/alur/') ? workflowSection(pathname.split('/')[2]) : null;
+  const expandedStage = stageDisclosure?.path===pathname ? stageDisclosure.step : activeStage?.step;
   const route = (integrated ? pathname.slice('/revisi4'.length) : pathname).replace(/\/$/, '') || '/';
   const current = aliases[route] ?? route;
   const groups = navigation.map(group => group.label === 'Administrasi' && user?.role === 'admin'
@@ -63,6 +65,8 @@ export default function AppLayout() {
     : group);
   const pageLabel = activeStage ? activeStage.section[1] : current === '/reset' ? 'Reset Data' : current === '/references' ? 'Referensi' : !integrated && current === '/' ? 'Beranda' : groups.flatMap(group => group.items).find(item => item.path === current)?.label;
   const analysisName = integrated ? 'Analisis Biaya Terintegrasi' : activeStage ? `Tahap ${activeStage.step} dari 6 · ${activeStage.stage.title}` : 'Analisis 18 Komponen';
+  const hospital = integrated ? user?.namaRS : workflow.config.namaRS || user?.namaRS;
+  const period = integrated ? undefined : workflow.period?.label;
   const pagePath = (path: string, revision = integrated) =>
     revision && ![userManagement.path, '/profile'].includes(path) ? '/revisi4' + (path === '/' ? '' : path) : path;
   const showMode = !integrated && activeStage?.step === 6;
@@ -96,7 +100,7 @@ export default function AppLayout() {
         closeMobileMenu();
       }
       if (event.key === 'Tab') {
-        const targets = sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), select:not(:disabled)');
+        const targets = Array.from(sidebar.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled), select:not(:disabled)') ?? []).filter(element=>element.getClientRects().length>0);
         const first = targets?.[0];
         const last = targets?.[targets.length - 1];
         if (event.shiftKey && document.activeElement === first) {
@@ -118,7 +122,7 @@ export default function AppLayout() {
 
   return (
     <div data-sidebar={desktopOpen?'open':'closed'} className={clsx(
-      'uc-workspace-frame grid h-dvh min-h-0 grid-cols-[minmax(0,1fr)] bg-[#f4f8f7]',
+      'uc-workspace-frame grid h-dvh min-h-0 grid-cols-[minmax(0,1fr)]',
       desktopOpen && 'lg:grid-cols-[15.75rem_minmax(0,1fr)]',
     )}>
       <a href="#main-content" className="uc-skip" inert={menuOpen}>Langsung ke isi halaman</a>
@@ -139,7 +143,7 @@ export default function AppLayout() {
           <BrandLogo className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-base font-bold tracking-tight text-white" title={APP_METHOD}>{APP_NAME}</p>
-            <p className="truncate text-xs text-[#bbd6d1]" title={user?.namaRS}>{user?.namaRS || 'Costing rumah sakit'}</p>
+            <p className="truncate text-xs text-[#b9c8d6]">Costing rumah sakit</p>
           </div>
           <button ref={closeButton} type="button" aria-label="Tutup menu" onClick={closeMobileMenu} className="grid size-11 shrink-0 place-items-center rounded-md text-white hover:bg-white/10 lg:hidden">
             <X size={18} />
@@ -172,14 +176,18 @@ export default function AppLayout() {
                   const step=index+1;
                   const status=workflowStatus(workflow,step);
                   const selected=activeStage && activeStage.step===step;
+                  const expanded=expandedStage===step;
                   return <li key={stage.title}>
-                    <Link to={workflowPath(stage.sections[0][0])} onClick={closeAfterLink} data-active={selected || undefined} className={clsx('uc-stage-link flex min-h-11 items-start gap-2 rounded-md px-2.5 py-2 text-[13px] leading-4',selected?'bg-[#d8eee8] text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}>
-                      <span className={clsx('grid size-5 shrink-0 place-items-center rounded text-[11px] font-bold',selected?'bg-[#badcd4]':'bg-white/10')}>{step}</span>
-                      <span className="min-w-0"><span className="block font-semibold">{stage.title}</span><span className={clsx('mt-0.5 block text-[11px]',selected?'text-teal-800':'text-[#b7d4cf]')}>{status}</span></span>
-                    </Link>
-                    {selected&&<ul className="my-1 ml-4 space-y-0.5 border-l border-white/25 pl-2">
+                    <div className="uc-stage-entry" data-active={selected || undefined}>
+                      <Link to={workflowPath(stage.sections[0][0])} onClick={closeAfterLink} className="uc-stage-link">
+                        <span className="uc-stage-number">{status==='Selesai'?<Check size={13} aria-hidden/>:step}</span>
+                        <span className="min-w-0"><span className="block font-semibold">{stage.title}</span><span className="uc-stage-caption" data-status={status}>{status}</span></span>
+                      </Link>
+                      <button className="uc-stage-disclosure" type="button" aria-label={`${expanded?'Tutup':'Buka'} rincian ${stage.title}`} aria-expanded={expanded} aria-controls={`uc-stage-${step}`} onClick={()=>setStageDisclosure({path:pathname,step:expanded?null:step})}><ChevronDown size={15} aria-hidden/></button>
+                    </div>
+                    <ul id={`uc-stage-${step}`} hidden={!expanded} className="my-1 ml-4 space-y-0.5 border-l border-white/25 pl-2">
                       {stage.sections.map(([slug,label],i)=><li key={slug}><Link to={workflowPath(slug)} onClick={closeAfterLink} aria-current={pathname===workflowPath(slug)?'page':undefined} className={clsx('block rounded-md px-2 py-2 text-xs leading-4',pathname===workflowPath(slug)?'bg-white/15 font-semibold text-white':'text-[#cfe5e0] hover:bg-white/10')}><span className="mr-1.5 tabular-nums">{step}.{i+1}</span>{label}</Link></li>)}
-                    </ul>}
+                    </ul>
                   </li>;
                 })}
               </ol>
@@ -236,11 +244,17 @@ export default function AppLayout() {
               {desktopOpen ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
             </button>
             <div className="min-w-0">
-              <p className="truncate text-xs text-slate-600">{analysisName}</p>
+              <nav aria-label="Jejak navigasi" className="uc-breadcrumb">
+                <Link to={integrated?'/revisi4/dashboard':'/'}>{integrated?'Ruang terintegrasi':'Beranda'}</Link>
+                {activeStage&&<><ChevronRight size={12} aria-hidden/><span className="truncate" title={analysisName}>{activeStage.stage.title}</span></>}
+              </nav>
               <p className="truncate text-base font-semibold tracking-tight text-teal-950">{pageLabel}</p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3 sm:gap-5">
+            {hospital&&<span className="uc-header-meta hidden xl:flex" title={hospital}><Building2 size={15} aria-hidden/><span className="truncate">{hospital}</span></span>}
+            {period&&<span className="uc-header-meta hidden xl:flex" title={period}><CalendarDays size={15} aria-hidden/><span className="truncate">{period}</span></span>}
+            <span className="uc-session-indicator hidden md:flex"><span aria-hidden/>Sesi aktif</span>
             {showMode && (
               <label className="flex items-center gap-2 text-xs text-slate-600">
                 <span className="sr-only sm:not-sr-only">Tarif pembanding</span>
@@ -250,10 +264,10 @@ export default function AppLayout() {
                 </select>
               </label>
             )}
-            <div className="hidden text-right sm:block">
+            <Link to="/profile" className="uc-profile-link hidden text-right sm:block" aria-label="Buka profil pengguna">
               <p className="text-sm font-semibold text-teal-950">{user?.username}</p>
               <p className="text-xs text-slate-600">{user?.role === 'admin' ? 'Admin' : integrated ? 'Ruang terintegrasi' : localRole}</p>
-            </div>
+            </Link>
           </div>
         </header>
 

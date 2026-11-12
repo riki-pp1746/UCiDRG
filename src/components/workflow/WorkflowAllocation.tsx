@@ -19,6 +19,10 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
   const [tab,setTab]=useState<'basis'|'recipient'|'matrix'>('basis');
   const [selected,setSelected]=useState('');
   const [message,setMessage]=useState('');
+  const [saveError,setSaveError]=useState(false);
+  const [drafts,setDrafts]=useState<Record<string,Record<string,string>>>({});
+  const context=tab+'|'+selected;
+  const draft=drafts[context];
   const config=workflow.config;
   const sources=[...config.overheadCenters,...config.intermediateCenters];
   const centers=[...sources,...config.finalCenters];
@@ -31,18 +35,19 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
     if(readOnly)return;
     const data=new FormData(event.currentTarget);
     setMessage('');
+    setSaveError(false);
     if(tab==='basis'){
       const proportion=Number(data.get('jkn'));
-      if(!Number.isFinite(proportion)||proportion<0||proportion>100){setMessage('Isi porsi biaya JKN antara 0 dan 100%.');return;}
+      if(!Number.isFinite(proportion)||proportion<0||proportion>100){setSaveError(true);setMessage('Isi porsi biaya JKN antara 0 dan 100%.');return;}
       update({allocationMethod:data.get('method')==='step-down'?'step-down':'direct'});
       useCostingStore.setState({jknProportion:proportion,mergeCarePool:data.has('merge')});
     }else if(center){
       const ids=tab==='matrix'?ALL_KOMPONEN_KEYS:recipients.map(item=>item.id);
       const values=Object.fromEntries(ids.map(key=>[key,Number(data.get(key)||0)]));
-      if(Object.values(values).some(value=>!Number.isFinite(value)||value<0)){setMessage('Bobot harus berupa angka nol atau positif.');return;}
+      if(Object.values(values).some(value=>!Number.isFinite(value)||value<0)){setSaveError(true);setMessage('Bobot harus berupa angka nol atau positif.');return;}
       if(tab==='matrix'){
         const sum=Object.values(values).reduce((a,b)=>a+b,0);
-        if(Math.abs(sum-100)>1e-6){setMessage('Jumlah bobot matriks harus 100%.');return;}
+        if(Math.abs(sum-100)>1e-6){setSaveError(true);setMessage('Jumlah bobot matriks harus 100%.');return;}
         update({mapping:{...settings.mapping,[center.id]:values}});
       }else{
         const weights={...settings.recipients};
@@ -51,31 +56,41 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
         update({recipients:weights});
       }
     }
+    setDrafts(current=>Object.fromEntries(Object.entries(current).filter(([key])=>key!==context)));
     setMessage('Pengaturan tersimpan. Jalankan Hitung unit cost untuk memperbarui hasil.');
   }
   return <section className="uc-panel space-y-4">
+    <div className="uc-section-heading"><div><h2>Pengaturan alokasi biaya</h2><p>Tetapkan metode dan porsi JKN, kemudian periksa bobot pusat biaya yang digunakan.</p></div></div>
     <nav className="flex flex-wrap gap-2" aria-label="Pengaturan alokasi">
       {([['basis','Dasar Alokasi'],['recipient','Bobot Pemakaian Penunjang'],['matrix','Matriks 18 Komponen']] as const).map(([key,label])=><button type="button" key={key} className={tab===key?'uc-primary':'uc-secondary'} aria-pressed={tab===key} onClick={()=>{setTab(key);setSelected('');setMessage('');}}>{label}</button>)}
     </nav>
-    <form key={tab+'|'+selected} onSubmit={save} className="space-y-3">
+    <form key={context} onSubmit={save} className="space-y-3" onChange={event=>{
+      const target=event.target;
+      if(!(target instanceof HTMLInputElement||target instanceof HTMLSelectElement)||!target.name||readOnly)return;
+      const values=Object.fromEntries(Array.from(new FormData(event.currentTarget),([key,value])=>[key,String(value)]));
+      setDrafts(current=>({...current,[context]:values}));setMessage('');setSaveError(false);
+    }}>
       <fieldset disabled={readOnly} className="space-y-4">
         {tab==='basis'?<>
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="uc-label">Metode alokasi<select name="method" className="uc-input" defaultValue={settings.allocationMethod}><option value="direct">Pemetaan langsung ke komponen</option><option value="step-down">Bertahap antar pusat biaya</option></select></label>
-            <label className="uc-label">Porsi biaya JKN (%)<input name="jkn" type="number" min={0} max={100} step="any" required className="uc-input" defaultValue={jkn}/></label>
+            <label className="uc-label">Metode alokasi<select name="method" className="uc-input" defaultValue={draft?.method??settings.allocationMethod}><option value="direct">Pemetaan langsung ke komponen</option><option value="step-down">Bertahap antar pusat biaya</option></select></label>
+            <label className="uc-label">Porsi biaya JKN (%)<input name="jkn" type="number" min={0} max={100} step="any" required className="uc-input" defaultValue={draft?.jkn??jkn}/></label>
           </div>
-          <label className="flex items-start gap-2 text-sm"><input name="merge" type="checkbox" defaultChecked={merge}/>Gabungkan kamar, ICU, dan keperawatan berdasarkan hari rawat inap</label>
+          <label className="uc-report-choice"><input name="merge" type="checkbox" defaultChecked={draft?Boolean(draft.merge):merge}/>Gabungkan kamar, ICU, dan keperawatan berdasarkan hari rawat inap</label>
           <p className="text-sm text-slate-600">Gunakan penggabungan bila ketiga komponen berbagi satu sumber biaya.</p>
-          <WorkflowTable label="Dasar per pusat biaya" columns={['Pusat biaya','Dasar alokasi']} rows={centers.map(item=>({key:item.id,cells:[item.nama,driverName(item.dasarAlokasi)]}))}/>
+          <details className="uc-allocation-drivers"><summary>Dasar alokasi {formatNumber(centers.length)} pusat biaya</summary><div className="mt-3"><WorkflowTable label="Dasar per pusat biaya" columns={['Pusat biaya','Dasar alokasi']} rows={centers.map(item=>({key:item.id,cells:[item.nama,driverName(item.dasarAlokasi)]}))}/></div></details>
           <Link className="text-sm font-semibold text-teal-800 underline" to="/alur/pusat-biaya">Ubah dasar per pusat biaya di Tahap 1</Link>
         </>:<>
-          <label className="uc-label">Pusat biaya<select className="uc-input" value={selected} onChange={event=>{setSelected(event.target.value);setMessage('');}}><option value="">Pilih pusat biaya</option>{(tab==='matrix'?centers:sources).map(item=><option key={item.id} value={item.id}>{item.nama}</option>)}</select></label>
+          <label className="uc-label">Pusat biaya<select aria-label="Pusat biaya" className="uc-input" value={selected} onChange={event=>{setSelected(event.target.value);setMessage('');}}><option value="">Pilih pusat biaya</option>{(tab==='matrix'?centers:sources).map(item=><option key={item.id} value={item.id}>{item.nama}</option>)}</select></label>
           {tab==='recipient'&&<p className="text-sm text-slate-600">Bobot ini dipakai pada alokasi bertahap. Kosongkan semua bobot untuk memakai dasar alokasi pusat biaya.</p>}
-          {center&&<div className="grid gap-3 sm:grid-cols-3">{(tab==='matrix'?ALL_KOMPONEN_KEYS.map(key=>[key,componentName(key)]):recipients.map(item=>[item.id,item.nama])).map(([key,label])=><label key={key} className="uc-label">{label}<input className="uc-input" type="number" min={0} max={tab==='matrix'?100:undefined} step="any" name={key} defaultValue={tab==='matrix'?matrix[key]??0:settings.recipients[center.id]?.[key]??0}/></label>)}</div>}
+          {!center&&<p className="uc-inset text-sm text-slate-600">Pilih pusat biaya untuk melihat dan mengubah {tab==='matrix'?'persentase 18 komponen.':'bobot pemakaian penunjang.'}</p>}
+          {tab==='matrix'&&center&&<p className="uc-notice">Bobot dinyatakan dalam persen. Jumlah seluruh komponen harus 100% sebelum disimpan.</p>}
+          {center&&<div className="uc-allocation-weights">{(tab==='matrix'?ALL_KOMPONEN_KEYS.map(key=>[key,componentName(key)]):recipients.map(item=>[item.id,item.nama])).map(([key,label])=><label key={key} className="uc-label">{label}{tab==='matrix'?' (%)':''}<input className="uc-input" type="number" min={0} max={tab==='matrix'?100:undefined} step="any" name={key} defaultValue={draft?.[key]??(tab==='matrix'?matrix[key]??0:settings.recipients[center.id]?.[key]??0)}/></label>)}</div>}
         </>}
         <button type="submit" className="uc-secondary" disabled={tab!=='basis'&&!center}>Simpan {tab==='basis'?'dasar alokasi':'bobot'}</button>
       </fieldset>
-      {message&&<p role="status" className="text-sm text-slate-700">{message}</p>}
+      {message&&<p role={saveError?'alert':'status'} className={saveError?'uc-error':'uc-notice'}>{message}</p>}
+      {Object.keys(drafts).length>0&&<p className="text-xs text-slate-600">Ada draf yang belum disimpan. Draf tersedia saat berpindah tab atau pusat biaya pada halaman ini.</p>}
     </form>
   </section>;
 }

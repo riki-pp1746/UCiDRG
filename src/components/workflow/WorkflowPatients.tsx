@@ -13,6 +13,7 @@ import { shareSourceData } from '../../lib/sharedSourceData';
 import { formatNumber } from '../../lib/calculations/patientLevelCosting';
 import { maskSEP } from '../../v4/numbers';
 import WorkflowTable, { WorkflowPager } from './WorkflowTable';
+import { FinancialValue } from '../ui/FinancialStatus';
 
 const billingKeys = ALL_KOMPONEN_KEYS.map(key=>({chronic_drug_amt:'drug_chronic_amt',chemo_drug_amt:'drug_chemo_amt'} as Record<string,string>)[key]??key) as (keyof BillingGroup)[];
 const flatOrder = [...billingKeys.slice(0,13),...billingKeys.slice(15),...billingKeys.slice(13,15)];
@@ -77,11 +78,13 @@ export default function WorkflowPatients({ results = false }: { results?: boolea
   const activeId=active&&(active.internalId||active.sepToken||active.sep);
   const currency=(value:number|undefined)=>value===undefined?'—':formatNumber(value);
   return <section className="uc-panel space-y-4">
-    <div className="flex flex-wrap items-end gap-3">
+    <div className="uc-section-heading"><div><h2>{results?'Unit cost per episode':'Data episode E-Klaim'}</h2><p>{formatNumber(cases.length)} episode sesuai filter. Pilih SEP tersamarkan untuk melihat rincian 18 komponen.</p></div></div>
+    <div className="uc-result-filters">
       <label className="uc-label grow">Cari kode, nama iDRG, atau SEP tersamarkan<input className="uc-input" value={query} onChange={event=>{setQuery(event.target.value);setPage(0);setSelected('');}}/></label>
       <label className="uc-label">Jenis rawat<select className="uc-input" value={care} onChange={event=>{setCare(event.target.value);setPage(0);setSelected('');}}><option value="">Semua</option><option value="1">Rawat inap</option><option value="2">Rawat jalan</option></select></label>
       {!results&&!readOnly&&<button type="button" className="uc-primary" onClick={()=>setManual(value=>!value)} aria-expanded={manual}>{manual?'Tutup formulir':'Tambah manual'}</button>}
       {!results&&!readOnly&&raw.length>0&&<Link className="uc-secondary" to="/reset">Bersihkan data</Link>}
+      {(query||care)&&<button type="button" className="uc-secondary" onClick={()=>{setQuery('');setCare('');setPage(0);setSelected('');}}>Hapus filter</button>}
     </div>
     {message&&<p role="status" className="text-sm text-teal-900">{message}</p>}
     {!results&&manual&&!readOnly&&<form className="uc-inset space-y-4" onSubmit={event=>void add(event)}>
@@ -94,16 +97,16 @@ export default function WorkflowPatients({ results = false }: { results?: boolea
       <details><summary className="cursor-pointer font-medium">Tagihan 18 Komponen Biaya (Rp)</summary><div className="mt-3 grid gap-3 sm:grid-cols-3">{billingKeys.map((key,index)=><label className="uc-label" key={key}>{labels[index]}<input name={key} type="number" min="0" className="uc-input" placeholder="0"/></label>)}</div></details>
       <button type="submit" className="uc-primary" disabled={busy}>{busy?'Menyimpan…':'Simpan episode'}</button>
     </form>}
-    <WorkflowTable label={results?'Unit cost per pasien':'Data tagihan pasien'} columns={['No. SEP','Kode iDRG','Jenis rawat','Kelas rawat','Lama rawat (hari)','Hari ICU',results?'Unit cost (Rp)':'Total tagihan (Rp)',...(results?['Tarif iDRG (Rp)','Surplus/(Defisit) (Rp)']:[])]} numeric={[4,5,6,7,8]} rows={shown.map(row=>{
+    <WorkflowTable emptyMessage={raw.length?"Tidak ada episode yang sesuai dengan filter.":"Unggah data E-Klaim untuk melihat rincian episode."} label={results?'Unit cost per pasien':'Data tagihan pasien'} columns={['No. SEP','Kode iDRG','Jenis rawat','Kelas rawat','Lama rawat (hari)','Hari ICU',results?'Unit cost (Rp)':'Total tagihan (Rp)',...(results?['Tarif iDRG (Rp)','Surplus/(Defisit) (Rp)']:[])]} numeric={[4,5,6,7,8]} rows={shown.map(row=>{
       const id=row.internalId||row.sepToken||row.sep;
       const uc=lookup?.get(id)?.totalCostPerPatient;
       const tariff=row.idrg?.total_tarif;
       const delta=uc===undefined||!tariff?null:tariff-uc;
-      return {key:id,cells:[<button key="detail" type="button" onClick={()=>setSelected(selected===id?'':id)} aria-expanded={selected===id} className="font-semibold text-teal-800 underline underline-offset-2">{maskSEP(row.sep)||'Lihat rincian'}</button>,row.idrg?.drg_code||'—',row.ptd===1?'Rawat inap':'Rawat jalan',row.kelas_rawat||'—',formatNumber(row.los),row.icuDays??'—',currency(results?uc:Object.values(row.billing).reduce((a,b)=>a+b,0)),...(results?[tariff?currency(tariff):'—',delta===null?'—':(delta>0?'+':'')+formatNumber(delta)]:[])]};
+      return {key:id,cells:[<button key="detail" type="button" onClick={()=>setSelected(selected===id?'':id)} aria-expanded={selected===id} className="font-semibold text-teal-800 underline underline-offset-2">{maskSEP(row.sep)||'Lihat rincian'}</button>,row.idrg?.drg_code||'—',row.ptd===1?'Rawat inap':'Rawat jalan',row.kelas_rawat||'—',formatNumber(row.los),row.icuDays??'—',currency(results?uc:Object.values(row.billing).reduce((a,b)=>a+b,0)),...(results?[tariff?currency(tariff):'—',delta===null?'—':<FinancialValue key="difference" value={delta}>{(delta>0?'+':'')+formatNumber(delta)}</FinancialValue>]:[])]};
     })}/>
     <WorkflowPager count={cases.length} page={safePage} setPage={value=>{setPage(value);setSelected('');}}/>
     {active&&activeId&&<div className="uc-inset space-y-3" aria-live="polite">
-      <h2 className="font-semibold">Rincian {maskSEP(active.sep)} · {active.idrg?.drg_description||active.idrg?.drg_code||'kode belum tersedia'}</h2>
+      <div className="uc-section-heading"><h2 className="font-semibold">Rincian {maskSEP(active.sep)} · {active.idrg?.drg_description||active.idrg?.drg_code||'kode belum tersedia'}</h2><button type="button" className="uc-secondary" onClick={()=>setSelected('')}>Tutup rincian</button></div>
       <WorkflowTable label="Rincian 18 komponen" columns={['Komponen',results?'Unit cost (Rp)':'Tagihan (Rp)']} numeric={[1]} rows={billingKeys.map((key,i)=>({key,cells:[labels[i],currency(results?lookup?.get(activeId)?.distributedCosts[ALL_KOMPONEN_KEYS[i]]:active.billing[key])]}))}/>
       {local?.get(activeId)?.reason&&<p className="text-sm text-slate-700">{local.get(activeId)?.reason}</p>}
     </div>}
