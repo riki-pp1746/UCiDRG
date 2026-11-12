@@ -123,13 +123,26 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
 
         const dataOperasionalSheetName = workbook.SheetNames.find(s => /data\s*operasional/i.test(s));
         const parsedDataLayanan: DataLayananKelas[] = [];
+        const supportVolumes = new Map<string, number>();
         if (dataOperasionalSheetName) {
           const operationRows = XLSX.utils.sheet_to_json(workbook.Sheets[dataOperasionalSheetName], { header: 1, defval: null }) as any[][];
-          const rows=costingWorkbookFormat(workbook)==='workshop-do'?operationRows.slice(1,31):operationRows.slice(1);
+          const workshop = costingWorkbookFormat(workbook)==='workshop-do';
+          const rows=workshop?operationRows.slice(1,31):operationRows.slice(1);
           rows.forEach(row => {
             const namaUnit = String(row[0] ?? '').trim();
             if (namaUnit&&!/^total\b/i.test(namaUnit)&&row.slice(1,5).every(v=>v==null||v===''||typeof v==='number'||/^[\d.,\s-]+$/.test(String(v)))) parsedDataLayanan.push({ namaUnit, kunjunganJKN: safeFloat(row[1]), kunjunganNonJKN: safeFloat(row[2]), hariRawatJKN: safeFloat(row[3]), hariRawatNonJKN: safeFloat(row[4]) });
           });
+          if (workshop) {
+            const supportHeader = operationRows.findIndex(row => clean(row[8]).startsWith('volume penunjang medis'));
+            if (supportHeader >= 0) {
+              for (const row of operationRows.slice(supportHeader+1)) {
+                if (!row[8] || !row[9]) break;
+                if (typeof row[10] === 'number' && typeof row[11] === 'number') {
+                  supportVolumes.set(clean(row[8]), row[10]+row[11]);
+                }
+              }
+            }
+          }
         }
 
         const sourceIssues=workbookSourceIssues(workbook);
@@ -269,7 +282,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
               nama: unitName,
               dasarAlokasi,
               jumlahStaf: staf,
-              jumlahKunjungan: kunjungan || hariRawat || pasienPulang,
+              jumlahKunjungan: kunjungan || hariRawat || pasienPulang || (supportVolumes.get(clean(unitName)) ?? 0),
               luasLantai: luas,
               biayaPegawai: gaji,
               biayaJasaMedis: jasaMedis,

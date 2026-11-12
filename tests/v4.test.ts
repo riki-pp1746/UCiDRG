@@ -168,7 +168,10 @@ describe('Analisis tambahan setelah login',()=>{
 
 it('membuka Beranda enam tahap setelah login',()=>{
  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/']},createElement(AppRoutes)));
- expect(html).toContain('Progres Tahap');expect(html).toContain('Mulai Tahap 1');expect(html).toContain('enam tahap');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('href="/alur/profil-rs"');expect(html).toContain('href="/alur/ringkasan-eksekutif"');expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');
+ expect(html).toContain('Progres Tahap');expect(html).toContain('Mulai Tahap 1');expect(html).not.toMatch(/[ÃÂâð�]/);expect(html).toContain('Ruang analisis');expect(html).toContain('Analisis 18 Komponen');expect(html).toContain('Analisis Biaya Terintegrasi');
+ for (const path of ['profil-rs', 'unggah-klaim', 'dasar-alokasi', 'unit-cost-pasien', 'tarif-idrg', 'ringkasan-eksekutif']) {
+   expect(html).toContain(`class="uc-home-stage" href="/alur/${path}"`);
+ }
 });
 
 it('mempertahankan panduan lima tahap di ruang terintegrasi',()=>{

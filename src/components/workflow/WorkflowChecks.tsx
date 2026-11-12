@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AnalysisWorkflow } from '../../hooks/useAnalysisWorkflow';
 import { reportChecks } from '../../lib/reportChecks';
+import { operatingExpenseTotal } from '../../lib/costingWorkbookSchema';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
 import ReportDataChecks from '../reports/ReportDataChecks';
 import WorkflowTable from './WorkflowTable';
@@ -11,7 +12,7 @@ export default function WorkflowChecks({ workflow }: { workflow: AnalysisWorkflo
   const checks=reportChecks([...workflow.preflight,...(workflow.results?.issues??[])]).map(check=>({
     ...check,source:check.source==='/upload'?'/alur/unggah-klaim':check.source==='/costing'?'/alur/pusat-biaya':check.source,
   }));
-  const lo=workflow.config.workbookSource?.lo.find(row=>row.label.trim().toUpperCase()==='TOTAL BEBAN')?.value;
+  const lo=operatingExpenseTotal(workflow.config.workbookSource?.lo);
   const result=workflow.results;
   async function download() {
     const XLSX=await import('xlsx');

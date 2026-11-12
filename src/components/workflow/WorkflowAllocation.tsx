@@ -134,6 +134,7 @@ export default function WorkflowAllocation({workflow,section}:{workflow:Analysis
   for(const trace of mapping?.traces??[])effectiveCosts.set(trace.id,(effectiveCosts.get(trace.id)??0)+Number(trace.amount));
   return <section className="uc-panel space-y-4">
     <p className="text-sm text-slate-600">{result.options.allocationMethod==='direct'?'Metode aktif memetakan biaya langsung ke 18 komponen.':'Metode aktif mengalokasikan biaya antar pusat biaya sebelum pemetaan ke 18 komponen.'}</p>
+    {group==='Final'&&<p className="text-sm text-slate-600">Unit cost = biaya dipetakan ÷ volume dasar. Untuk kamar dan ruang intensif, hasilnya adalah biaya per hari rawat.</p>}
     <WorkflowTable label="Biaya pusat biaya" columns={['Pusat biaya','Dasar alokasi','Biaya langsung sumber (Rp)','Biaya dipetakan (Rp)',...(group==='Final'?['Volume dasar','Unit cost per volume (Rp)']:[])]} numeric={[2,3,4,5]} rows={centers.map(center=>{
       const cost='totalCost' in center?center.totalCost:center.totalCostDirect;
       const effective=effectiveCosts.get(center.id);

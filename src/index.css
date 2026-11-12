@@ -490,3 +490,212 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 .uc-jkn-rate-card dt { color:#657C70; }
 .uc-jkn-rate-card dd { color:#274F3D; text-align:right; font-weight:550; font-variant-numeric:tabular-nums; }
 @media(max-width:640px) { .uc-jkn-overview { padding:20px; align-items:stretch; flex-direction:column; gap:18px; }.uc-jkn-pool { padding:16px 0 0; border-left:0; border-top:1px solid #47706A; text-align:left; }.uc-jkn-rate-card { padding:20px; }.uc-jkn-rate-value strong { font-size:30px; } }
+
+/* SiBiPa: ink green, warm paper, and a restrained brass accent. */
+.uc-workspace-frame,
+.uc-login {
+  --sip-ink: #153b34;
+  --sip-paper: #f4f5ef;
+  --sip-line: #dfe5db;
+  --sip-muted: #536b61;
+  --sip-brass: #d8c392;
+  --sip-display: Georgia, 'Times New Roman', serif;
+}
+
+.uc-workspace-frame { background: var(--sip-paper); }
+.uc-workspace-sidebar {
+  background: linear-gradient(165deg, #153b34, #0d2c28 70%);
+  border-color: #2c4b42;
+  color-scheme: dark;
+}
+.uc-workspace-brand { border-color: #ffffff20; }
+.uc-workspace-brand img { width: 38px; height: 38px; }
+.uc-workspace-brand p:first-child { font-size: 19px; letter-spacing: -.035em; }
+.uc-workspace-sidebar .uc-workspace-switch select { border-color: #ffffff38; background: #ffffff0d; }
+.uc-workspace-switch option { background: #153b34; }
+.uc-workspace-switch svg { color: var(--sip-brass); }
+.uc-stage-link[data-active],
+.uc-workspace-sidebar nav > a[aria-current='page'] {
+  background: #e7eee2;
+  color: #173f34;
+  box-shadow: inset 3px 0 #b39356;
+}
+.uc-workspace-sidebar nav ul a[aria-current='page'] { box-shadow: inset 2px 0 var(--sip-brass); }
+.uc-workspace-sidebar :focus-visible { outline-color: var(--sip-brass); }
+.uc-workspace-header {
+  background: #fffefa;
+  border-color: var(--sip-line);
+  box-shadow: inset 0 2px #b59b65;
+}
+.uc-workflow-heading {
+  padding: 4px 0 20px;
+  border-bottom: 1px solid var(--sip-line);
+}
+.uc-workflow-heading h1 { color: var(--sip-ink); line-height: 1.2; }
+.uc-workspace-shell .workflow-submenu a[aria-current='page'] { background: #e9efe5; border-color: #c8d6c7; }
+.uc-workspace-shell .uc-panel,
+.uc-workspace-shell .uc-result-toolbar {
+  border-color: var(--sip-line);
+  border-radius: 14px;
+  box-shadow: 0 3px 12px #173b3210;
+}
+.uc-workspace-shell .uc-primary { background: #204b3f; border-color: #204b3f; }
+.uc-workspace-shell .uc-primary:hover:not(:disabled) { background: #163b31; border-color: #163b31; }
+.uc-workspace-shell .uc-secondary:hover:not(:disabled) { background: #edf2e9; border-color: #b5c7b9; }
+.uc-workspace-shell .uc-table-scroll { border-color: var(--sip-line); border-radius: 10px; }
+.uc-workspace-shell .uc-table th { background: #edf1e8; color: #36534a; }
+.uc-workspace-shell .uc-table td { border-color: #e9eee6; }
+.uc-workspace-shell .uc-table tbody tr:nth-child(even) { background: #f8faf6; }
+.uc-workspace-shell .uc-table tbody tr:hover { background: #eef4eb; }
+.uc-workspace-shell .uc-table tfoot :is(th, td) {
+  position: sticky;
+  top: auto;
+  bottom: 0;
+  background: #edf1e8;
+  border-top: 1px solid #d8e1d4;
+  color: #24483c;
+  font-weight: 700;
+  z-index: 1;
+}
+.uc-workspace-shell .uc-table tfoot th { left: 0; z-index: 2; }
+
+.uc-home { display: grid; gap: 22px; }
+.uc-home-intro {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: clamp(24px, 4vw, 52px);
+  border-radius: 18px;
+  color: #fffdf4;
+  background: linear-gradient(112deg, #143831, #235549);
+}
+.uc-home-intro::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  background: repeating-radial-gradient(ellipse at 95% 122%, transparent 0 22px, #d8c39238 23px 24px, transparent 25px 43px);
+  mask-image: linear-gradient(90deg, transparent 50%, #000 95%);
+  pointer-events: none;
+}
+.uc-workspace-shell .uc-home-intro h1 {
+  color: #fffdf4;
+  margin: 8px 0 12px;
+  font-family: var(--sip-display);
+  font-size: clamp(2.3rem, 4.6vw, 4rem);
+  line-height: 1.04;
+  font-weight: 400;
+  letter-spacing: -.045em;
+}
+.uc-home-intro p { max-width: 52ch; color: #e0ece3; line-height: 1.6; }
+.uc-home-intro .uc-home-method {
+  color: #ead7a8;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .105em;
+  text-transform: uppercase;
+}
+.uc-workspace-shell .uc-home-intro .uc-primary {
+  margin-top: 23px;
+  color: #213b30;
+  background: #efdfb7;
+  border-color: #efdfb7;
+}
+.uc-workspace-shell .uc-home-intro .uc-primary:hover { background: #fff0ce; border-color: #fff0ce; }
+.uc-home-intro a:focus-visible { outline-color: var(--sip-brass); }
+.uc-home-grid { display: grid; gap: 20px; align-items: start; grid-template-columns: minmax(0, 1fr); }
+.uc-workspace-shell .uc-home-workflow { padding: 0; }
+.uc-home-tabs {
+  display: flex;
+  gap: 20px;
+  padding: 0 24px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--sip-line);
+}
+.uc-home-tabs button {
+  padding: 14px 0 12px;
+  border-bottom: 3px solid transparent;
+  color: var(--sip-muted);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.uc-home-tabs button[aria-pressed='true'] { color: var(--sip-ink); border-bottom-color: #9a7841; }
+.uc-home-tabs button:focus-visible { outline-offset: -3px; }
+.uc-home-tab-content { padding: 20px 24px; display: grid; gap: 16px; }
+.uc-home-tab-content h2,
+.uc-home-session h2 { font-size: 17px; font-weight: 650; }
+.uc-home-stages > li + li { border-top: 1px solid #edf0e9; }
+.uc-home-stage {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto 16px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-radius: 7px;
+}
+.uc-home-stage:hover { background: #f5f8f2; }
+.uc-home-stage-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #dce6da;
+  border-radius: 10px;
+  background: #edf3e9;
+  color: #2b574b;
+}
+.uc-home-stage-copy { display: grid; gap: 2px; line-height: 1.4; }
+.uc-home-stage-copy strong { color: var(--sip-ink); font-size: 14px; }
+.uc-home-stage-copy span,
+.uc-home-stage-copy small { color: var(--sip-muted); font-size: 12px; }
+.uc-home-stage-status {
+  padding: 3px 8px;
+  border-radius: 5px;
+  color: #485b55;
+  background: #f0f3ee;
+  font-size: 11px;
+  font-weight: 600;
+}
+.uc-home-stage-status[data-status='Siap'] { color: #245344; background: #e6f1e7; }
+.uc-home-stage-status[data-status='Perlu diperiksa'] { color: #775019; background: #fff2d9; }
+.uc-home-stage-arrow { color: #587365; }
+.uc-home-session dl { margin: 8px 0 14px; }
+.uc-home-session dl > div { padding: 11px 0; border-bottom: 1px solid var(--sip-line); }
+.uc-home-session dt,
+.uc-home-session > p { font-size: 12px; color: var(--sip-muted); }
+.uc-home-session dd { font-size: 15px; font-weight: 650; color: var(--sip-ink); font-variant-numeric: tabular-nums; }
+
+.uc-login { background: radial-gradient(ellipse at 85% 0, #e3ebe2, transparent 65%), var(--sip-paper); }
+.uc-login .uc-login-shell { border-color: #dce4da; box-shadow: 0 25px 80px #14383122; }
+.uc-login .uc-login-story { background: linear-gradient(145deg, #1e4b40, #0d2e28 80%); }
+.uc-login .uc-login-motif { color: var(--sip-brass); opacity: .38; }
+.uc-login .uc-login-story h1 {
+  font-family: var(--sip-display);
+  font-size: clamp(2.5rem, 5vw, 4.1rem);
+  font-weight: 400;
+  letter-spacing: -.04em;
+}
+.uc-login .uc-login-method { color: #ead7a8; }
+.uc-login .uc-login-form-panel { background: #fffefa; }
+.uc-login .uc-login-form-panel h2 { margin-bottom: 6px; color: var(--sip-ink); }
+.uc-login .uc-login-subtitle { margin-bottom: 22px; }
+.uc-login .uc-login-field { border-color: #cbd8cd; background: #fbfcf8; }
+.uc-login .uc-login-submit:not(:disabled) { background: #204b3f; }
+.uc-login .uc-login-submit:hover:not(:disabled) { background: #163b31; }
+
+@media (min-width: 76rem) {
+  .uc-home-grid { grid-template-columns: minmax(0, 1fr) minmax(210px, 260px); }
+}
+@media (max-width: 40rem) {
+  .uc-home { gap: 16px; }
+  .uc-home-tabs { gap: 14px; padding-inline: 14px; }
+  .uc-home-tabs button { font-size: 12px; }
+  .uc-home-tab-content { padding: 16px 14px; }
+  .uc-home-stage { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }
+  .uc-home-stage-icon { width: 32px; height: 32px; }
+  .uc-home-stage-arrow { display: none; }
+}
+@media (max-width: 800px) {
+  .uc-login .uc-login-story h1 { font-size: clamp(1.9rem, 7vw, 2.65rem); }
+}

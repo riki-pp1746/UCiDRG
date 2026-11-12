@@ -8,6 +8,7 @@ import JknHospitalBaseRate from '../src/components/costing/JknHospitalBaseRate';
 import { calculateHospitalBaseRate } from '../src/lib/calculations/hospitalBaseRate';
 import type { AnalysisSnapshot } from '../src/lib/analysisSnapshot';
 import { parseExcelTemplate } from '../src/lib/parsers/excelCostingParser';
+import { operatingExpenseTotal } from '../src/lib/costingWorkbookSchema';
 
 it('shows JKN inpatient and outpatient HBR without all-payer estimates or income inputs', () => {
   const local = calculateHospitalBaseRate([
@@ -30,6 +31,10 @@ it('keeps the JKN demo share and removes the all-payer input block from the down
   try {
     const config = await parseExcelTemplate({ name:'demo.xlsx' } as File);
     expect(config.workbookSource?.demoJknProportion).toBe(85); expect(config.importIssues).toEqual([]);
+    expect(config.workbookSource?.lo).toContainEqual({ label:'Beban Persediaan', value:8657510213 });
+    expect(operatingExpenseTotal(config.workbookSource?.lo)).toBe(161494999999);
+    expect(config.intermediateCenters?.find(center=>center.nama==='Farmasi')?.jumlahKunjungan).toBe(320000);
+    expect(config.intermediateCenters?.find(center=>center.nama==='Instalasi Gizi')?.jumlahKunjungan).toBe(47645);
     const workbook = XLSX.read(bytes, { type:'buffer' });
     const basic = XLSX.utils.sheet_to_json(workbook.Sheets['Data Dasar RS'], { header:1 });
     expect(JSON.stringify(basic)).not.toContain('DATA HBR SELURUH PENJAMIN');

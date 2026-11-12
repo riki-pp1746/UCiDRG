@@ -35,6 +35,10 @@ export function workbookSourceIssues(book:XLSX.WorkBook){
  return issues;
 }
 export function workbookLO(book:XLSX.WorkBook){return workbookRows(book,'Data LO Lapkeu').filter(r=>r[0]&&typeof r[1]==='number').map(r=>({label:String(r[0]),value:Number(r[1])}));}
+export function operatingExpenseTotal(rows?: readonly {label:string;value:number}[]) {
+ const matches = (label: string) => rows?.find(row => row.label.trim().toUpperCase() === label)?.value;
+ return matches('JUMLAH BEBAN OPERASIONAL') ?? matches('TOTAL BEBAN');
+}
 export function costingSheetName(book:XLSX.WorkBook){
  const exact=book.SheetNames.find(n=>n.trim().toLowerCase()==='costing template')||book.SheetNames.find(n=>n.trim().toLowerCase()==='costing dummy');
  if(exact)return exact;
@@ -63,8 +67,8 @@ export function costingReconciliationIssues(book:XLSX.WorkBook,sheet:string){
  for(const row of workbookRows(book,'Data Dasar RS')){const label=String(row[0]).trim().toLowerCase();const actual=expected.get(label);if(actual!==undefined&&typeof row[1]==='number'&&Math.abs(row[1]-actual)>1)messages.push(`${row[0]} pada Data Dasar RS berbeda dari jumlah pusat biaya.`);}
  const staff=workbookRows(book,'Data Dasar RS').filter(r=>/^jumlah sdm (dokter|nakes|non nakes)$/i.test(String(r[0])));
  if(staff.length===3&&units.every(r=>typeof r[3]==='number')&&Math.abs(staff.reduce((s,r)=>s+number(r[1]),0)-total(3))>0.5)messages.push('Total staf pusat biaya berbeda dari total SDM pada Data Dasar RS.');
- const lo=workbookRows(book,'Data LO Lapkeu').find(r=>r[0]==='TOTAL BEBAN');
+ const lo=operatingExpenseTotal(workbookLO(book));
  const expense=total(9)+total(10)+total(11)+total(12)+(expected.get('biaya penyusutan')||0);
- if(lo&&typeof lo[1]==='number'&&Math.abs(lo[1]-expense)>1)messages.push('Total beban Data LO Lapkeu berbeda dari biaya langsung pusat biaya.');
+ if(lo!==undefined&&Math.abs(lo-expense)>1)messages.push('Total beban Data LO Lapkeu berbeda dari biaya langsung pusat biaya.');
  return messages;
 }

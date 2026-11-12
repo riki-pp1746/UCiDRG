@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
-import { ArrowRight, BookOpen, Check, ChevronLeft, LockKeyhole } from 'lucide-react';
+import { ArrowRight, BookOpen, Building2, Check, ChevronLeft, ClipboardList, FileSpreadsheet, LockKeyhole, Scale, ChartNoAxesCombined, ReceiptText } from 'lucide-react';
 import { useAnalysisWorkflow, workflowStatus } from '../hooks/useAnalysisWorkflow';
 import { workflowPath, workflowSection, workflowStages } from '../lib/workflowNavigation';
 import { formatNumber, formatRupiah } from '../lib/calculations/patientLevelCosting';
@@ -34,34 +34,66 @@ export function WorkflowHome() {
   const action=workflowSection(next)!;
   const actionLabel=next==='profil-rs'?'Mulai Tahap 1':next==='pemeriksaan'?'Periksa data':next==='ringkasan-eksekutif'?'Buka Ringkasan Eksekutif':`Lanjut ke Tahap ${action.step}`;
   const blockers=workflow.raw.length?workflow.sourceBlockers.length+workflow.resultBlockers.length:0;
-  return <div className="mx-auto max-w-6xl space-y-5">
-    <section className="rounded-xl border border-slate-200 border-l-4 border-l-teal-700 bg-white p-5 sm:p-7">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl"><h1 className="text-3xl font-semibold tracking-tight text-teal-950">Beranda</h1><p className="mt-2 text-sm leading-6 text-slate-700">{APP_METHOD}. Untuk menghitung biaya tiap kasus, ikuti enam tahap di bawah. Siapkan Excel biaya RS dan berkas dari E-Klaim.</p><p className="mt-2 text-xs text-slate-600">Unduh hasil sebelum keluar, memuat ulang, atau menutup tab. Data analisis hanya tersimpan selama sesi.</p></div>
+  const stageIcons = [Building2, ClipboardList, Scale, ReceiptText, ChartNoAxesCombined, FileSpreadsheet];
+  const sessionDetails = [
+    ['Tahun biaya', String(workflow.config.tahunData)],
+    ['Periode klaim', workflow.period?.label ?? 'Belum diunggah'],
+    ['Kasus sumber', formatNumber(workflow.raw.length)],
+  ];
+  return <div className="uc-home">
+    <section className="uc-home-intro">
+      <div>
+        <p className="uc-home-method">{APP_METHOD}</p>
+        <h1>Beranda analisis</h1>
+        <p>Hitung biaya pasien JKN, dari data keuangan rumah sakit dan klaim E-Klaim hingga perbandingan tarif iDRG.</p>
         <Link className="uc-primary" to={workflowPath(next)}>{actionLabel}<ArrowRight size={16}/></Link>
       </div>
-      <dl className="mt-5 grid gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-3">
-        <div><dt className="text-slate-500">Tahun biaya</dt><dd className="font-semibold text-teal-950">{workflow.config.tahunData}</dd></div>
-        <div><dt className="text-slate-500">Periode klaim</dt><dd className="font-semibold text-teal-950">{workflow.period?.label??'Belum diunggah'}</dd></div>
-        <div><dt className="text-slate-500">Kasus sumber</dt><dd className="font-semibold text-teal-950">{formatNumber(workflow.raw.length)}</dd></div>
-      </dl>
     </section>
-    <nav className="flex flex-wrap gap-2" aria-label="Bagian beranda">{([['progress','Progres Tahap'],['guide','Panduan Singkat'],['template','Bantuan Template Excel']] as const).map(([key,label])=><button type="button" className={tab===key?'uc-primary':'uc-secondary'} aria-pressed={tab===key} key={key} onClick={()=>setTab(key)}>{label}</button>)}</nav>
-    {tab==='template'?<section className="uc-panel space-y-4">
-      <h2 className="font-semibold text-teal-950">Isi workbook dari data sumber RS</h2>
-      <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700"><li>Data Dasar RS untuk identitas, SDM, indikator, dan biaya.</li><li>Data Operasional untuk hari rawat, tempat tidur, dan kunjungan.</li><li>Data LO Lapkeu untuk beban dan pendapatan.</li><li>Costing Template untuk biaya dan dasar alokasi per unit.</li></ol>
-      <div className="flex flex-wrap gap-2"><a className="uc-primary" href={template} download>Unduh template Excel</a><a className="uc-secondary" href={example} download>Unduh contoh RS ABC</a></div>
-    </section>:<section className="uc-panel space-y-4">
-      {blockers>0&&<Link to="/alur/pemeriksaan" className="inline-flex rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">{formatNumber(blockers)} temuan memblokir · Buka pemeriksaan</Link>}
-      <ol className="divide-y divide-slate-200">{workflowStages.map((stage,index)=>{
-        const status=workflowStatus(workflow,index+1);
-        return <li key={stage.title} className="flex items-start gap-3 py-3">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-teal-50 text-sm font-semibold text-teal-900">{index+1}</span>
-          <div className="min-w-0 flex-1"><Link className="font-semibold text-teal-950 hover:underline" to={workflowPath(stage.sections[0][0])}>{stage.title}</Link><p className="mt-1 text-sm text-slate-600">{stage.description}</p>{tab==='guide'&&<p className="mt-1 text-xs text-slate-600">{stage.sections.map(([,label])=>label).join(' · ')}</p>}</div>
-          <span className={'rounded-full px-2 py-1 text-xs font-medium '+(status==='Siap'?'bg-teal-50 text-teal-900':status==='Perlu diperiksa'?'bg-amber-50 text-amber-900':'bg-slate-100 text-slate-600')}>{status}</span>
-        </li>;
-      })}</ol>
-    </section>}
+
+    <div className="uc-home-grid">
+      <section className="uc-panel uc-home-workflow">
+        <nav className="uc-home-tabs" aria-label="Bagian beranda">
+          {([['progress','Progres Tahap'],['guide','Panduan Singkat'],['template','Bantuan Template Excel']] as const).map(([key,label])=>
+            <button type="button" aria-pressed={tab===key} key={key} onClick={()=>setTab(key)}>{label}</button>)}
+        </nav>
+        {tab==='template' ? <div className="uc-home-tab-content">
+          <h2>Isi workbook dari data sumber RS</h2>
+          <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
+            <li>Data Dasar RS untuk identitas, SDM, indikator, dan biaya.</li>
+            <li>Data Operasional untuk hari rawat, tempat tidur, dan kunjungan.</li>
+            <li>Data LO Lapkeu untuk beban dan pendapatan.</li>
+            <li>Costing Template untuk biaya dan dasar alokasi per unit.</li>
+          </ol>
+          <div className="flex flex-wrap gap-2"><a className="uc-primary" href={template} download>Unduh template Excel</a><a className="uc-secondary" href={example} download>Unduh contoh RS ABC</a></div>
+        </div> : <div className="uc-home-tab-content">
+          <h2>{tab==='guide' ? 'Panduan per tahap' : 'Tahapan analisis'}</h2>
+          {blockers>0&&<Link to="/alur/pemeriksaan" className="inline-flex rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">{formatNumber(blockers)} temuan memblokir · Buka pemeriksaan</Link>}
+          <ol className="uc-home-stages">
+            {workflowStages.map((stage,index)=>{
+              const status=workflowStatus(workflow,index+1);
+              const Icon=stageIcons[index];
+              return <li key={stage.title}>
+                <Link className="uc-home-stage" to={workflowPath(stage.sections[0][0])}>
+                  <span className="uc-home-stage-icon"><Icon size={19} strokeWidth={1.7} aria-hidden/></span>
+                  <span className="uc-home-stage-copy">
+                    <strong>{stage.title}</strong>
+                    <span>{stage.description}</span>
+                    {tab==='guide'&&<small>{stage.sections.map(([,label])=>label).join(' · ')}</small>}
+                  </span>
+                  <span className="uc-home-stage-status" data-status={status}>{status}</span>
+                  <ArrowRight className="uc-home-stage-arrow" size={16} aria-hidden/>
+                </Link>
+              </li>;
+            })}
+          </ol>
+        </div>}
+      </section>
+      <section className="uc-panel uc-home-session">
+        <h2>Data sesi</h2>
+        <dl>{sessionDetails.map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        <p>Unduh hasil sebelum keluar atau memuat ulang halaman. Data analisis hanya tersimpan selama sesi.</p>
+      </section>
+    </div>
   </div>;
 }
 
@@ -76,6 +108,7 @@ function FinancialContext({section,workflow}:{section:string;workflow:Workflow})
   }
   if(section==='laporan-operasional')return <section className="uc-panel space-y-3">
     <h2 className="font-semibold">Data dari sheet LO Lapkeu</h2>
+    {config.workbookSource?.lo.length ? <p className="text-sm text-slate-600">Nilai di bawah berasal dari kolom Realisasi (Rp) pada Excel. Rp0 berarti sel sumber berisi nol. Baris selisih Rp0 menunjukkan bahwa nilai yang dibandingkan cocok.</p> : null}
     {config.workbookSource?.lo.length?<WorkflowTable label="Angka laporan operasional" columns={['Uraian','Nilai (Rp)']} numeric={[1]} rows={config.workbookSource.lo.map((row,index)=>({key:String(index),cells:[row.label,formatNumber(row.value)]}))}/>:<p className="text-sm text-slate-600">Impor workbook yang memuat sheet Data LO Lapkeu untuk melihat angka sumber di sini.</p>}
   </section>;
   if(section!=='operasional')return null;
@@ -86,14 +119,35 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
   const [tab,setTab]=useState<'rooms'|'visits'|'support'>('rooms');
   const [saved,setSaved]=useState(false);
   const rooms=config.finalCenters.filter(row=>row.kategori==='rawat_inap'||row.kategori==='icu');
-  const input=(name:string,label:string,value:number)=><input key={name} name={name} aria-label={label} type="number" min={0} step="1" defaultValue={value} onChange={()=>setSaved(false)} className="uc-input w-24 text-right tabular-nums"/>;
+  const daysInYear=(Date.UTC(config.tahunData+1,0)-Date.UTC(config.tahunData,0))/86400000;
+  const alos=(days:number,patients:number)=>patients>0?formatNumber(days/patients,1):'—';
+  const bor=(days:number,beds:number)=>beds>0&&daysInYear>0?formatNumber(days/(beds*daysInYear)*100,1):'—';
+  const sum=(values:number[])=>values.reduce((total,value)=>total+value,0);
+  const beds=sum(rooms.map(row=>row.jumlahTempat));
+  const days=sum(rooms.map(row=>row.jumlahHariRawat));
+  const patients=sum(rooms.map(row=>row.jumlahPasienPulang));
+  const visitsJkn=sum(config.dataLayanan.map(row=>row.kunjunganJKN));
+  const visitsNonJkn=sum(config.dataLayanan.map(row=>row.kunjunganNonJKN));
+  const daysJkn=sum(config.dataLayanan.map(row=>row.hariRawatJKN));
+  const daysNonJkn=sum(config.dataLayanan.map(row=>row.hariRawatNonJKN));
+  const readNumber=(text:string)=>Number(text.replace(/\./g,'').replace(',','.'));
+  const displayNumber=(value:number)=>value.toLocaleString('id-ID',{maximumFractionDigits:20});
+  const input=(name:string,label:string,value:number,decimal=false)=><input
+    key={`${name}-${value}`} name={name} aria-label={label} type="text" inputMode={decimal?'decimal':'numeric'}
+    pattern={`(?:[0-9]+|[0-9]{1,3}(?:\\.[0-9]{3})+)${decimal?'(?:,[0-9]+)?':''}`}
+    title={decimal?'Contoh 12.345,5':'Contoh 12.345'} defaultValue={displayNumber(value)}
+    onChange={()=>setSaved(false)} onBlur={event=>{
+      const field=event.currentTarget;
+      if(field.value&&field.validity.valid)field.value=displayNumber(readNumber(field.value));
+    }} className="uc-input w-24 text-right tabular-nums"/>;
   function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(useMethodologyStore.getState().role==='Pembaca')return;
     const data=new FormData(event.currentTarget);
     const value=(name:string,fallback:number)=>{
-      const source=data.get(name);const numeric=Number(source);
-      return source!==null&&Number.isFinite(numeric)&&numeric>=0?numeric:fallback;
+      const source=data.get(name);
+      const numeric=typeof source==='string'?readNumber(source):NaN;
+      return Number.isFinite(numeric)&&numeric>=0?numeric:fallback;
     };
     useHospitalCostStore.setState(state=>{
       const config=state.config;
@@ -107,7 +161,28 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
   return <section className="uc-panel space-y-4">
     <nav className="flex flex-wrap gap-2" aria-label="Rincian operasional">{([['rooms','Tempat Tidur & Hari Rawat'],['visits','Kunjungan'],['support','Volume Penunjang Medis']] as const).map(([key,label])=><button type="button" key={key} className={tab===key?'uc-primary':'uc-secondary'} aria-pressed={tab===key} onClick={()=>{setTab(key);setSaved(false);}}>{label}</button>)}</nav>
     <form key={tab} onSubmit={save} className="space-y-3">
-      {tab==='rooms'?<WorkflowTable label="Tempat tidur dan hari rawat" columns={['Kelas / unit','Tempat tidur','Hari rawat','Pasien pulang','ALOS (hari)','BOR (%)']} numeric={[1,2,3,4,5]} rows={rooms.map(row=>({key:row.id,cells:[row.nama,input(row.id+'-beds','Tempat tidur '+row.nama,row.jumlahTempat),input(row.id+'-days','Hari rawat '+row.nama,row.jumlahHariRawat),input(row.id+'-patients','Pasien pulang '+row.nama,row.jumlahPasienPulang),row.jumlahPasienPulang?formatNumber(row.jumlahHariRawat/row.jumlahPasienPulang,1):'—',row.jumlahTempat?formatNumber(row.jumlahHariRawat/(row.jumlahTempat*((Date.UTC(config.tahunData+1,0)-Date.UTC(config.tahunData,0))/86400000))*100,1):'—']}))}/>:tab==='visits'?<WorkflowTable label="Kunjungan per unit" columns={['Unit','Kunjungan JKN','Kunjungan Non-JKN','Hari rawat JKN','Hari rawat Non-JKN']} numeric={[1,2,3,4]} rows={config.dataLayanan.map((row,index)=>({key:String(index),cells:[row.namaUnit,input(index+'-jkn','Kunjungan JKN '+row.namaUnit,row.kunjunganJKN),input(index+'-non','Kunjungan Non-JKN '+row.namaUnit,row.kunjunganNonJKN),input(index+'-days-jkn','Hari rawat JKN '+row.namaUnit,row.hariRawatJKN),input(index+'-days-non','Hari rawat Non-JKN '+row.namaUnit,row.hariRawatNonJKN)]}))}/>:<WorkflowTable label="Volume penunjang medis" columns={['Unit','Dasar alokasi','Volume layanan']} numeric={[2]} rows={config.intermediateCenters.map(row=>({key:row.id,cells:[row.nama,row.dasarAlokasi?.replace(/_/g,' ')||'—',input(row.id+'-volume','Volume '+row.nama,row.jumlahKunjungan)]}))}/>}
+      {tab==='rooms'&&<WorkflowTable label="Tempat tidur dan hari rawat"
+        columns={['Kelas / unit','Tempat tidur','Hari rawat','Pasien pulang','ALOS (hari)','BOR (%)']} numeric={[1,2,3,4,5]}
+        totals={['Total RS',formatNumber(beds),formatNumber(days),formatNumber(patients),alos(days,patients),bor(days,beds)]}
+        rows={rooms.map(row=>({key:row.id,cells:[row.nama,
+          input(row.id+'-beds','Tempat tidur '+row.nama,row.jumlahTempat),
+          input(row.id+'-days','Hari rawat '+row.nama,row.jumlahHariRawat),
+          input(row.id+'-patients','Pasien pulang '+row.nama,row.jumlahPasienPulang),
+          alos(row.jumlahHariRawat,row.jumlahPasienPulang),bor(row.jumlahHariRawat,row.jumlahTempat),
+        ]}))}/>}
+      {tab==='visits'&&<WorkflowTable label="Kunjungan per unit"
+        columns={['Unit','Kunjungan JKN','Kunjungan Non-JKN','Total kunjungan','Hari rawat JKN','Hari rawat Non-JKN','Total hari rawat']} numeric={[1,2,3,4,5,6]}
+        totals={['Total RS',...[visitsJkn,visitsNonJkn,visitsJkn+visitsNonJkn,daysJkn,daysNonJkn,daysJkn+daysNonJkn].map(value=>formatNumber(value))]}
+        rows={config.dataLayanan.map((row,index)=>({key:String(index),cells:[row.namaUnit,
+          input(index+'-jkn','Kunjungan JKN '+row.namaUnit,row.kunjunganJKN),
+          input(index+'-non','Kunjungan Non-JKN '+row.namaUnit,row.kunjunganNonJKN),
+          formatNumber(row.kunjunganJKN+row.kunjunganNonJKN),
+          input(index+'-days-jkn','Hari rawat JKN '+row.namaUnit,row.hariRawatJKN),
+          input(index+'-days-non','Hari rawat Non-JKN '+row.namaUnit,row.hariRawatNonJKN),
+          formatNumber(row.hariRawatJKN+row.hariRawatNonJKN),
+        ]}))}/>}
+      {tab==='support'&&<WorkflowTable label="Volume penunjang medis" columns={['Unit','Dasar alokasi','Total volume per unit']} numeric={[2]}
+        rows={config.intermediateCenters.map(row=>({key:row.id,cells:[row.nama,row.dasarAlokasi?.replace(/_/g,' ')||'—',input(row.id+'-volume','Volume '+row.nama,row.jumlahKunjungan,true)]}))}/>}
       <button type="submit" className="uc-secondary" disabled={tab==='rooms'?!rooms.length:tab==='visits'?!config.dataLayanan.length:!config.intermediateCenters.length}>Simpan data operasional</button>
       {saved&&<p role="status" className="text-sm text-teal-800">Data operasional tersimpan dalam sesi.</p>}
     </form>
@@ -149,7 +224,7 @@ export default function WorkflowPage() {
   const locked=step===3?!workflow.canCalculate:step>=4&&!workflow.canReadResults;
   const finance=financeSections[section as keyof typeof financeSections];
   return <div className="mx-auto max-w-7xl space-y-5" key={section}>
-    <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
+    <header className="uc-workflow-heading flex flex-wrap items-end justify-between gap-3">
       <div><p className="text-xs font-semibold text-teal-800">Tahap {step} dari 6 · {stage.title}</p><h1 className="mt-1 text-2xl font-semibold tracking-tight text-teal-950 sm:text-3xl">{step}.{subsection+1} {label}</h1></div>
       {!locked&&reportMapping[section]&&<IncludeReport section={reportMapping[section]}/>}
     </header>

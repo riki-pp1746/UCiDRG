@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 
-export default function WorkflowTable({ label, columns, rows, numeric = [], minWidth }: {
+export default function WorkflowTable({ label, columns, rows, totals, numeric = [], minWidth }: {
   label: string;
   columns: ReactNode[];
   rows: { key: string; cells: ReactNode[] }[];
+  totals?: ReactNode[];
   numeric?: number[];
   minWidth?: number;
 }) {
@@ -11,6 +12,9 @@ export default function WorkflowTable({ label, columns, rows, numeric = [], minW
     <table className="uc-table" style={minWidth?{minWidth}:undefined}>
       <thead className="sticky top-0 z-10 bg-slate-100"><tr>{columns.map((column,index)=><th key={index} scope="col" className={index===0?'sticky left-0 z-10 bg-slate-100':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{column}</th>)}</tr></thead>
       <tbody>{rows.map(row=><tr key={row.key}>{row.cells.map((cell,index)=><td key={index} className={index===0?'sticky left-0 bg-white font-medium text-teal-950':numeric.includes(index)?'whitespace-nowrap tabular-nums':undefined} style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr>)}</tbody>
+      {rows.length>0&&totals&&<tfoot><tr>{totals.map((cell,index)=>index===0
+        ? <th key={index} scope="row">{cell}</th>
+        : <td key={index} className="whitespace-nowrap tabular-nums" style={numeric.includes(index)?{textAlign:'right'}:undefined}>{cell}</td>)}</tr></tfoot>}
     </table>
     {!rows.length&&<p className="px-4 py-5 text-sm text-slate-600">Belum ada data untuk ditampilkan.</p>}
   </div>;

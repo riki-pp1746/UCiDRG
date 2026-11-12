@@ -119,7 +119,7 @@ export default function LoginPage() {
    <section className="uc-login-form-panel" aria-labelledby="login-title">
     <div className="uc-login-form-wrap">
      <h2 id="login-title">{registering ? 'Daftar akun' : 'Masuk'}</h2>
-     {registering&&<p className="uc-login-subtitle">Akun bisa dipakai setelah disetujui admin.</p>}
+     <p className="uc-login-subtitle">{registering ? 'Akun bisa dipakai setelah disetujui admin.' : 'Gunakan akun SiBiPa Anda untuk membuka ruang analisis.'}</p>
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}

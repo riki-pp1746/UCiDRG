@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { operatingExpenseTotal } from '../lib/costingWorkbookSchema';
 import { inputQuality, type QualityIssue } from '../lib/analysisQuality';
 import { snapshotSourcesMatch } from '../lib/analysisSources';
 import { useCostingStore } from '../stores/costingStore';
@@ -25,8 +26,8 @@ export function useAnalysisWorkflow() {
     if (annual <= 0) add('no-cost','Biaya RS belum tersedia. Impor Excel atau isi biaya pusat biaya.','/alur/pusat-biaya');
     if (!raw.length) add('no-claims','Data E-Klaim belum tersedia. Unggah berkas klaim.','/alur/unggah-klaim');
     if (period?.dateOutliers?.length && !period.confirmed) add('confirm-period','Ada pencilan bulan klaim. Konfirmasi periode sebelum menghitung.','/alur/unggah-klaim');
-    const lo = config.workbookSource?.lo.find(row => row.label.trim().toUpperCase() === 'TOTAL BEBAN');
-    if (lo && Math.abs(lo.value - annual) > 1) add('lo-total','Total beban LO berbeda dari jumlah biaya pusat biaya. Periksa kembali sumber biaya.','/alur/laporan-operasional');
+    const lo = operatingExpenseTotal(config.workbookSource?.lo);
+    if (lo !== undefined && Math.abs(lo - annual) > 1) add('lo-total','Total beban LO berbeda dari jumlah biaya pusat biaya. Periksa kembali sumber biaya.','/alur/laporan-operasional');
     const centers=[...config.overheadCenters,...config.intermediateCenters,...config.finalCenters];
     const staffCost=centers.reduce((total,center)=>total+(center.biayaPegawai||0),0);
     const beds=config.finalCenters.filter(center=>center.kategori==='rawat_inap'||center.kategori==='icu').reduce((total,center)=>total+(center.jumlahTempat||0),0);

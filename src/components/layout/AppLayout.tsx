@@ -130,12 +130,12 @@ export default function AppLayout() {
         aria-modal={menuOpen || undefined}
         aria-label="Menu aplikasi"
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 w-[min(20rem,88vw)] flex-col border-r border-[#205553] bg-[#093d3c] text-white lg:static lg:w-auto print:hidden',
+          'uc-workspace-sidebar fixed inset-y-0 left-0 z-40 w-[min(20rem,88vw)] flex-col border-r text-white lg:static lg:w-auto print:hidden',
           menuOpen ? 'flex' : 'hidden',
           desktopOpen ? 'lg:flex' : 'lg:hidden',
         )}
       >
-        <div className="flex h-17 shrink-0 items-center gap-3 border-b border-white/15 px-5">
+        <div className="uc-workspace-brand flex h-17 shrink-0 items-center gap-3 border-b px-5">
           <BrandLogo className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-base font-bold tracking-tight text-white" title={APP_FULL_NAME}>{APP_NAME}</p>
@@ -147,7 +147,7 @@ export default function AppLayout() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4">
-          <label className="mb-5 block px-2">
+          <label className="uc-workspace-switch mb-5 block px-2">
             <span className="mb-1.5 block text-xs font-semibold text-[#c4dad7]">Ruang analisis</span>
             <span className="relative block">
               <select
@@ -173,7 +173,7 @@ export default function AppLayout() {
                   const status=workflowStatus(workflow,step);
                   const selected=activeStage && activeStage.step===step;
                   return <li key={stage.title}>
-                    <Link to={workflowPath(stage.sections[0][0])} onClick={closeAfterLink} className={clsx('flex min-h-11 items-start gap-2 rounded-md px-2.5 py-2 text-[13px] leading-4',selected?'bg-[#d8eee8] text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}>
+                    <Link to={workflowPath(stage.sections[0][0])} onClick={closeAfterLink} data-active={selected || undefined} className={clsx('uc-stage-link flex min-h-11 items-start gap-2 rounded-md px-2.5 py-2 text-[13px] leading-4',selected?'bg-[#d8eee8] text-[#103e3b]':'text-[#e1efed] hover:bg-white/10')}>
                       <span className={clsx('grid size-5 shrink-0 place-items-center rounded text-[11px] font-bold',selected?'bg-[#badcd4]':'bg-white/10')}>{step}</span>
                       <span className="min-w-0"><span className="block font-semibold">{stage.title}</span><span className={clsx('mt-0.5 block text-[11px]',selected?'text-teal-800':'text-[#b7d4cf]')}>{status}</span></span>
                     </Link>
