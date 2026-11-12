@@ -14,6 +14,7 @@ export default function ExecutiveGroupingQuality({view,mode}:{view:AnalysisView;
   const plots=useMemo(()=>qualityPlots(view),[view]);
   const page=pagination?.groups===view.groups?pagination.page:0;
   const rov=view.summary?.rov;
+  const pageSize=8;
   const covCount=groups.filter(hasGroupCov).length;
   return <section className="uc-panel space-y-5" aria-labelledby="executive-quality-title">
     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -23,20 +24,11 @@ export default function ExecutiveGroupingQuality({view,mode}:{view:AnalysisView;
       </div>
       {mode==='IDRG'&&<Link className="uc-secondary" to="/alur/kualitas">Lihat ROV per MDC</Link>}
     </div>
-    <div className="grid gap-6 xl:grid-cols-2">
-      <div className="min-w-0 space-y-4">
-        <AnalysisCharts plots={[plots[0]]}/>
-        <WorkflowTable label="Tabel CoV per DRG" minWidth={570} numeric={[3,4,5]}
-          columns={['Kode','Kelompok','Jenis rawat','Kasus','Unit cost rata-rata','CoV (%)']}
-          rows={groups.slice(page*25,(page+1)*25).map(group=>({key:group.ptd+'|'+group.group_code,cells:[
-            group.group_code,group.group_description,group.ptd===1?'Rawat inap':'Rawat jalan',
-            formatNumber(group.jumlahKasus),formatRupiah(group.rataUnitCost),
-            hasGroupCov(group)?formatNumber(group.cov*100,1)+'%':'Tidak tersedia',
-          ]}))}/>
-        <WorkflowPager count={groups.length} page={page} setPage={next=>setPagination({groups:view.groups,page:next})}/>
-        {covCount<groups.length&&<p className="text-xs text-slate-600">CoV belum tersedia untuk {formatNumber(groups.length-covCount)} DRG. CoV memerlukan minimal dua kasus dan rata-rata unit cost positif.</p>}
+    <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+        <AnalysisCharts plots={[plots[0]]} compactControls/>
       </div>
-      <div className="min-w-0 space-y-4">
+      <div className="min-w-0 space-y-4 rounded-2xl border border-teal-100 bg-teal-50/40 p-4 sm:p-5">
         <AnalysisCharts plots={[plots[1]]}/>
         <WorkflowTable label="Tabel RIV (ROV)" columns={['Ukuran RIV','Nilai']} numeric={[1]}
           rows={rivVariants(rov).map(row=>({key:row.label,cells:[
@@ -44,6 +36,21 @@ export default function ExecutiveGroupingQuality({view,mode}:{view:AnalysisView;
           ]}))}/>
         {rov&&<p className="text-xs text-slate-600">{formatNumber(rov.n)} kasus dengan unit cost positif, {formatNumber(rov.k)} kelompok, {formatNumber(rov.excluded)} kasus di luar perhitungan RIV.{rov.reason&&' '+rov.reason+'.'}</p>}
       </div>
+    </div>
+    <div className="min-w-0 space-y-3 border-t border-slate-200 pt-5">
+      <div>
+        <h3 className="font-semibold text-teal-950">Rincian CoV per DRG</h3>
+        <p className="text-sm text-slate-600">Diurutkan dari CoV tertinggi.</p>
+      </div>
+      <WorkflowTable label="Tabel CoV per DRG" minWidth={640} numeric={[3,4,5]}
+        columns={['Kode','Kelompok','Jenis rawat','Kasus','Unit cost rata-rata','CoV (%)']}
+        rows={groups.slice(page*pageSize,(page+1)*pageSize).map(group=>({key:group.ptd+'|'+group.group_code,cells:[
+          group.group_code,group.group_description,group.ptd===1?'Rawat inap':'Rawat jalan',
+          formatNumber(group.jumlahKasus),formatRupiah(group.rataUnitCost),
+          hasGroupCov(group)?formatNumber(group.cov*100,1)+'%':'Tidak tersedia',
+        ]}))}/>
+      <WorkflowPager count={groups.length} page={page} size={pageSize} setPage={next=>setPagination({groups:view.groups,page:next})}/>
+      {covCount<groups.length&&<p className="text-xs text-slate-600">CoV belum tersedia untuk {formatNumber(groups.length-covCount)} DRG. CoV memerlukan minimal dua kasus dan rata-rata unit cost positif.</p>}
     </div>
   </section>;
 }

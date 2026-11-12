@@ -1,4 +1,7 @@
 import {expect,it} from 'vitest';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import InaCbgCaseMixPanel from '../src/components/costing/InaCbgCaseMixPanel';
 import {analysisView,buildAnalysisSnapshot} from '../src/lib/analysisSnapshot';
 import {calculateInaCbgCaseMix} from '../src/lib/calculations/inaCbgCaseMix';
 import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
@@ -38,6 +41,31 @@ it('uses the Akurat lookup and counts only mapped unique claims in the CMI denom
   expect(cohorts[0].cmi).toBeCloseTo(1.14);
   expect(cohorts[1]).toMatchObject({care:2,cases:2,mapped:1,casemix:3.95,cmi:3.95});
   expect(groups.find(group=>group.code==='A-4-10-I'&&group.cohortKey===cohorts[0].key)).toMatchObject({cw:0.68,mapped:1});
+});
+
+it('shows the reference CW even when a claim cannot contribute to casemix or CMI',()=>{
+  const {cohorts,groups}=calculateInaCbgCaseMix([
+    claim('1','A-4-10-I',{diaglist:''}),
+    claim('2','N-3-15-0'),
+  ]);
+  expect(cohorts[0]).toMatchObject({cases:2,mapped:0,casemix:0,cmi:null});
+  expect(groups).toEqual([
+    expect.objectContaining({code:'A-4-10-I',cw:0.68,mapped:0,casemix:0}),
+    expect.objectContaining({code:'N-3-15-0',cw:null,mapped:0,casemix:0}),
+  ]);
+});
+
+it('renders CW details directly and falls back to the reference table for unmatched codes',()=>{
+  const claims=calculateInaCbgCaseMix([claim('1','A-4-10-I',{diaglist:''})]);
+  const matched=renderToStaticMarkup(createElement(InaCbgCaseMixPanel,{result:claims}));
+  expect(matched).toContain('CW per kode INA-CBG');
+  expect(matched).toContain('0,680');
+  expect(matched).not.toContain('<details');
+  const unmatched=calculateInaCbgCaseMix([claim('1','UNKNOWN')]);
+  const fallback=renderToStaticMarkup(createElement(InaCbgCaseMixPanel,{result:unmatched}));
+  expect(fallback).toContain('Referensi CW INA-CBG');
+  expect(fallback).toContain('belum cocok dengan tabel sumber');
+  expect(fallback).toContain('Tidak tersedia');
 });
 
 it('keeps hospital and grouper cohorts separate through claim merge',async()=>{

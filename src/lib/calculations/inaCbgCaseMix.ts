@@ -3,6 +3,12 @@ import referenceWeights from './inaCbgRelativeWeights.json';
 import {claimSepKey,cleanClaimValue as clean,presentClaimValue as present} from '../analysisIdentity';
 
 const weights: Readonly<Record<string,{service:string;weight:number;description:string}>> = referenceWeights;
+export function inaCbgReferenceForCare(care:1|2) {
+  return Object.entries(weights)
+    .filter(([,entry])=>entry.service===(care===1?'RI':'RJ')&&Number.isFinite(entry.weight)&&entry.weight>0)
+    .map(([code,entry])=>({code,description:entry.description,cw:entry.weight}))
+    .sort((a,b)=>a.code.localeCompare(b.code));
+}
 export const inaCbgCareLabel = (care:1|2) => care===1?'Rawat inap':'Rawat jalan';
 
 function claimDate(value:string) {
@@ -87,16 +93,15 @@ export function calculateInaCbgCaseMix(claims:readonly PatientRecord[], include?
     const hasDiagnosis=present(patient.diaglist)&&clean(patient.diaglist).split(/[;,|\s]+/).some(present);
     const hasIdentity=patient.inaCbgSource?.hasPatientIdentity??present(patient.mrn);
     const eligible=Boolean(identity&&hasIdentity&&hasDiagnosis&&admission!==null&&discharge!==null&&discharge>=admission);
-    const cw=eligible&&reference?.service===(care===1?'RI':'RJ')&&Number.isFinite(reference.weight)&&reference.weight>0?reference.weight:null;
+    const cw=reference?.service===(care===1?'RI':'RJ')&&Number.isFinite(reference.weight)&&reference.weight>0?reference.weight:null;
     const groupKey=JSON.stringify([profile.key,code]);
     let group=groups.get(groupKey);
     if(!group) {
-      group={cohortKey:profile.key,code,description:clean(patient.deskripsi_inacbg)||reference?.description||'',cases:0,mapped:0,cw:null,casemix:0};
+      group={cohortKey:profile.key,code,description:clean(patient.deskripsi_inacbg)||reference?.description||'',cases:0,mapped:0,cw,casemix:0};
       groups.set(groupKey,group);
     }
     group.cases++;
-    if(cw!==null) {
-      group.cw=cw;
+    if(eligible&&cw!==null) {
       group.mapped++;
       group.casemix+=cw;
       totals.mapped++;
