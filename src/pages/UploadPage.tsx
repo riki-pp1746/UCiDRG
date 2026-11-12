@@ -149,13 +149,13 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
       setProgress(60);
       setPhase('Memeriksa identitas dan duplikasi klaim...');
 
-      // Keep the first SEP across uploads; Excel-only imports never touch claims.
+      // Keep the first SEP per hospital across claim uploads.
       if(combinedTxtRecords.length){
         combinedTxtRecords=await prepareIdentities(combinedTxtRecords);
         if(abort.signal.aborted)return;
         const merged=await mergeClaimSources(claimMode==='append'?useCostingStore.getState().rawRecords:[],combinedTxtRecords,abort.signal,p=>setProgress(60+p*.15));
         combinedTxtRecords=merged.records;const duplicates=merged.duplicates;
-        if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat: baris pertama dari urutan unggahan dipertahankan.`);
+        if(duplicates)processResult.errors.push(`${duplicates} SEP duplikat dalam RS yang sama: baris pertama dari urutan unggahan dipertahankan.`);
       }
       // Save TXT to store if any
       if (combinedTxtRecords.length > 0) {

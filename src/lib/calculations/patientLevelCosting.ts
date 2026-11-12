@@ -4,6 +4,7 @@ import {sum} from '../../v4/numbers';
 import {calculateIDRGTariff,neutralAdjustment} from './idrgTariff';
 import type {Methodology} from '../../stores/methodologyStore';
 import {financialStatus,meanCI} from './revisionMath';
+import {calculateInaCbgCaseMix,type InaCbgCaseMix} from './inaCbgCaseMix';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
 // Metode: Patient Level Costing + Step-Down
@@ -303,7 +304,12 @@ export function generateSummary(
   annualCostTotal = 0,
   adjustedCostTotal = 0,
   jknPoolTotal?: number,
+  inaCbg?: InaCbgCaseMix,
 ): CostingSummary {
+  const records=type==='INACBG'&&!inaCbg?results.map(r=>r.patient):[];
+  const cohorts=type==='INACBG'?(inaCbg??calculateInaCbgCaseMix(records)).cohorts:[];
+  const inaCmi=cohorts.length===1?cohorts[0].cmi:null;
+  const inaMetrics=type==='INACBG'?{cmiBasis:'INA-CBG' as const,cmiAvailable:inaCmi!==null}:{};
   if (results.length === 0) {
     return {
       periodeData: '-',
@@ -315,7 +321,8 @@ export function generateSummary(
       totalTarif: 0,
       totalSelisih: 0,
       crr: 0,
-      cmi: 0,
+      cmi: inaCmi??0,
+      ...inaMetrics,
       riv: 0,
       rataCov: 0,
       jumlahDRGUntung: 0,
@@ -333,7 +340,7 @@ export function generateSummary(
   
   const totalSelisih = totalTarif - totalBiayaRS;
   
-  const cmi = calcCMI(results.map(r => r.patient));
+  const cmi = type==='INACBG'?inaCmi??0:calcCMI(results.map(r => r.patient));
   // RIV = proporsi variasi biaya yang dapat dijelaskan oleh pengelompokan DRG.
   const rataBiaya = results.reduce((s,r)=>s+r.unitCostDihitung,0) / results.length;
   const groupMap = new Map<string, PatientCostResult[]>();
@@ -378,6 +385,7 @@ export function generateSummary(
     totalSelisih,
     crr,
     cmi,
+    ...inaMetrics,
     riv,
     rataCov,
     jumlahDRGUntung: drgUntung.length,

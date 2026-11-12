@@ -13,7 +13,7 @@ export const workflowStages = [
     ['unit-cost-pasien','Per Pasien'], ['unit-cost-drg','Per Kelompok DRG'], ['cost-weight','Cost Weight & Casemix'], ['hbr','Hospital Base Rate (HBR)'],
   ] },
   { title: 'Analisis Tarif iDRG', description: 'Bandingkan unit cost dengan tarif klaim dan tinjau kualitas pengelompokan.', sections: [
-    ['tarif-idrg','Unit Cost vs Tarif iDRG'], ['hbr-nbr','HBR vs NBR'], ['cw-idrg','CW RS vs CW iDRG'], ['kualitas','Kualitas Pengelompokan'],
+    ['cw-idrg','CW RS vs CW iDRG'], ['hbr-nbr','HBR vs NBR'], ['tarif-idrg','Unit Cost vs Tarif iDRG'], ['kualitas','Kualitas Pengelompokan'],
   ] },
   { title: 'Validasi & Laporan', description: 'Tinjau ringkasan, cetak laporan, unduh Excel, dan lihat jejak audit.', sections: [
     ['ringkasan-eksekutif','Ringkasan Eksekutif'], ['cetak','Susun & Cetak Laporan'], ['ekspor-excel','Ekspor Excel'], ['riwayat','Riwayat & Jejak Audit'],

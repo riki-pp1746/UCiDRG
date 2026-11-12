@@ -2,10 +2,12 @@ import { FinancialBadge, FinancialValue } from '../ui/FinancialStatus';
 import JknHospitalBaseRate from '../costing/JknHospitalBaseRate';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from 'recharts';
 import type { AnalysisSnapshot } from '../../lib/analysisSnapshot';
 import { analysisView, statusLabel, summaryMetricText } from '../../lib/analysisSnapshot';
-import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
+import { formatNumber } from '../../lib/calculations/patientLevelCosting';
+import { indexGroupWeights, tariffPlot, weightPlots } from '../../lib/analysisPlots';
+import AnalysisCharts from './AnalysisCharts';
 import { rovMetrics } from '../../lib/calculations/revisionMath';
 import BaseRateComparisonPanel from '../costing/BaseRateComparisonPanel';
 import SourceCaseMixIndex from '../costing/SourceCaseMixIndex';
@@ -29,8 +31,8 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
   const [sort,setSort]=useState<{column:number;direction:'asc'|'desc'}>({column:-1,direction:'desc'});
   const [page,setPage]=useState(0);
   const title=kind==='cost'?'Unit cost per kelompok iDRG':kind==='cw'?'Perbandingan cost weight':'Unit cost dan tarif iDRG';
-  const source=new Map(snapshot.local.sourceWeights?.groups.map(group=>[group.care+'|'+group.code,group]));
-  const local=new Map(snapshot.local.groups.map(group=>[group.care+'|'+group.code,group]));
+  const weights=useMemo(()=>indexGroupWeights(snapshot),[snapshot]);
+  const {local,source}=weights;
   const los=useMemo(()=>{
     const result=new Map<string,{days:number;count:number}>();
     if(kind!=='cost')return result;
@@ -43,13 +45,15 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
     }
     return result;
   },[kind,snapshot]);
-  const groups=view.groups.filter(group=>(!care||String(group.ptd)===care)&&(!status||(group.decisionStatus||group.status)===status)&&[group.group_code,group.group_description,group.mdc_description,String(group.mdc_number??'')].some(value=>value?.toLowerCase().includes(query.trim().toLowerCase())));
+  const groups=view.groups.filter(group=>(!care||String(group.ptd)===care)
+    &&(!status||(status==='DATA_TIDAK_CUKUP'?group.statisticalLabel==='Data tidak cukup':(group.decisionStatus||group.status)===status))
+    &&[group.group_code,group.group_description,group.mdc_description,String(group.mdc_number??'')].some(value=>value?.toLowerCase().includes(query.trim().toLowerCase())));
   const sortValue=(group:typeof groups[number])=>{
     if(sort.column===0)return group.group_code;
     if(kind==='comparison')return sort.column===3?group.jumlahKasus:sort.column===5?group.rataUnitCost:sort.column===6?group.rataTarif:group.totalTarif-group.totalBiayaRS;
     if(sort.column===4)return group.jumlahKasus;
     if(kind==='cost')return group.rataUnitCost;
-    return Number((sort.column===5?local:source).get((group.ptd===1?'inap':'jalan')+'|'+group.group_code)?.cw??-1);
+    return Number((sort.column===5?local:source).get((group.ptd===1?'inap':'jalan')+'|'+group.group_code)??-1);
   };
   if(sort.column>=0)groups.sort((a,b)=>{
     const left=sortValue(a),right=sortValue(b);
@@ -61,14 +65,13 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
   const metrics=kind==='cw'?['CW RS','CW iDRG dari TXT','Selisih CW (%)']:kind==='comparison'?['Status','Unit cost (Rp)','Tarif iDRG (Rp)','Surplus/(Defisit) (Rp)','Dampak total (Rp)','CRR (%)','CoV (%)','Kepastian statistik']:['Unit cost rata-rata (Rp)','CoV (%)','ALOS (hari)'];
   const rows=groups.slice(safePage*25,safePage*25+25).map(group=>{
     const id=(group.ptd===1?'inap':'jalan')+'|'+group.group_code;
-    const c=local.get(id)?.cw, t=source.get(id)?.cw;
+    const c=local.get(id), t=source.get(id);
     const days=group.ptd===1?los.get(group.group_code):undefined;
     const values=kind==='cw'?[weight(c),weight(t),c!=null&&t!=null&&Number(t)>0?formatNumber((Number(c)/Number(t)-1)*100,1):'—']:
       kind==='comparison'?[<FinancialBadge key="status" status={group.decisionStatus||group.status} label={statusLabel(group)}/>,formatNumber(group.rataUnitCost),group.rataTarif>0?formatNumber(group.rataTarif):'—',group.rataTarif>0?<FinancialValue key="difference" value={group.selisih}>{signed(group.selisih)}</FinancialValue>:'—',group.rataTarif>0?<FinancialValue key="impact" value={group.totalTarif-group.totalBiayaRS}>{signed(group.totalTarif-group.totalBiayaRS)}</FinancialValue>:'—',group.crrAvailable?formatNumber(group.crr,1):'—',formatNumber(group.cov*100,1),group.statisticalLabel??'—']:
       [formatNumber(group.rataUnitCost),formatNumber(group.cov*100,1),days?.count?formatNumber(days.days/days.count,1):'—'];
     return {key:id,cells:[group.group_code,<span key="description" title={group.mdc_description||String(group.mdc_number||'')}>{group.group_description||'—'}</span>,...(kind==='comparison'?[]:[group.mdc_description||group.mdc_number||'—']),careLabel(group.ptd),formatNumber(group.jumlahKasus),...values]};
   });
-  const tariffChart=chart&&kind==='comparison'?[...groups].sort((a,b)=>Math.abs(b.totalTarif-b.totalBiayaRS)-Math.abs(a.totalTarif-a.totalBiayaRS)).slice(0,10).map(group=>({name:group.group_code+' · '+careLabel(group.ptd),cost:group.rataUnitCost,tariff:group.rataTarif>0?group.rataTarif:null})): [];
   return <div className="space-y-4">
     {kind==='cw'&&<section className="uc-panel space-y-3">
       <WorkflowTable label="Rentang CW menurut jenis rawat" columns={['Jenis rawat','Kasus dengan CW RS','CW RS rata-rata / rentang','Kasus dengan CW TXT','CW TXT rata-rata / rentang']} rows={view.weightComparison.map(row=>({key:String(row.care),cells:[careLabel(row.care),formatNumber(row.local?.count??0),row.local?`${formatNumber(row.local.average,2)} · ${formatNumber(row.local.min,2)}–${formatNumber(row.local.max,2)}`:'—',formatNumber(row.source?.count??0),row.source?`${formatNumber(row.source.average,2)} · ${formatNumber(row.source.min,2)}–${formatNumber(row.source.max,2)}`:'—']}))}/>
@@ -82,15 +85,11 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
         {kind==='comparison'&&<label className="uc-label">Status<select className="uc-input" value={status} onChange={event=>{setStatus(event.target.value);setPage(0);}}><option value="">Semua</option><option value="UNTUNG">Untung</option><option value="IMPAS">Impas</option><option value="RUGI">Defisit</option><option value="DATA_TIDAK_CUKUP">Data tidak cukup</option><option value="TIDAK_TERSEDIA">Tidak tersedia</option></select></label>}
         {(query||care||status)&&<button type="button" className="uc-secondary" onClick={()=>{setQuery('');setCare('');setStatus('');setPage(0);}}>Hapus filter</button>}
       </div>
-      {kind!=='cw'&&<nav className="flex flex-wrap gap-2" aria-label="Tampilan kelompok"><button type="button" className={!chart?'uc-primary':'uc-secondary'} aria-pressed={!chart} onClick={()=>setChart(false)}>Tabel</button><button type="button" className={chart?'uc-primary':'uc-secondary'} aria-pressed={chart} onClick={()=>setChart(true)}>{kind==='cost'?'Sebaran CoV':'Grafik'}</button></nav>}
-      {chart? <div className="min-w-0 space-y-2">
-        <p className="text-sm text-slate-600">{kind==='comparison'?'Sepuluh DRG dengan dampak total terbesar. Nilai per kasus dalam rupiah.':'Sumbu mendatar menunjukkan jumlah kasus. Sumbu tegak menunjukkan CoV dalam persen.'}</p>
-        <div className="flex flex-wrap gap-4 text-xs text-slate-600">{kind==='comparison'
-          ? <HelpTip term="chartCurrency">Sumbu vertikal · Rupiah</HelpTip>
-          : <><HelpTip term="cases">Sumbu horizontal · Kasus</HelpTip><HelpTip term="cov">Sumbu vertikal · CoV (%)</HelpTip></>}
-        </div>
-        <ResponsiveContainer width="100%" height={310}>{kind==='comparison'?<BarChart data={tariffChart} accessibilityLayer><CartesianGrid stroke="#E3E9EF" vertical={false}/><XAxis dataKey="name" hide/><YAxis width={80} tickFormatter={value=>formatNumber(value)}/><Tooltip formatter={value=>formatRupiah(Number(value))}/><Legend/><Bar dataKey="cost" name="Unit cost" fill="#075C61" isAnimationActive={false}/><Bar dataKey="tariff" name="Tarif iDRG" fill="#637487" isAnimationActive={false}/></BarChart>:<ScatterChart accessibilityLayer><CartesianGrid stroke="#E3E9EF"/><XAxis type="number" dataKey="cases" name="Kasus"/><YAxis type="number" dataKey="cov" name="CoV (%)"/><Tooltip/><Scatter data={groups.map(group=>({name:group.group_code,cases:group.jumlahKasus,cov:group.cov*100}))} fill="#075C61" isAnimationActive={false}/></ScatterChart>}</ResponsiveContainer>
-      </div>:<>
+      <nav className="flex flex-wrap gap-2" aria-label="Tampilan kelompok"><button type="button" className={!chart?'uc-primary':'uc-secondary'} aria-pressed={!chart} onClick={()=>setChart(false)}>Tabel</button><button type="button" className={chart?'uc-primary':'uc-secondary'} aria-pressed={chart} onClick={()=>setChart(true)}>{kind==='cost'?'Sebaran CoV':'Sebaran'}</button></nav>
+      {chart?kind==='cost'?<div className="min-w-0 space-y-2">
+        <div className="flex flex-wrap gap-4 text-xs text-slate-600"><HelpTip term="cases">Sumbu horizontal · Kasus</HelpTip><HelpTip term="cov">Sumbu vertikal · CoV (%)</HelpTip></div>
+        <ResponsiveContainer width="100%" height={310}><ScatterChart accessibilityLayer><CartesianGrid stroke="#E3E9EF"/><XAxis type="number" dataKey="cases" name="Kasus"/><YAxis type="number" dataKey="cov" name="CoV (%)"/><Tooltip/><Scatter data={groups.map(group=>({name:group.group_code,cases:group.jumlahKasus,cov:group.cov*100}))} fill="#075C61" isAnimationActive={false}/></ScatterChart></ResponsiveContainer>
+      </div>:<AnalysisCharts plots={kind==='cw'?weightPlots(groups,weights):[tariffPlot(groups,'iDRG')]}/>:<>
         {kind==='comparison'&&<p className="text-xs text-slate-500">Hijau: untung. Merah: defisit. Amber: impas dalam toleransi ±{formatNumber(snapshot.options.bep*100,1)}%. Nilai selisih tetap menunjukkan surplus atau defisit aktual.</p>}
         <WorkflowTable emptyMessage="Tidak ada kelompok iDRG yang sesuai dengan filter. Ubah pencarian atau jenis rawat." label="Rincian kelompok iDRG" minWidth={kind==='comparison'?1400:1100} sort={{...sort,columns:kind==='comparison'?[0,3,5,6,8]:kind==='cw'?[0,4,5,6]:[0,4,5],onChange:changeSort}} columns={['Kode iDRG','Nama DRG',...(kind==='comparison'?[]:['MDC']),'Jenis rawat','Kasus',...metrics]} rows={rows} numeric={kind==='comparison'?[3,5,6,7,8,9,10]:[4,5,6,7]}/>
         <WorkflowPager count={groups.length} page={safePage} setPage={setPage}/>
@@ -141,7 +140,7 @@ export default function WorkflowResults({section,snapshot}:{section:string;snaps
     <nav className="flex flex-wrap gap-2" aria-label="Bagian cost weight">
       {([['cw','CW RS'],['proxy','CW Proxy Tagihan'],['cmi','Casemix']] as const).map(([key,label])=><button type="button" key={key} className={tab===key?'uc-primary':'uc-secondary'} aria-pressed={tab===key} onClick={()=>setTab(key)}>{label}</button>)}
     </nav>
-    {tab==='proxy'?<ProxyCostWeightPanel records={raw} local={result} scope="main" editable={editable}/>:tab==='cmi'?<SourceCaseMixIndex rows={view.weightComparison}/>:<section className="uc-panel space-y-3"><p className="text-sm text-slate-600">CW RS = rata-rata unit cost DRG ÷ rata-rata unit cost seluruh kasus berkode pada jenis rawat yang sama. <HelpTip term="cwRS"/></p><LocalWeights snapshot={snapshot}/></section>}
+    {tab==='proxy'?<ProxyCostWeightPanel records={raw} local={result} scope="main" editable={editable}/>:tab==='cmi'?<SourceCaseMixIndex rows={view.weightComparison} inaCbg={view.inaCbg}/>:<section className="uc-panel space-y-3"><p className="text-sm text-slate-600">CW RS = rata-rata unit cost DRG ÷ rata-rata unit cost seluruh kasus berkode pada jenis rawat yang sama. <HelpTip term="cwRS"/></p><LocalWeights snapshot={snapshot}/></section>}
   </div>;
 }
 

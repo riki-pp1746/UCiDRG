@@ -93,6 +93,7 @@ export interface PatientRecord {
   dpjp: string;
   
   // INACBG
+  inaCbgSource?: {tariffCode:string; version:string; region:string; hasPatientIdentity:boolean};
   inacbg: string;
   deskripsi_inacbg: string;
   tarif_inacbg: number;  // Base INACBG
@@ -228,6 +229,7 @@ export interface DRGGroupResult {
 export interface CostingSummary {
   financialStatus?:'UNTUNG'|'IMPAS'|'RUGI'|'TIDAK_TERSEDIA';
   cmiAvailable?:boolean;
+  cmiBasis?:'INA-CBG';
   crrAvailable?:boolean;
   rov?:ReturnType<typeof import('../lib/calculations/revisionMath').rovMetrics>;
   populationLabel?:string;

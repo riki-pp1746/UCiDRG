@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import {COLUMN_MAP,parseRow} from './inacbgParser';
+import {COLUMN_MAP,inaCbgRegion,parseRow} from './inacbgParser';
 import type {ParseResult} from './inacbgParser';
 
 const decode=(s:string)=>s.replace(/&(amp|lt|gt|quot|apos|#\d+|#x[\da-f]+);/gi,(_,e:string)=>e[0]==='#'?String.fromCodePoint(e[1].toLowerCase()==='x'?parseInt(e.slice(2),16):parseInt(e.slice(1),10)):({amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"} as Record<string,string>)[e.toLowerCase()]);
@@ -32,7 +32,7 @@ export async function parseExcelClaims(bytes:ArrayBuffer,filename:string,progres
  let headers:Map<string,number>|null=null,totalRows=0,rejected=0;const records:ParseResult['records']=[],errors:string[]=[];
  await elements(entry,'row',xml=>{const row=cells(xml,strings);if(!headers){const h=new Map<string,number>(row.flatMap((s,i)=>s?[[s.trim().replace(/^\uFEFF/,'').toUpperCase(),i] as [string,number]]:[]));if(['KODE_RS','PTD','INACBG','SEP','ADMISSION_DATE','DISCHARGE_DATE'].every(k=>h.has(k))){headers=h;const missing=Object.keys(COLUMN_MAP).filter(k=>COLUMN_MAP[k as keyof typeof COLUMN_MAP]>=60&&COLUMN_MAP[k as keyof typeof COLUMN_MAP]<=77&&!h.has(k));if(missing.length)throw Error('Kolom tagihan Excel klaim belum lengkap: '+missing.join(', '));}return;}
  if(!row.some(v=>v.trim()))return;totalRows++;const canonical=Array<string>(93).fill('');for(const [name,index]of Object.entries(COLUMN_MAP)){const source=headers.get(name);let value=source===undefined?'':row[source]||'';if(['ADMISSION_DATE','DISCHARGE_DATE','BIRTH_DATE'].includes(name))value=dateText(value,date1904);canonical[index]=value;}
- try{const record=parseRow(canonical);if(!record)throw Error('Baris klaim tidak valid.');records.push({...record,sourceFile:filename,sourceRow:Number(attr(xml.slice(0,xml.indexOf('>')),'r'))||totalRows+1});}catch{rejected++;if(errors.length<10)errors.push(`Baris ${totalRows+1}: nilai klaim tidak valid; periksa angka dan jenis rawat sumber.`);}
+ try{const record=parseRow(canonical,inaCbgRegion(headers,row));if(!record)throw Error('Baris klaim tidak valid.');records.push({...record,sourceFile:filename,sourceRow:Number(attr(xml.slice(0,xml.indexOf('>')),'r'))||totalRows+1});}catch{rejected++;if(errors.length<10)errors.push(`Baris ${totalRows+1}: nilai klaim tidak valid; periksa angka dan jenis rawat sumber.`);}
  },p=>progress(30+p*.69));
  if(headers){if(rejected>errors.length)errors.push(`${rejected} baris gagal dibaca.`);progress(100);return {records,totalRows,parsedRows:records.length,errors,filename,sheet:sheet.name};}
  }

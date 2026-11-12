@@ -32,7 +32,7 @@ export async function calculateAnalysisJob(progress:(n:number)=>void=()=>{},sign
   const data=await batchedWorkerJob<any>(worker,{config,period:costing.periodNormalization,settings:policy.settings,revision:policy.revision,jkn:costing.jknProportion,merge:costing.mergeCarePool},raw,{signal:abort.signal,progress,transform:(path,rows)=>path==='result.snapshot.rows'?rows.map(row=>{const patient=raw[row.sourceIndex];if(!patient)throw Error('Indeks pasien hasil tidak sah.');delete row.sourceIndex;row.patient=patient;return row;}):rows});
   if(useCostingStore.getState().rawRecords!==raw||useHospitalCostStore.getState().config!==config||useMethodologyStore.getState().revision!==policy.revision||useCostingStore.getState().jknProportion!==costing.jknProportion||useCostingStore.getState().mergeCarePool!==costing.mergeCarePool||useCostingStore.getState().periodNormalization!==costing.periodNormalization)throw Error('Input atau sesi berubah; hasil latar belakang dibatalkan.');
   data.result.snapshot.local=data.result.localCosting;
-  primeFullAnalysisViews(data.result.snapshot,data.views);
+  primeFullAnalysisViews(data.result.snapshot,data.views,raw);
   registerSnapshotSources(data.result.snapshot,raw,data.result.biayaRSMap,config,policy.revision,costing.jknProportion,costing.mergeCarePool,data.period);
   useCostingStore.setState({periodNormalization:data.period});
   useTarifPasienStore.setState(s=>({...data.result,calculationVersion:s.calculationVersion+1}));progress(100);

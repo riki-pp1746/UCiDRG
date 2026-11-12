@@ -29,7 +29,7 @@ export const inpatientCmiStudy = {
  years: [2019,2020],
  tables: {2019:3,2020:4},
  scope: 'Sampel klaim rawat inap BPJS Kesehatan, era INA-CBG',
- note: 'Perbandingan bersifat deskriptif. Periode, komposisi kasus, dan sistem bobot INA-CBG pada penelitian berbeda dari bobot iDRG pada TXT RS. Studi ini hanya mencakup rawat inap.',
+ note: 'Perbandingan bersifat deskriptif. Studi hanya mencakup rawat inap. Versi tabel bobot Akurat iDRG terhadap versi yang digunakan dalam penelitian belum terverifikasi.',
 } as const;
 
 export function inpatientCmiStudyRows(hospitalClass:HospitalClass,year:typeof inpatientCmiStudy.years[number]) {
@@ -54,6 +54,8 @@ export const analysisFormulaRows:string[][]=[
  ['Casemix TXT','Jumlah CW asli pada klaim berkode dengan UC valid'],
  ['HBR berbasis CW TXT','Pool HBR aktif ÷ casemix TXT, per jenis rawat. Cakupan CW ditampilkan bersama hasil'],
  ['CMI iDRG dari TXT','Jumlah CW sumber tersedia / jumlah klaim dengan CW sumber tersedia, per jenis rawat; total CW diprioritaskan, CW dasar sebagai cadangan; cakupan dilaporkan'],
+ ['CW INA-CBG','Bobot relatif per kode dan jenis rawat dari tabel referensi Akurat iDRG (inaCbgRelativeWeights.json)'],
+ ['Casemix dan CMI INA-CBG','Casemix menjumlahkan CW klaim unik yang terpetakan. CMI membagi casemix dengan jumlah klaim terpetakan. Hasil dihitung per profil RS, jenis rawat dan versi grouper dari klaim pada cakupan laporan, termasuk klaim tanpa unit cost.'],
  ...cmiReferences.map(ref=>['Referensi CMI — '+ref.authors,ref.title+'. '+ref.journal+'. https://doi.org/'+ref.doi]),
  ['CMI lokal (CW RS)','Jumlah CW aktif pada kasus filter yang memiliki CW / jumlah kasus filter yang memiliki CW; tidak memakai cost weight tarif nasional'],
  ['ROV mentah','1−SSW/SST pada ln(UC positif), kelompok menurut jenis rawat dan kode aktif; SST nol: tidak tersedia'],

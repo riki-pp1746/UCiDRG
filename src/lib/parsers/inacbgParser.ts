@@ -1,4 +1,5 @@
 import {parseNumber} from '../../v4/numbers';
+import {presentClaimValue} from '../analysisIdentity';
 // ============================================================
 // PARSER: inacbgParser.ts
 // Parse file TXT dari INACBG/iDRG
@@ -117,11 +118,12 @@ export function parseIDRGTopUp(value: string): number|null {
 function parseDate(val: string | null | undefined): string {
   if (!val || val === 'None') return '';
   // Format dari file: DD/MM/YYYY → convert ke YYYY-MM-DD
-  const parts = String(val).trim().split('/');
-  if (parts.length === 3) {
-    return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-  }
-  return String(val);
+  const date = val.trim().split(/[ T]/)[0];
+  const local = /^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/.exec(date);
+  if (local) return `${local[3]}-${local[2].padStart(2,'0')}-${local[1].padStart(2,'0')}`;
+  const iso = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(date);
+  if (iso) return `${iso[1]}-${iso[2].padStart(2,'0')}-${iso[3].padStart(2,'0')}`;
+  return val;
 }
 
 function calcAge(birthDate: string, admissionDate: string): number {
@@ -132,7 +134,15 @@ function calcAge(birthDate: string, admissionDate: string): number {
   return diff;
 }
 
-export function parseRow(cols: string[]): PatientRecord | null {
+export function inaCbgRegion(columns:ReadonlyMap<string,number>, row:string[]):string {
+  for(const name of ['REGIONAL','REGIONALTARIF','REGION','REGIONALRS']){
+    const index=columns.get(name)??columns.get(name.replace(/^REGIONAL(?=[A-Z])/,'REGIONAL_'));
+    if(index!==undefined&&presentClaimValue(row[index]))return row[index];
+  }
+  return '';
+}
+
+export function parseRow(cols: string[], region=''): PatientRecord | null {
   if (!cols || cols.length < 80) return null;
   
   const get = (idx: number) => (cols[idx] || '').trim();
@@ -205,6 +215,10 @@ export function parseRow(cols: string[]): PatientRecord | null {
   if (!idrg.drg_code && !get(COLUMN_MAP.INACBG)&&!get(COLUMN_MAP.SEP)&&!['1','2'].includes(get(COLUMN_MAP.PTD))) return null;
 
   const admissionDate = parseDate(get(COLUMN_MAP.ADMISSION_DATE));
+  const care = get(COLUMN_MAP.PTD).toUpperCase();
+  const ptd = ['RI','RANAP','RAWAT INAP'].includes(care)?1:['RJ','RAJAL','RAWAT JALAN'].includes(care)?2:parseNum(care);
+  const grouperVersion=get(COLUMN_MAP.VERSI_GROUPER);
+  const inaVersion=get(COLUMN_MAP.VERSI_INACBG);
   
   return {
     proxySource:{topup:parseIDRGTopUp(get(COLUMN_MAP.IDRG_TOP_UP)),missing:[0,1,4,6,10,11,19,27,39,41,42,50,52,80,82,87,91,92,...Array.from({length:18},(_,i)=>60+i)].filter(i=>!get(i)).map(i=>'Kolom '+i+' kosong')},
@@ -216,7 +230,7 @@ export function parseRow(cols: string[]): PatientRecord | null {
     mrn: get(COLUMN_MAP.MRN),
     umur_tahun: parseNum(get(COLUMN_MAP.UMUR_TAHUN)) || calcAge(get(COLUMN_MAP.BIRTH_DATE), get(COLUMN_MAP.ADMISSION_DATE)),
     sex: parseNum(get(COLUMN_MAP.SEX)),
-    ptd: parseNum(get(COLUMN_MAP.PTD)),
+    ptd,
     sep: get(COLUMN_MAP.SEP),
     admission_date: admissionDate,
     discharge_date: parseDate(get(COLUMN_MAP.DISCHARGE_DATE)),
@@ -229,6 +243,12 @@ export function parseRow(cols: string[]): PatientRecord | null {
     proclist: get(COLUMN_MAP.PROCLIST),
     dpjp: get(COLUMN_MAP.DPJP),
     inacbg: get(COLUMN_MAP.INACBG),
+    inaCbgSource:{
+      tariffCode: get(COLUMN_MAP.KODE_TARIF),
+      version: presentClaimValue(grouperVersion)?grouperVersion:presentClaimValue(inaVersion)?inaVersion:'',
+      region,
+      hasPatientIdentity: presentClaimValue(get(COLUMN_MAP.MRN)) || /\d/.test(get(COLUMN_MAP.NOKARTU)) && presentClaimValue(get(COLUMN_MAP.NOKARTU)),
+    },
     deskripsi_inacbg: get(COLUMN_MAP.DESKRIPSI_INACBG),
     tarif_inacbg: parseNum(get(COLUMN_MAP.TARIF_INACBG)),
     total_tarif: parseNum(get(COLUMN_MAP.TOTAL_TARIF)),
@@ -265,6 +285,7 @@ export function parseINACBGFile(file: File): Promise<ParseResult> {
         if (rows[0] && rows[0][0] === 'KODE_RS') {
           startIdx = 1; // Skip header
         }
+        const header=new Map((startIdx?rows[0]:[]).map((name,index)=>[name.trim().toUpperCase(),index]));
 
         totalRows = rows.length - startIdx;
 
@@ -273,7 +294,7 @@ export function parseINACBGFile(file: File): Promise<ParseResult> {
           if (!row || row.length < 10) continue;
           
           try {
-            const record = parseRow(row);
+            const record = parseRow(row,inaCbgRegion(header,row));
             if (record) {
               records.push({...record,sourceFile:file.name,sourceRow:i+1});
             }
@@ -314,11 +335,12 @@ export function parseINACBGText(text: string, filename = 'data.txt'): ParseResul
   if (lines[0] && lines[0].startsWith('KODE_RS')) {
     startIdx = 1;
   }
+  const header=new Map((startIdx?lines[0].split('\t'):[]).map((name,index)=>[name.trim().toUpperCase(),index]));
 
   for (let i = startIdx; i < lines.length; i++) {
     const cols = lines[i].split('\t');
     try {
-      const record = parseRow(cols);
+      const record = parseRow(cols,inaCbgRegion(header,cols));
       if (record) records.push({...record,sourceFile:filename,sourceRow:i+1});
     } catch (e) {
       errors.push(`Row ${i + 1}: ${String(e)}`);

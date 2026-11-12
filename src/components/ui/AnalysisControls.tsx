@@ -181,7 +181,7 @@ export function AnalysisReportVersions(){
   <div className="mt-3 flex flex-wrap gap-2">{(['Draft','Review','Final'] as const).map(state=><button key={state} className="uc-secondary" onClick={()=>save(state)}>Simpan {state}</button>)}</div>
   <p className="mt-2 text-xs text-slate-600">Periode dengan parameter atau populasi berbeda tidak langsung sebanding.</p>
   {error&&<p role="alert" className="uc-error">{error}</p>}
-  {history.entries.length>0&&<div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>Rata-rata CW lokal</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td></tr>)}</tbody></table></div>}
+  {history.entries.length>0&&<div className="uc-table-scroll"><table className="uc-table"><thead><tr><th>Periode</th><th>Status</th><th>CRR</th><th>CMI</th><th>Dasar CMI</th></tr></thead><tbody>{history.entries.map(h=><tr key={h.id}><td>{h.period}</td><td>{h.state}</td><td>{summaryMetricText(h.summary,'crr')}</td><td>{summaryMetricText(h.summary,'cmi')}</td><td>{h.summary.cmiBasis??'CW lokal'}</td></tr>)}</tbody></table></div>}
  </details>;
 }
 
@@ -197,7 +197,7 @@ export function AnalysisReportDetails(){
     <details className="border-t border-slate-200 pt-3">
       <summary className="cursor-pointer font-semibold text-teal-950">Referensi Case Mix Index (CMI)</summary>
       <div className="mt-3 space-y-3 text-sm text-slate-600">
-        <p>CMI dihitung dengan membagi casemix dengan jumlah kasus pada populasi yang sama. Studi Nurwahyuni dan Setiawan menghitung indikator ini secara terpisah untuk rawat inap dan rawat jalan dalam sistem INA-CBG. Aplikasi menerapkan rumus tersebut pada klaim dengan CW iDRG yang tersedia di TXT dan menampilkan cakupannya.</p>
+        <p>CMI dihitung dengan membagi casemix dengan jumlah klaim terpetakan. CMI INA-CBG memakai bobot relatif Akurat iDRG. CMI iDRG memakai bobot dari TXT klaim. Cakupan masing-masing ditampilkan bersama hasil.</p>
         <ul className="list-disc space-y-2 pl-5">
           {cmiReferences.map(ref=><li key={ref.doi}>
             {ref.authors}. {ref.journal}.{' '}

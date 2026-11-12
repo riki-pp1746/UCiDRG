@@ -1,4 +1,8 @@
 import {beforeEach,describe,it,expect} from 'vitest';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {MemoryRouter} from 'react-router-dom';
+import ExecutiveGroupingQuality from '../src/components/workflow/ExecutiveGroupingQuality';
 import {defaultMethodology,useMethodologyStore} from '../src/stores/methodologyStore';
 import {largestRemainder,monthlyFactor,rovMetrics,financialStatus,meanCI} from '../src/lib/calculations/revisionMath';
 import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
@@ -21,6 +25,7 @@ import {formatNumber,formatRupiah} from '../src/lib/calculations/patientLevelCos
 import {sum,dec} from '../src/v4/numbers';
 import type {PatientRecord} from '../src/types/costing.types';
 import {analysisPdf} from '../src/lib/analysisPdf';
+import {reportPlots,rivPlot,tariffPlot} from '../src/lib/analysisPlots';
 import {formatCostingWorkbook} from '../src/lib/costingWorkbookFormat';
 import * as XLSX from 'xlsx';
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -30,6 +35,42 @@ const context=()=>({method:'18 Komponen',period:'September 2026',options:options
 function raw(i:number):PatientRecord{return {internalId:'',sep:'PRIVATE-'+i,ptd:2,admission_date:'2026-09-01',discharge_date:'2026-09-01',los:0,inacbg:'INA-A',idrg:{drg_code:'A',total_tarif:90,total_cost_weight:777},billing:{procedure_amt:100},total_tarif:90,tarif_inacbg:90,tarif_rs:100,nama_pasien:'Nama rahasia',mrn:'MRN-RAHASIA'} as unknown as PatientRecord;}
 async function setup(){const rows=await prepareIdentities(Array.from({length:12},(_,i)=>raw(i)));const config=structuredClone(useHospitalCostStore.getInitialState().config);config.tahunData=2026;config.sourceOrigin='diunggah';config.overheadCenters=[];config.intermediateCenters=[];config.finalCenters=[{...config.finalCenters[0],id:'clinic',kategori:'rawat_jalan',nama:'Poliklinik',biayaPegawai:14400,biayaJasaMedis:0,biayaJasaMedisLain:0,biayaOperasional:0,hargaPeralatan5Tahun:0,biayaInvestasiGedung:0}];useHospitalCostStore.setState({config:runStepDownCalculation(config)});useCostingStore.setState({rawRecords:rows,periodNormalization:detectPeriodNormalization(rows,2026),jknProportion:100});useMethodologyStore.setState({settings:{...options(),mapping:{clinic:{procedure_amt:100}}}});recalculateAnalysis();return rows;}
 beforeEach(()=>{clearIdentityKey();useMethodologyStore.setState(useMethodologyStore.getInitialState(),true);useTarifPasienStore.setState(useTarifPasienStore.getInitialState(),true);useCostingStore.setState(useCostingStore.getInitialState(),true);useAnalysisHistoryStore.setState({entries:[]});});
+it('plots filtered DRGs and includes only the selected charts in the PDF',async()=>{
+ await setup();
+ const snapshot=useTarifPasienStore.getState().snapshot!;
+ const view=analysisView(snapshot,'IDRG',{care:'2'});
+ const [distribution,weights,tariff]=reportPlots(snapshot,view,'IDRG');
+ expect(distribution.marks.filter(mark=>mark.type==='bar')).toHaveLength(1);
+ expect(weights.marks.filter(mark=>mark.type==='dot')).toMatchObject([{id:'jalan|A',label:'A · Rawat jalan'}]);
+ expect(tariff.marks.filter(mark=>mark.type==='dot')).toMatchObject([{id:'jalan|A',color:'#b42337'}]);
+ expect(tariffPlot([{...view.groups[0],rataTarif:0}],'iDRG').marks).toHaveLength(0);
+ const pdf=analysisPdf(snapshot,view,'RS Sintetis','IDRG',undefined,['weights']).output();
+ expect(pdf).toContain('CW RS vs CW iDRG');
+ expect(pdf).toContain('CW iDRG dari TXT');
+ expect(pdf).not.toContain('Unit cost vs tarif iDRG');
+ expect(pdf).not.toContain('Sebaran CoV biaya per DRG');
+});
+it('shows CoV and RIV charts and tables for the filtered executive report',async()=>{
+ await setup();
+ const original=useTarifPasienStore.getState().snapshot!;
+ const snapshot={...original,rows:original.rows.map((row,index)=>({
+   ...row,unitCostDihitung:100+index*15,
+   patient:{...row.patient,idrg:{...row.patient.idrg,drg_code:index===0?'Satu kasus':index<6?'A':'B'}},
+ }))};
+ const view=analysisView(snapshot,'IDRG',{care:'2'});
+ const [cov,riv]=reportPlots(snapshot,view,'IDRG',['quality']);
+ expect(cov.marks.filter(mark=>mark.type==='dot').map(mark=>mark.id).sort()).toEqual(['jalan|A','jalan|B']);
+ expect(riv.marks.some(mark=>mark.type==='bar')).toBe(true);
+ const negative=rivPlot({...view.summary!.rov!,crossValidated:-.25});
+ expect(negative.marks).toContainEqual(expect.objectContaining({type:'bar',color:'#b42337',detail:'Validasi silang -25,0%'}));
+ const markup=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(ExecutiveGroupingQuality,{view,mode:'IDRG'})));
+ for(const label of ['Sebaran CoV biaya per DRG','RIV (ROV) pengelompokan biaya','Tabel CoV per DRG','Tabel RIV (ROV)','Tidak tersedia'])expect(markup).toContain(label);
+ const filtered=analysisView(snapshot,'IDRG',{care:'2',search:'Satu kasus'});
+ expect(reportPlots(snapshot,filtered,'IDRG',['quality']).every(plot=>!plot.marks.length)).toBe(true);
+ const pdf=analysisPdf(snapshot,view,'RS uji','IDRG',undefined,['quality']).output();
+ expect(pdf).toContain(cov.title);
+ expect(pdf).toContain('RIV \\(ROV\\) pengelompokan biaya');
+});
 describe('Prompt revisi — golden cases',()=>{
  it('uses active monthly and indexed period cost for validation instead of calendar-only cost',async()=>{await setup();useMethodologyStore.getState().update({variableShares:{procedure_amt:1},volumeRatios:{procedure_amt:2}});recalculateAnalysis();const state=useTarifPasienStore.getState();expect(state.snapshot?.mapping?.periodCost).toBe('2400');expect(state.snapshot?.pool).toBe(2400);state.validateAgainstHospital(useHospitalCostStore.getState().config,1/12);expect(useTarifPasienStore.getState().validationIssues.some(i=>i.id==='biaya-alokasi')).toBe(false);});
  it('uses identical financial rules for patient, group and summary while keeping sample certainty separate',async()=>{await setup();useMethodologyStore.getState().update({decisionMinimum:20,bep:.15});recalculateAnalysis();const s=useTarifPasienStore.getState().snapshot!;const v=analysisView(s,'INACBG');expect(v.rows.every(r=>r.statusINACBG==='IMPAS')).toBe(true);expect(v.groups[0].status).toBe('IMPAS');expect(v.groups[0].decisionStatus).toBe('IMPAS');expect(v.groups[0].statisticalLabel).toBe('Data tidak cukup');expect(v.groups[0].decisionEligible).toBe(false);expect(v.summary?.financialStatus).toBe('IMPAS');expect(financialLabel(v.summary?.financialStatus)).toBe('Impas');expect(v.summary?.jumlahDRGImpas).toBe(1);expect(v.summary?.persenRugi).toBe(0);expect(v.summary?.top10Rugi).toHaveLength(0);expect(summaryMetricText(v.summary!,'rov')).toBe('Tidak tersedia');expect(summaryMetricText(v.summary!,'crr')).toBe('90,0%');});
@@ -46,7 +87,7 @@ describe('Prompt revisi — golden cases',()=>{
  it('TC-3 finds two extreme outliers and preserves full-pool identity',()=>{const rows=[...cases(28,'100'),...cases(2,'10000','A').map((r,i)=>({...r,id:'out-'+i}))];const r=calculateHospitalBaseRate(rows,context());expect(r.pools[0].outlierCount).toBe(2);expect(r.groups[0].mean).toBe('760');expect(r.groups[0].cw).toBe('1');expect(dec(r.groups[0].standardCost!).mul(30).minus(r.pools[0].total).abs().lt('1e-30')).toBe(true);const small=calculateHospitalBaseRate(cases(1,'100'),{...context(),options:{...options(),stabilize:true}});expect(small.groups[0].confidence).toBe('Data tidak cukup');});
  it('TC-4 does not double the period for one stray date',()=>{const rows=Array.from({length:20226},(_,i)=>({...raw(i),discharge_date:i===0?'2026-08-01':'2026-09-01'}));const r=detectPeriodNormalization(rows,2025);expect(r.factor).toBe(1/12);expect(r.dateOutliers).toEqual(['2026-08']);expect(r.yearMismatch).toBe(true);});
  it('TC-5 reconciles full and excluded HBR policies and no-code populations',()=>{const rows=[...cases(10,'100'),...cases(1,'500','')];const full=calculateHospitalBaseRate(rows,context());expect(full.pools[0].hbr).toBe('150');const excluded=calculateHospitalBaseRate(rows,{...context(),options:{...options(),hbrPolicy:'exclude'}});expect(excluded.pools[0]).toMatchObject({total:'1500',hbrPool:'1000',policyExcluded:'500',hbr:'100'});expect(calculateHospitalBaseRate(cases(10,'100',''),context()).pools[0].hbr).toBeNull();});
- it('TC-6 all views use one snapshot and local CMI, with filters not charged the full pool',async()=>{await setup();const snapshot=useTarifPasienStore.getState().snapshot!;const a=analysisView(snapshot,'INACBG'),b=analysisView(snapshot,'INACBG');expect(a).toBe(b);expect(a.summary?.cmi).toBe(1);expect(a.summary?.totalBiayaRS).toBe(1200);expect(a.summary?.totalTarif).toBe(1080);expect(a.groups[0].decisionStatus).toBe('RUGI');expect(a.groups[0].ci?.high).toBe(-10);expect(a.summary?.cmi).not.toBe(777);useMethodologyStore.getState().update({bep:.1});expect(analysisStale()).toBe(true);});
+ it('TC-6 all views use one snapshot and report the CMI basis, with filters not charged the full pool',async()=>{await setup();const snapshot=useTarifPasienStore.getState().snapshot!;const a=analysisView(snapshot,'INACBG'),b=analysisView(snapshot,'INACBG');expect(a).toBe(b);expect(a.weightComparison[0].local?.average).toBe(1);expect(a.summary?.cmiAvailable).toBe(false);expect(a.summary?.totalBiayaRS).toBe(1200);expect(a.summary?.totalTarif).toBe(1080);expect(a.groups[0].decisionStatus).toBe('RUGI');expect(a.groups[0].ci?.high).toBe(-10);useMethodologyStore.getState().update({bep:.1});expect(analysisStale()).toBe(true);});
  it('shows the local CW range separately from positive TXT weights and their coverage',async()=>{
   await setup();
   const snapshot=useTarifPasienStore.getState().snapshot!;

@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import {COLUMN_MAP,parseRow} from './inacbgParser';
+import {COLUMN_MAP,inaCbgRegion,parseRow} from './inacbgParser';
 import type {PatientRecord} from '../../types/costing.types';
 import {checkAborted,CLAIM_BATCH_SIZE,TEXT_CHUNK_BYTES} from '../largeData';
 export interface ClaimsStreamSummary {filename:string;totalRows:number;parsedRows:number;rejectedRows:number;errors:string[]}
@@ -22,7 +22,7 @@ export async function parseDelimitedClaimsStream(file:File,consume:(records:Pati
    summary.totalRows++;
    try{let cols=source;
     if(header){cols=Array<string>(93).fill('');for(const [name,index]of Object.entries(COLUMN_MAP)){const from=header.get(name);if(from!==undefined)cols[index]=source[from]??'';}for(const [name,index]of header)if(!(name in COLUMN_MAP))cols.push(source[index]??'');}
-    const record=parseRow(cols);if(!record)throw Error('Baris tidak memiliki struktur klaim yang valid.');batch.push({...record,sourceFile:file.name,sourceRow});summary.parsedRows++;
+    const record=parseRow(cols,header?inaCbgRegion(header,source):undefined);if(!record)throw Error('Baris tidak memiliki struktur klaim yang valid.');batch.push({...record,sourceFile:file.name,sourceRow});summary.parsedRows++;
    }catch(error){checkAborted(signal);summary.rejectedRows++;if(summary.errors.length<10)summary.errors.push(`Rekaman ${sourceRow}: ${String(error)}`);}
    if(batch.length>=CLAIM_BATCH_SIZE){await consume(batch);batch=[];}
   }

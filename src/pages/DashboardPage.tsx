@@ -3,7 +3,7 @@ import { financialTone } from '../lib/financialPresentation';
 import {financialLabel,summaryMetricText} from '../lib/analysisSnapshot';
 import {useAnalysisView} from '../hooks/useAnalysisView';
 import {rankFinancialImpact} from '../lib/calculations/financialImpact';
-import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
+import InaCbgCaseMixPanel from '../components/costing/InaCbgCaseMixPanel';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
 import {useMemo} from 'react';
 import PageIntro from '../components/ui/PageIntro';
@@ -160,7 +160,7 @@ export default function DashboardPage() {
         {/* CMI & Total Pasien */}
         <div className="md:col-span-2 lg:col-span-2 grid grid-cols-2 gap-4">
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
-            <SourceCaseMixIndex rows={view.weightComparison} compact/>
+            <InaCbgCaseMixPanel result={view.inaCbg} compact/>
           </div>
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-center">
             <div className="flex items-center gap-2 mb-3"><Activity className="w-5 h-5 text-violet-500" /><p className="text-sm font-medium text-gray-500">ROV</p></div>

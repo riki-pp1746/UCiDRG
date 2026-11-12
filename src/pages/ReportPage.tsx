@@ -14,8 +14,12 @@ import AnalysisFilters from '../components/ui/AnalysisFilters';
 import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
 import ReportDataChecks from '../components/reports/ReportDataChecks';
 import WorkflowTable, { WorkflowPager } from '../components/workflow/WorkflowTable';
+import AnalysisCharts from '../components/workflow/AnalysisCharts';
+import ExecutiveGroupingQuality from '../components/workflow/ExecutiveGroupingQuality';
+import {reportPlots} from '../lib/analysisPlots';
 import {analysisStale} from '../lib/analysisController';
 import {reportChecks} from '../lib/reportChecks';
+import {inaCbgCareLabel,inaCbgCohortLabel} from '../lib/calculations/inaCbgCaseMix';
 import {Link} from 'react-router-dom';
 // ============================================================
 // PAGE: ReportPage.tsx
@@ -90,6 +94,9 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
   const notes=checks.filter(c=>c.severity==='warning');
 
   const snapshot=useTarifPasienStore(s=>s.snapshot);
+  const charts=useMemo(()=>snapshot&&view.summary&&variant!=='export'&&(variant!=='print'||preview)
+    ?reportPlots(snapshot,view,viewMode,variant==='print'?reportSelection:['weights','comparison'])
+    :[],[snapshot,view,viewMode,variant,preview,reportSelection]);
   const totalBiayaTahunan = snapshot?.mapping?Number(snapshot.mapping.annual):(config.totalOverheadCost || 0) + (config.totalIntermediateCost || 0) + (config.totalFinalCost || 0);
   const periodFactor = snapshot?.options.compatibility?1/12:periodNormalization?.factor??1;
   const totalBiayaLaporan = snapshot?.mapping?.periodCost!==undefined?Number(snapshot.mapping.periodCost):Math.round(totalBiayaTahunan * periodFactor);
@@ -133,7 +140,6 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       ['Total biaya pada populasi ringkasan', summary.totalBiayaRS],
       [`Total Tarif ${viewMode}`, summary.totalTarif],
       ['Total Selisih', summary.totalSelisih],['CRR',summaryMetricText(summary,'crr')],['Status finansial agregat',financialLabel(summary.financialStatus)],['Populasi',summary.populationLabel||''],
-      ['CMI lokal (CW RS)', summaryMetricText(summary,'cmi',2)],
       ['Reduction of Variance (ROV)', summaryMetricText(summary,'rov',2)],
       ['Rata-rata CoV DRG', formatNumber(summary.rataCov * 100,2) + '%'],
       ['% DRG Defisit', formatNumber(summary.persenRugi,1) + '%'],
@@ -145,9 +151,20 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
+    const cohortsByKey=new Map(view.inaCbg.cohorts.map(row=>[row.key,row]));
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+      ['RS','Kelas RS','Kode tarif','Kepemilikan','Regional','Jenis rawat','Versi grouper','Klaim unik','Klaim terpetakan','Cakupan (%)','Casemix INA-CBG','CMI INA-CBG','Konflik kelas dan kode tarif'],
+      ...view.inaCbg.cohorts.map(row=>[row.hospital,row.hospitalClass,row.tariffCode,row.ownership,row.region,inaCbgCareLabel(row.care),
+        row.version,row.cases,row.mapped,row.mapped/row.cases*100,row.mapped?row.casemix:null,row.cmi,row.profileConflict?'Ya':'Tidak']),
+    ]),'CMI INA-CBG');
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+      ['Kelompok klaim','Kode INA-CBG','Deskripsi','Klaim unik','Klaim terpetakan','CW INA-CBG','Casemix INA-CBG'],
+      ...view.inaCbg.groups.map(row=>[inaCbgCohortLabel(cohortsByKey.get(row.cohortKey)!),row.code,row.description,
+        row.cases,row.mapped,row.cw,row.mapped?row.casemix:null]),
+    ]),'CW INA-CBG');
     if(user?.hospitalClass){
       const study=cmiStudyReport(view,user.hospitalClass);
-      const sheet=XLSX.utils.aoa_to_sheet([[study.title],[study.result],study.headers,...study.rows,[],[study.note],[study.source]]);
+      const sheet=XLSX.utils.aoa_to_sheet([[study.title],...study.results.map(result=>[result]),study.headers,...study.rows,[],[study.note],[study.source]]);
       sheet['!cols']=[{wch:21},{wch:14},{wch:20},{wch:20}];
       XLSX.utils.book_append_sheet(wb,sheet,'CMI menurut kelas RS');
     }
@@ -268,6 +285,8 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       <button type="button" className="uc-secondary" aria-expanded={preview} onClick={()=>setPreview(value=>!value)}>{preview?'Tutup pratinjau':'Lihat pratinjau'}</button>
       {preview&&<div className="uc-inset space-y-3"><h3 className="font-semibold">Ringkasan Eksekutif</h3><p className="text-sm">{formatNumber(summary.totalKasus)} kasus · {formatRupiah(summary.totalBiayaRS)} biaya · CRR {summaryMetricText(summary,'crr')}</p><ul className="list-disc pl-5 text-sm">{reportSelection.map(id=><li key={id}>{reportSections[id]}</li>)}</ul></div>}
     </section>
+    <details className="uc-panel print:hidden"><summary className="cursor-pointer text-sm font-semibold text-slate-700">Filter laporan{filterCount>0&&` (${filterCount} aktif)`}</summary><div className="mt-3"><AnalysisFilters/></div></details>
+    {preview&&charts.length>0&&<section className="uc-panel"><AnalysisCharts plots={charts}/></section>}
     <details className="uc-panel"><summary className="cursor-pointer font-semibold">Periksa periode dan asumsi</summary><div className="mt-3"><AnalysisReportDetails/></div></details>
   </div>;
 
@@ -302,10 +321,12 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
           {label:'Biaya JKN pada laporan',value:formatRupiah(summary.totalBiayaRS),currency:true},
           {label:`Total tarif ${viewMode==='INACBG'?'INA-CBG':'iDRG'}`,value:formatRupiah(summary.totalTarif),currency:true},
           {label:'CRR',value:summaryMetricText(summary,'crr'),currency:false,hint:'Total tarif klaim ÷ biaya JKN × 100%'},
-          {label:'ROV',value:summaryMetricText(summary,'rov'),currency:false},
+          {label:'RIV (ROV)',value:summaryMetricText(summary,'rov'),currency:false},
         ].map(kpi=><div key={kpi.label} className={clsx('uc-panel min-w-0',kpi.currency&&'col-span-2 sm:col-span-1')}><p className="text-sm text-slate-500">{kpi.label}</p><p className={clsx('mt-2 break-words font-semibold tracking-tight text-teal-950',kpi.currency?'text-lg':'text-2xl')}>{kpi.value}</p>{kpi.hint&&<p className="mt-2 text-xs text-slate-500">{kpi.hint}</p>}</div>)}</div>
         <p className="text-sm text-slate-600">Biaya seluruh RS pada periode ini: {formatRupiah(totalBiayaLaporan)}. Pool JKN: {formatRupiah(poolJKN)}{totalBiayaLaporan>0?` (${formatNumber(poolJKN/totalBiayaLaporan*100,2)}% dari biaya RS periode)` : ''}. HBR dan CRR menggunakan pool biaya JKN.</p>
-        <SourceCaseMixIndex rows={view.weightComparison}/>
+        <ExecutiveGroupingQuality view={view} mode={viewMode}/>
+        <SourceCaseMixIndex rows={view.weightComparison} inaCbg={view.inaCbg}/>
+        <section className="uc-panel" aria-label="Grafik laporan"><AnalysisCharts plots={charts}/></section>
         <section className="uc-panel space-y-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-lg font-semibold text-teal-950">Perbandingan biaya dan tarif</h2><p className="mt-1 text-sm text-slate-600">Tarif klaim JKN dikurangi biaya JKN pada populasi laporan. Angka selisih dapat negatif; CRR adalah rasio tarif terhadap biaya.</p></div><FinancialBadge status={summary.financialStatus} label={financialLabel(summary.financialStatus)}/></div><p className={clsx('break-words text-3xl font-semibold',summary.totalSelisih<0?'text-red-700':'text-teal-800')}>{summary.totalSelisih>0?'+':''}{formatRupiah(summary.totalSelisih)}</p><div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">{[{label:'DRG defisit',value:summary.jumlahDRGRugi},{label:'DRG impas',value:summary.jumlahDRGImpas},{label:'DRG surplus',value:summary.jumlahDRGUntung}].map(item=><div key={item.label}><p className="text-xl font-semibold text-slate-800">{item.value}</p><p className="text-xs text-slate-500"><GlossaryLabel label={item.label}/></p></div>)}</div></section>
         <div className="grid gap-4 lg:grid-cols-2">{([['5 DRG dengan defisit terbesar',summary.top10Rugi,'text-red-700'],['5 DRG dengan surplus terbesar',summary.top10Untung,'text-teal-800']] as const).map(([label,groups,color])=><section className="uc-panel space-y-3" key={label}>
           <h2 className="text-lg font-semibold text-teal-950">{label}</h2>

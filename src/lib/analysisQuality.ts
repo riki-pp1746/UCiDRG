@@ -1,13 +1,14 @@
 import type {PatientRecord} from '../types/costing.types';
 import type {HospitalCostConfig} from '../types/hospitalCost.types';
 import type {Methodology} from '../stores/methodologyStore';
+import {claimSepKey} from './analysisIdentity';
 export interface QualityIssue {id:string;severity:'error'|'warning'|'info';message:string;source:string;count:number;examples:string[]}
 const qualityCache=new WeakMap<PatientRecord[],QualityIssue[]>();
 function qualityAccumulator(){
  const findings=new Map<string,QualityIssue>();const seen=new Set<string>();
  const add=(id:string,severity:QualityIssue['severity'],message:string,r:PatientRecord,i:number)=>{const finding=findings.get(id)||{id,severity,message,source:'/upload',count:0,examples:[]};finding.count++;if(finding.examples.length<5)finding.examples.push(`${r.sourceFile||'Data'}: baris ${r.sourceRow||i+1}`);findings.set(id,finding);};
  const validDate=(v:string)=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
- return {add(r:PatientRecord,i:number){const sep=r.sepToken||r.sep?.trim();if(sep&&seen.has(sep))add('duplicate','error','SEP duplikat dapat menggandakan biaya. Periksa sumber dan pertahankan satu episode yang sah.',r,i);if(sep)seen.add(sep);
+ return {add(r:PatientRecord,i:number){const sep=claimSepKey(r);if(sep&&seen.has(sep))add('duplicate','error','SEP duplikat dapat menggandakan biaya. Periksa sumber dan pertahankan satu episode yang sah.',r,i);if(sep)seen.add(sep);
   if(!r.sep?.trim())add('sep-empty','error','SEP kosong. Lengkapi identitas episode pada sumber; masking bukan pengganti identitas unik.',r,i);
   if(r.ptd!==1&&r.ptd!==2)add('care','error','Jenis rawat bukan 1/2. Koreksi sumber sebelum memakai hasil.',r,i);
   if(!validDate(r.admission_date)||!validDate(r.discharge_date))add('date','warning','Tanggal tidak valid. Konfirmasi periode dan perbaiki tanggal sumber.',r,i);

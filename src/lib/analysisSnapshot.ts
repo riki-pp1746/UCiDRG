@@ -7,15 +7,20 @@ import {aggregateByDRG,generateSummary,formatNumber} from './calculations/patien
 import {rovMetrics,financialStatus} from './calculations/revisionMath';
 import {dec,sum} from '../v4/numbers';
 import type {QualityIssue} from './analysisQuality';
+import {calculateInaCbgCaseMix, type InaCbgCaseMix} from './calculations/inaCbgCaseMix';
 
 export interface AnalysisSnapshot {mapping?:import('./calculations/componentMapping').MappingPlan;version:string;at:string;revision:number;options:Methodology;local:HospitalCostResult;rows:PatientCostResult[];issues:QualityIssue[];period:PeriodNormalization|null;pool:number;annual:number;origin:string;inputSignature:string;}
+const claimsBySnapshot=new WeakMap<AnalysisSnapshot,PatientRecord[]>();
+const fullInaCbgBySnapshot=new WeakMap<AnalysisSnapshot,InaCbgCaseMix>();
 export function buildAnalysisSnapshot(raw:PatientRecord[],local:HospitalCostResult,options:Methodology,revision:number,period:PeriodNormalization|null,issues:QualityIssue[],origin:string,inputSignature:string):AnalysisSnapshot {
  const byId=new Map(local.patients.map(p=>[p.id,p]));
  const rows=raw.map((r,index)=>{const p=byId.get(r.internalId||r.sepToken||r.sep||`row-${index}`);const cost=p?.uc===null||!p?null:Number(p.uc);if(cost===null||r.ptd!==1&&r.ptd!==2)return null;
   if(!p)return null;const tariff=r.total_tarif||r.tarif_inacbg||0;const idrg=r.idrg?.total_tarif||0;
   return {patient:r,unitCostDihitung:cost,biayaLangsung:Object.values(r.billing).reduce((a,b)=>a+b,0),biayaTidakLangsung:0,tarifINACBG:tariff,tarifIDRG:idrg,selisihINACBG:tariff-cost,selisihIDRG:idrg-cost,selisihPersenINACBG:tariff?(tariff-cost)/tariff*100:0,selisihPersenIDRG:idrg?(idrg-cost)/idrg*100:0,crr:cost?tariff/cost*100:0,statusINACBG:financialStatus(cost,tariff,options.bep),statusIDRG:financialStatus(cost,idrg,options.bep),outlier:p.outlier} as PatientCostResult;
  }).filter((r):r is PatientCostResult=>r!==null);
- return {version:CALC_VERSION,at:new Date().toISOString(),revision,options:structuredClone(options),local,rows,issues,period,pool:sum(local.pools.map(p=>p.total)).toNumber(),annual:0,origin,inputSignature};
+ const snapshot={version:CALC_VERSION,at:new Date().toISOString(),revision,options:structuredClone(options),local,rows,issues,period,pool:sum(local.pools.map(p=>p.total)).toNumber(),annual:0,origin,inputSignature};
+ claimsBySnapshot.set(snapshot,raw);
+ return snapshot;
 }
 interface WeightStats {count:number;average:number;min:number;max:number}
 interface WeightComparison {
@@ -33,17 +38,26 @@ function weightStats(values:number[]):WeightStats|null {
   return {count:values.length,average:sum(values).div(values.length).toNumber(),min,max};
 }
 
-export interface AnalysisView {rows:PatientCostResult[];groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number;weightComparison:WeightComparison[]}
+export interface AnalysisView {rows:PatientCostResult[];groups:DRGGroupResult[];summary:CostingSummary|null;unavailable:number;weightComparison:WeightComparison[];inaCbg:InaCbgCaseMix}
 const cache=new WeakMap<AnalysisSnapshot,Map<string,AnalysisView>>();
-export function primeFullAnalysisViews(snapshot:AnalysisSnapshot,views:Record<string,Omit<AnalysisView,'rows'>>){
+export function primeFullAnalysisViews(snapshot:AnalysisSnapshot,views:Record<string,Omit<AnalysisView,'rows'>>,raw:PatientRecord[]){
+ claimsBySnapshot.set(snapshot,raw);
  const memo=new Map<string,AnalysisView>();for(const [mode,v]of Object.entries(views))memo.set(JSON.stringify([mode,'','','ALL']),{...v,rows:snapshot.rows});cache.set(snapshot,memo);
 }
 export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG',filter:{care?:string;search?:string;status?:string}={}):AnalysisView {
- if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0,weightComparison:[]};const key=JSON.stringify([mode,filter.care||'',(filter.search||'').toLowerCase(),filter.status||'ALL']);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
- const q=(filter.search||'').toLowerCase();let rows=snapshot.rows.filter(r=>(!filter.care||String(r.patient.ptd)===filter.care)&&(!q||`${r.patient.inacbg} ${r.patient.deskripsi_inacbg} ${r.patient.idrg?.drg_code} ${r.patient.idrg?.drg_description}`.toLowerCase().includes(q)));
+ if(!snapshot)return {rows:[],groups:[],summary:null,unavailable:0,weightComparison:[],inaCbg:{cohorts:[],groups:[]}};const key=JSON.stringify([mode,filter.care||'',(filter.search||'').toLowerCase(),filter.status||'ALL']);const memo=cache.get(snapshot)||new Map<string,AnalysisView>();cache.set(snapshot,memo);if(memo.has(key))return memo.get(key)!;
+ const q=(filter.search||'').toLowerCase();
+ const matchesClaim=(p:PatientRecord)=>(!filter.care||String(p.ptd)===filter.care)&&(!q||`${p.inacbg} ${p.deskripsi_inacbg} ${p.idrg?.drg_code} ${p.idrg?.drg_description}`.toLowerCase().includes(q));
+ let rows=snapshot.rows.filter(r=>matchesClaim(r.patient));
  const build=(rows:PatientCostResult[])=>{const aggregate=aggregateByDRG(rows,snapshot.options);return mode==='INACBG'?aggregate.inacbg:aggregate.idrg;};let groups=build(rows);
- if(filter.status&&filter.status!=='ALL'){const keys=new Set(groups.filter(g=>filter.status==='DATA_TIDAK_CUKUP'?g.statisticalLabel==='Data tidak cukup':(g.decisionStatus||g.status)===filter.status).map(g=>g.ptd+'|'+g.group_code));rows=rows.filter(r=>keys.has(r.patient.ptd+'|'+(mode==='INACBG'?r.patient.inacbg:r.patient.idrg?.drg_code)));groups=build(rows);}
- const full=!filter.care&&!q&&(!filter.status||filter.status==='ALL');const summary=generateSummary(rows,groups,mode,snapshot.period,snapshot.annual,0,full?snapshot.pool:undefined);
+ let statusKeys:Set<string>|undefined;
+ const statusKey=(p:PatientRecord)=>p.ptd+'|'+(mode==='INACBG'?p.inacbg:p.idrg?.drg_code);
+ if(filter.status&&filter.status!=='ALL'){const keys=new Set(groups.filter(g=>filter.status==='DATA_TIDAK_CUKUP'?g.statisticalLabel==='Data tidak cukup':(g.decisionStatus||g.status)===filter.status).map(g=>g.ptd+'|'+g.group_code));statusKeys=keys;rows=rows.filter(r=>keys.has(statusKey(r.patient)));groups=build(rows);}
+ const full=!filter.care&&!q&&!statusKeys;
+ const claims=claimsBySnapshot.get(snapshot)??snapshot.rows.map(r=>r.patient);
+ const inaCbg=(full?fullInaCbgBySnapshot.get(snapshot):undefined)??calculateInaCbgCaseMix(claims,full?undefined:p=>matchesClaim(p)&&(!statusKeys||statusKeys.has(statusKey(p))));
+ if(full)fullInaCbgBySnapshot.set(snapshot,inaCbg);
+ const summary=generateSummary(rows,groups,mode,snapshot.period,snapshot.annual,0,full?snapshot.pool:undefined,inaCbg);
  const localById=new Map(snapshot.local.patients.map(p=>[p.id,p]));
  const weights={1:{cases:0,local:[] as number[],source:[] as number[],sourceBaseCount:0},2:{cases:0,local:[] as number[],source:[] as number[],sourceBaseCount:0}};
  const weighted:string[]=[];
@@ -63,14 +77,15 @@ export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG'
   const {cases,local,source,sourceBaseCount}=weights[care];
   return {care,cases,local:weightStats(local),source:weightStats(source),sourceBaseCount};
  });
- summary.cmi=weighted.length?sum(weighted).div(weighted.length).toNumber():0;summary.cmiAvailable=weighted.length>0;summary.crrAvailable=summary.totalBiayaRS>0;summary.populationLabel=full?'Pool JKN penuh; tarif seluruh kasus UC valid':'Kasus UC valid pada filter; biaya teralokasi';
+ if(mode==='IDRG'){summary.cmi=weighted.length?sum(weighted).div(weighted.length).toNumber():0;summary.cmiAvailable=weighted.length>0;}
+ summary.crrAvailable=summary.totalBiayaRS>0;summary.populationLabel=full?'Pool JKN penuh; tarif seluruh kasus UC valid':'Kasus UC valid pada filter; biaya teralokasi';
  summary.rov=rovMetrics(rows.map((r,i)=>({id:r.patient.internalId||r.patient.sepToken||String(i),group:mode==='INACBG'?r.patient.inacbg:r.patient.idrg?.drg_code||'',care:String(r.patient.ptd),uc:r.unitCostDihitung})));summary.riv=summary.rov.raw??0;summary.jumlahDRGUntung=groups.filter(g=>g.decisionStatus==='UNTUNG').length;summary.jumlahDRGImpas=groups.filter(g=>g.decisionStatus==='IMPAS').length;summary.jumlahDRGRugi=groups.filter(g=>g.decisionStatus==='RUGI').length;
  if(full){summary.totalBiayaRS=snapshot.pool;summary.totalSelisih=summary.totalTarif-snapshot.pool;summary.crr=snapshot.pool>0?summary.totalTarif/snapshot.pool*100:0;summary.crrAvailable=snapshot.pool>0;}
  summary.financialStatus=summary.crrAvailable?financialStatus(summary.totalBiayaRS,summary.totalTarif,snapshot.options.bep):'TIDAK_TERSEDIA';
  summary.persenRugi=groups.length?summary.jumlahDRGRugi/groups.length*100:0;summary.persenUntung=groups.length?summary.jumlahDRGUntung/groups.length*100:0;
  summary.top10Rugi=groups.filter(g=>g.decisionEligible&&g.decisionStatus==='RUGI'&&g.ci&&g.ci.high<0).sort((a,b)=>(a.totalTarif-a.totalBiayaRS)-(b.totalTarif-b.totalBiayaRS)).slice(0,10);
  summary.top10Untung=groups.filter(g=>g.decisionEligible&&g.decisionStatus==='UNTUNG'&&g.ci&&g.ci.low>0).sort((a,b)=>(b.totalTarif-b.totalBiayaRS)-(a.totalTarif-a.totalBiayaRS)).slice(0,10);
- const view={rows,groups,summary,unavailable:snapshot.local.patients.length-snapshot.rows.length,weightComparison};memo.set(key,view);return view;
+ const view={rows,groups,summary,unavailable:snapshot.local.patients.length-snapshot.rows.length,weightComparison,inaCbg};memo.set(key,view);return view;
 }
 export function statusLabel(g:DRGGroupResult){return g.decisionStatus==='DATA_TIDAK_CUKUP'?'Data tidak cukup':g.decisionStatus==='TIDAK_TERSEDIA'?'Tidak tersedia':({UNTUNG:'Untung',IMPAS:'Impas',RUGI:'Rugi'})[g.status];}
 export const safeRatio=(a:number,b:number)=>b>0?dec(a).div(b).toNumber():null;
