@@ -175,7 +175,7 @@ export interface AllocationTrace {
 // HOSPITAL COST CONFIG (Konfigurasi Lengkap)
 // ============================================================
 export interface HospitalCostConfig {
-  workbookSource?:{format:string;lo:{label:string;value:number}[];demoMapping?:Record<string,Record<string,number>>;demoIntensiveBasis?:'billing';demoJknProportion?:number};
+  workbookSource?:{format:string;lo:{label:string;value:number;kind?:'costing-check'}[];demoMapping?:Record<string,Record<string,number>>;demoIntensiveBasis?:'billing';demoJknProportion?:number};
   sourceOrigin?:'contoh'|'simulasi'|'diunggah'|'diketik'|'dipulihkan';
   sourceFilename?:string;
   sourceAt?:string;

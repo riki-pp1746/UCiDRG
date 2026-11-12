@@ -19,6 +19,8 @@ import WorkflowAllocation from '../components/workflow/WorkflowAllocation';
 import WorkflowResults from '../components/workflow/WorkflowResults';
 import WorkflowTable from '../components/workflow/WorkflowTable';
 import WorkflowOverview from '../components/workflow/WorkflowOverview';
+import WorkflowOperatingStatement from '../components/workflow/WorkflowOperatingStatement';
+import LocalizedNumberInput from '../components/ui/LocalizedNumberInput';
 import { APP_METHOD } from '../lib/appBrand';
 
 type Workflow = ReturnType<typeof useAnalysisWorkflow>;
@@ -104,16 +106,14 @@ function FinancialContext({section,workflow}:{section:string;workflow:Workflow})
   const config=workflow.config;
   if(section==='profil-rs'){
     const fields=[['jumlahSDMDokter','Dokter'],['jumlahSDMNakes','Tenaga kesehatan'],['jumlahSDMNonNakes','Tenaga non kesehatan']] as const;
+    const revenue=config.dataDasar.pendapatanJKN+config.dataDasar.pendapatanNonJKN;
+    const share=(amount:number)=>revenue>0?formatNumber(amount/revenue*100,2)+'%':'Belum tersedia';
     return <div className="space-y-4">
-      <section className="uc-panel space-y-3"><h2 className="font-semibold">SDM per profesi</h2><div className="grid gap-3 sm:grid-cols-3">{fields.map(([key,label])=><label className="uc-label" key={key}>{label}<input className="uc-input" type="number" min="0" value={config.dataDasar[key]} onChange={event=>useHospitalCostStore.getState().updateDataDasar({[key]:Math.max(0,Number(event.target.value)||0)})}/></label>)}</div></section>
-      <section className="uc-panel"><h2 className="font-semibold">Ringkasan data RS</h2>{workflow.annual>0&&config.sourceOrigin!=='contoh'?<dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,1)+'%'],['ALOS',formatNumber(config.dataDasar.alos,1)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Pendapatan JKN',formatRupiah(config.dataDasar.pendapatanJKN)],['Pendapatan Non-JKN',formatRupiah(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl>:<p className="mt-3 text-sm text-slate-600">Impor data rumah sakit untuk menampilkan indikator operasional dan ringkasan biaya.</p>}</section>
+      <section className="uc-panel space-y-3"><h2 className="font-semibold">SDM per profesi</h2><div className="grid gap-3 sm:grid-cols-3">{fields.map(([key,label])=><label className="uc-label" key={key}>{label}<LocalizedNumberInput ariaLabel={label} className="uc-input text-right" decimals={0} value={config.dataDasar[key]} onChange={value=>useHospitalCostStore.getState().updateDataDasar({[key]:value})}/></label>)}</div></section>
+      <section className="uc-panel"><h2 className="font-semibold">Ringkasan data RS</h2><p className="mt-1 text-sm text-slate-600">Porsi pendapatan dihitung dari pendapatan fungsional JKN dan Non-JKN.</p>{workflow.annual>0&&config.sourceOrigin!=='contoh'?<dl className="mt-3 grid gap-3 sm:grid-cols-3">{[['BOR',formatNumber(config.dataDasar.bor,2)+'%'],['ALOS',formatNumber(config.dataDasar.alos,2)+' hari'],['Tempat tidur',formatNumber(config.dataDasar.jumlahTempaTidur)],['Total biaya',formatRupiah(workflow.annual)],['Porsi pendapatan JKN',share(config.dataDasar.pendapatanJKN)],['Porsi pendapatan Non-JKN',share(config.dataDasar.pendapatanNonJKN)]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-xs text-slate-600">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl>:<p className="mt-3 text-sm text-slate-600">Impor data rumah sakit untuk menampilkan indikator operasional dan ringkasan biaya.</p>}</section>
     </div>;
   }
-  if(section==='laporan-operasional')return <section className="uc-panel space-y-3">
-    <h2 className="font-semibold">Data dari sheet LO Lapkeu</h2>
-    {config.workbookSource?.lo.length ? <p className="text-sm text-slate-600">Nilai di bawah berasal dari kolom Realisasi (Rp) pada Excel. Rp0 berarti sel sumber berisi nol. Baris selisih Rp0 menunjukkan bahwa nilai yang dibandingkan cocok.</p> : null}
-    {config.workbookSource?.lo.length?<WorkflowTable label="Angka laporan operasional" columns={['Uraian','Nilai (Rp)']} numeric={[1]} rows={config.workbookSource.lo.map((row,index)=>({key:String(index),cells:[row.label,formatNumber(row.value)]}))}/>:<p className="text-sm text-slate-600">Impor workbook yang memuat sheet Data LO Lapkeu untuk melihat angka sumber di sini.</p>}
-  </section>;
+  if(section==='laporan-operasional')return <WorkflowOperatingStatement config={config}/>;
   if(section!=='operasional')return null;
   return <OperationalDetails config={config}/>;
 }
@@ -124,8 +124,8 @@ function OperationalDetails({config}:{config:Workflow['config']}) {
   const [drafts,setDrafts]=useState<Record<string,string>>({});
   const rooms=config.finalCenters.filter(row=>row.kategori==='rawat_inap'||row.kategori==='icu');
   const daysInYear=(Date.UTC(config.tahunData+1,0)-Date.UTC(config.tahunData,0))/86400000;
-  const alos=(days:number,patients:number)=>patients>0?formatNumber(days/patients,1):'—';
-  const bor=(days:number,beds:number)=>beds>0&&daysInYear>0?formatNumber(days/(beds*daysInYear)*100,1):'—';
+  const alos=(days:number,patients:number)=>patients>0?formatNumber(days/patients,2):'—';
+  const bor=(days:number,beds:number)=>beds>0&&daysInYear>0?formatNumber(days/(beds*daysInYear)*100,2):'—';
   const sum=(values:number[])=>values.reduce((total,value)=>total+value,0);
   const beds=sum(rooms.map(row=>row.jumlahTempat));
   const days=sum(rooms.map(row=>row.jumlahHariRawat));

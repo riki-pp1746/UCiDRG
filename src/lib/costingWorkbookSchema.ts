@@ -36,7 +36,20 @@ export function workbookSourceIssues(book:XLSX.WorkBook){
  workbookRows(book,'Data Operasional').forEach((r,row)=>{if(row===0||!r[0]||/^total|catatan|panduan/i.test(String(r[0])))return;for(const col of [1,2,3,4])inspect('Data Operasional',row,col,true);});
  return issues;
 }
-export function workbookLO(book:XLSX.WorkBook){return workbookRows(book,'Data LO Lapkeu').filter(r=>r[0]&&typeof r[1]==='number').map(r=>({label:String(r[0]),value:Number(r[1])}));}
+export function workbookLO(book:XLSX.WorkBook){
+ const result:{label:string;value:number;kind?:'costing-check'}[]=[];
+ let reconciliation=false;
+ for(const row of workbookRows(book,'Data LO Lapkeu')){
+  const label=String(row[0]??'');
+  if(/^V\.\s*REKONSILIASI/i.test(label))reconciliation=true;
+  else if(/^[IVX]+\.\s/.test(label))reconciliation=false;
+  if(!row[0]||typeof row[1]!=='number')continue;
+  result.push({label,value:Number(row[1]),...(reconciliation?{kind:'costing-check' as const}:{})});
+ }
+ const legacyStart=result.findIndex((row,index)=>row.label.trim().toLowerCase()==='biaya gaji'&&result[index+1]?.label.trim().toLowerCase()==='jasa medis dokter');
+ if(legacyStart>=0)for(const row of result.slice(legacyStart))row.kind='costing-check';
+ return result;
+}
 export function operatingExpenseTotal(rows?: readonly {label:string;value:number}[]) {
  const matches = (label: string) => rows?.find(row => row.label.trim().toUpperCase() === label)?.value;
  return matches('JUMLAH BEBAN OPERASIONAL') ?? matches('TOTAL BEBAN');

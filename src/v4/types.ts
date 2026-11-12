@@ -47,7 +47,7 @@ export interface Settings {
 }
 export interface Correction { id: string; method: Method; care: Care; key: Key; value: Money; before: Money; reason: string; actor: string; at: string; }
 export interface Input {
-  workbookSource?:{format:string;lo:{label:string;value:number}[]};
+  workbookSource?:{format:string;lo:{label:string;value:number;kind?:'costing-check'}[]};
   schema: 4; hospital: string; centers: Center[]; claims: Claim[]; settings: Settings;
   references: Reference[]; mappingVersion: number; corrections: Correction[]; importIssues?: Issue[];
 }

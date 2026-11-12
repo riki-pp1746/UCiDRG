@@ -2,6 +2,7 @@ import {useMethodologyStore} from '../stores/methodologyStore';
 import {analysisStale, calculateAnalysisJob} from '../lib/analysisController';
 import {shareSourceData} from '../lib/sharedSourceData';
 import RupiahInput from '../components/ui/RupiahInput';
+import LocalizedNumberInput from '../components/ui/LocalizedNumberInput';
 import JKNProportionControl from '../components/ui/JKNProportionControl';
 import {displayDecimal,parseNumber} from '../v4/numbers';
 import {downloadStandardCostingTemplate} from '../lib/costingWorkbookSchema';
@@ -38,37 +39,7 @@ import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.ty
 const RpInput=RupiahInput;
 
 // ── Number input (angka non-rupiah: staf, hari rawat, dll) ──
-function NumInput({ value, onChange, placeholder = '0', invalid = false, className, ariaLabel }: {
-  value: number;
-  onChange: (v: number) => void;
-  placeholder?: string;
-  invalid?: boolean;
-  className?: string;
-  ariaLabel?: string;
-}) {
-  const [draft, setDraft] = useState({source:value,text:value>0?String(value):''});
-  const local=draft.source===value?draft.text:value>0?String(value):'';
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const next=parseFloat(e.target.value)||0;
-    setDraft({source:next,text:e.target.value});
-    onChange(next);
-  };
-
-  return (
-    <input
-      type="number"
-      aria-label={ariaLabel}
-      value={local}
-      onChange={handleChange}
-      placeholder={placeholder}
-      min={0}
-      step="any"
-      className={clsx(className || 'w-full px-2 py-1.5 border rounded-lg text-right text-sm focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white', invalid ? 'border-red-400 bg-red-50 text-red-800' : (className ? '' : 'border-gray-200'))}
-      aria-invalid={invalid}
-    />
-  );
-}
+const NumInput=LocalizedNumberInput;
 
 
 // ── Label dasar alokasi yang ramah baca ──
@@ -767,6 +738,8 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                 <div key={f.field}>
                   <label className="block text-xs font-medium text-gray-600 mb-1">{f.label}</label>
                   <NumInput
+                    ariaLabel={f.label}
+                    decimals={f.field==='bor'||f.field==='alos'?2:0}
                     value={(config.dataDasar as any)[f.field] || 0}
                     onChange={v => updateDataDasar({ [f.field]: v } as any)}
                   />
@@ -1106,7 +1079,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">ALOS (hari)</label>
-                            <NumInput ariaLabel={`ALOS ${center.nama}`} value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
+                            <NumInput ariaLabel={`ALOS ${center.nama}`} decimals={2} value={center.alos} onChange={v => updateFinal(center.id, { alos: v })} />
                           </div>
                           <div>
                             <label className="block text-xs text-gray-500 mb-1">Luas Lantai (m²)</label>
