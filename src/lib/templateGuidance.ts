@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { APP_NAME } from './appBrand';
+import { COSTING_METADATA_SHEET } from './costingWorkbookSchema';
 
 export type TemplateMode='components'|'integrated';
 export interface GuideField {name:string;unit:string;example:string;instruction:string}
@@ -100,7 +101,7 @@ export function getTemplateGuideRows(mode:TemplateMode):string[][]{
  return [['Panduan pengisian '+APP_NAME,mode==='integrated'?'Analisis Biaya Terintegrasi':'Analisis 18 Komponen'],['Contoh','Seluruh contoh adalah data sintetis. Gunakan data RS sebenarnya.'],['Sesi aplikasi','Data hanya berada di memori. Ekspor atau unduh cadangan sebelum logout, refresh atau menutup tab.'],['Urutan',mode==='integrated'?'Data Dasar RS, Costing Template, Periode, Pemicu JKN, Aset, Driver Antarunit (M1), Matriks 18, Cakupan Klaim, Pengecualian.':'Data Dasar RS, Data Operasional, Costing Template.'],...templateRules.map((v,i)=>[`Aturan ${i+1}`,v]),...getSheetGuides(mode).flatMap(s=>[[s.name,s.purpose],['Sumber',s.source],['Perhatian',s.note]]),['PEMERIKSAAN SEBELUM UNGGAH','Tandai setelah Anda memeriksa sumbernya.'],...templateChecklist.map((v,i)=>[`Cek ${i+1}`,v]),['Setelah unggah','Periksa jumlah pasien, pusat biaya, periode, dan peringatan. Biaya unit menjadi unit cost melalui alokasi; billing mentah bukan unit cost.'],['Masalah umum','Pusat biaya tidak terbaca: periksa judul A/B/C dan kolom No/Nama. TXT kosong: periksa ekspor E-Klaim. Hasil nol: periksa biaya, periode, pemetaan, dan billing penerima.']];
 }
 export function appendTemplateHelp(book:XLSX.WorkBook,mode:TemplateMode){
- if(mode==='components'){const metadata=XLSX.utils.aoa_to_sheet([['Parameter','Nilai'],['templateVersion','unitcost-costing-1'],['analysisMode',mode],['Costing column count',18]]);book.Sheets['Metadata SiBiPa']=metadata;if(!book.SheetNames.includes('Metadata SiBiPa'))book.SheetNames.push('Metadata SiBiPa');}
+ if(mode==='components'){const metadata=XLSX.utils.aoa_to_sheet([['Parameter','Nilai'],['templateVersion','unitcost-costing-1'],['analysisMode',mode],['Costing column count',18]]);book.Sheets[COSTING_METADATA_SHEET]=metadata;if(!book.SheetNames.includes(COSTING_METADATA_SHEET))book.SheetNames.push(COSTING_METADATA_SHEET);}
  const guides=getSheetGuides(mode);
  const sheets:{name:string;rows:string[][];widths:number[]}[]=[
   {name:'Panduan Pengisian',rows:getTemplateGuideRows(mode),widths:[32,100]},

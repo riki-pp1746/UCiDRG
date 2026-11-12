@@ -464,7 +464,6 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 .uc-workspace-shell .uc-primary:hover { background:#103F39; border-color:#103F39; }
 .uc-workspace-shell .uc-secondary { background:#FFFFFF; border-color:#D4DED8; }
 
-.uc-login-method { color:#C8D9CF; font-size:12px; font-weight:500; letter-spacing:.02em; margin-bottom:14px; }
 .uc-login-story { background-color:#123F3C; }
 .uc-login-brand strong { letter-spacing:-.04em; font-size:27px; }
 .uc-login-brand small { color:#C8D9CF; }
@@ -491,7 +490,7 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 .uc-jkn-rate-card dd { color:#274F3D; text-align:right; font-weight:550; font-variant-numeric:tabular-nums; }
 @media(max-width:640px) { .uc-jkn-overview { padding:20px; align-items:stretch; flex-direction:column; gap:18px; }.uc-jkn-pool { padding:16px 0 0; border-left:0; border-top:1px solid #47706A; text-align:left; }.uc-jkn-rate-card { padding:20px; }.uc-jkn-rate-value strong { font-size:30px; } }
 
-/* SiBiPa: ink green, warm paper, and a restrained brass accent. */
+/* PLC-Pro palette */
 .uc-workspace-frame,
 .uc-login {
   --sip-ink: #153b34;
@@ -676,7 +675,6 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
   font-weight: 400;
   letter-spacing: -.04em;
 }
-.uc-login .uc-login-method { color: #ead7a8; }
 .uc-login .uc-login-form-panel { background: #fffefa; }
 .uc-login .uc-login-form-panel h2 { margin-bottom: 6px; color: var(--sip-ink); }
 .uc-login .uc-login-subtitle { margin-bottom: 22px; }

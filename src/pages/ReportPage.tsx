@@ -309,7 +309,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
   };
 
   // Print / PDF
-  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass,variant==='print'?reportSelection:undefined).save('Ringkasan-SiBiPa-DRAFT.pdf');};
+  const handlePrint = () => {if(ensureAnalysisExport()&&snapshot)analysisPdf(snapshot,view,config.namaRS||'Rumah sakit',viewMode,user?.hospitalClass,variant==='print'?reportSelection:undefined).save(`Ringkasan-${APP_NAME}-DRAFT.pdf`);};
   if(variant==='export')return <section className="uc-panel space-y-4">
     <h2 className="font-semibold text-teal-950">Workbook hasil analisis</h2>
     <p className="text-sm text-slate-600">Memuat perbandingan tarif, HBR vs NBR, CW, distribusi 18 komponen, dan jejak audit. Untuk mempertahankan hasil setelah keluar atau memuat ulang, unduh berkas saat sesi masih aktif.</p>

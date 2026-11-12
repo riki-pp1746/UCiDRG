@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { AnalysisWorkflow } from '../../hooks/useAnalysisWorkflow';
 import { reportChecks } from '../../lib/reportChecks';
 import { operatingExpenseTotal } from '../../lib/costingWorkbookSchema';
+import { APP_NAME } from '../../lib/appBrand';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
 import ReportDataChecks from '../reports/ReportDataChecks';
 import WorkflowTable from './WorkflowTable';
@@ -21,7 +22,7 @@ export default function WorkflowChecks({ workflow }: { workflow: AnalysisWorkflo
       ['Tingkat','Temuan','Jumlah','Bagian terkait'],
       ...checks.map(check=>[check.severity==='error'?'Memblokir':check.severity==='warning'?'Catatan':'Informasi',check.message,check.count,check.source]),
     ]),'Pemeriksaan data');
-    XLSX.writeFile(book,'Pemeriksaan-Data-SiBiPa.xlsx');
+    XLSX.writeFile(book,`Pemeriksaan-Data-${APP_NAME}.xlsx`);
   }
   return <div className="space-y-4">
     <div className="flex flex-wrap items-center justify-between gap-2">

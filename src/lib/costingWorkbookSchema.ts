@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
+import { APP_NAME } from './appBrand';
 
+export const COSTING_METADATA_SHEET = `Metadata ${APP_NAME}`;
 export const STANDARD_COSTING_TEMPLATE_URL='/Template_Costing_Standard.xlsx';
 export const STANDARD_COSTING_TEMPLATE_FILENAME='Template_Data_Costing_RS_Workshop_DO_Validasi.xlsx';
 export function downloadStandardCostingTemplate(){

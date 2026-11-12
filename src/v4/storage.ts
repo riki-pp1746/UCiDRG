@@ -1,6 +1,7 @@
 import type { Workspace, Snapshot, Profile, Audit } from './types';
 import { initialInput, newCenter, emptyBill } from './types';
 import { z } from 'zod';
+import { APP_NAME } from '../lib/appBrand';
 const decimalString=z.string().refine(v=>v===''||/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(v),'Nilai desimal tidak valid');
 const moneyFields=z.record(decimalString);
 const inputSchema=z.object({schema:z.literal(4),hospital:z.string(),centers:z.array(z.object({id:z.string().min(1),name:z.string(),group:z.enum(['overhead','intermediate','final']),care:z.enum(['inap','jalan','campuran']),costs:moneyFields,mapping:moneyFields,recipients:moneyFields,excluded:decimalString,building:decimalString,assets:z.array(z.object({id:z.string(),name:z.string(),value:decimalString,years:decimalString})),depreciationIncluded:z.boolean(),driverUnit:z.string(),jknVolume:decimalString,totalVolume:decimalString,inpatientVolume:decimalString,outpatientVolume:decimalString,allocationUnit:z.string(),coveredVolume:decimalString,coverageTotal:decimalString})),claims:z.array(z.object({id:z.string().min(1),sep:z.string(),care:z.enum(['inap','jalan']),code:z.string(),inacbg:z.string(),description:z.string(),mdc:z.string(),admission:z.string(),discharge:z.string(),bill:moneyFields,tariffINA:decimalString,tariffIDRG:decimalString,pending:z.boolean(),disputed:z.boolean(),file:z.string(),row:z.number().int().positive()})),settings:z.object({methods:z.enum(['M1','M2','keduanya']),costType:z.enum(['tahunan','periode']),priceActive:z.boolean(),sampleSize:z.number().int().positive(),inflation:moneyFields}).passthrough(),references:z.array(z.object({id:z.string(),kind:z.enum(['weight','base','adjustment','inflation']),adjustmentUnit:z.enum(['factor','percent']).optional(),care:z.enum(['inap','jalan','semua']),value:decimalString,from:z.string(),until:z.string(),version:z.string(),source:z.string(),verified:z.boolean(),code:z.string()})),mappingVersion:z.number().int(),corrections:z.array(z.object({id:z.string(),actor:z.string(),method:z.enum(['M1','M2']),care:z.enum(['inap','jalan']),key:z.string(),value:decimalString,before:decimalString,reason:z.string(),at:z.string()}))}).passthrough();
@@ -26,7 +27,7 @@ export async function saveSnapshot(snapshot:Snapshot){
 /** Remove the old persisted database; current analysis never opens it. */
 export async function purgeLegacyDatabase(){
   if(typeof indexedDB==='undefined')return;
-  await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(DB);request.onsuccess=()=>resolve();request.onerror=()=>reject(new Error('Data lama belum dapat dibersihkan.'));request.onblocked=()=>reject(new Error('Tutup tab SiBiPa lain, lalu muat ulang untuk membersihkan penyimpanan lama.'));});
+  await new Promise<void>((resolve,reject)=>{const request=indexedDB.deleteDatabase(DB);request.onsuccess=()=>resolve();request.onerror=()=>reject(new Error('Data lama belum dapat dibersihkan.'));request.onblocked=()=>reject(new Error(`Tutup tab ${APP_NAME} lain, lalu muat ulang untuk membersihkan penyimpanan lama.`));});
 }
 export const hash=async(value:unknown)=>{
   const bytes=new TextEncoder().encode(JSON.stringify(value));

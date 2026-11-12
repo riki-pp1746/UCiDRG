@@ -1,5 +1,6 @@
 import {useState,useMemo} from 'react';
 import {Link} from 'react-router-dom';
+import {APP_NAME} from '../../lib/appBrand';
 import {useMethodologyStore,defaultMethodology,CALC_VERSION} from '../../stores/methodologyStore';
 import type {Methodology} from '../../stores/methodologyStore';
 import {useCostingStore} from '../../stores/costingStore';
@@ -135,7 +136,7 @@ export function AnalysisBackupPanel(){
  async function download(){
   const text=await createAnalysisBackup(password);
   const url=URL.createObjectURL(new Blob([text],{type:'application/json'}));
-  const link=document.createElement('a');link.href=url;link.download='SiBiPa-Cadangan-Terenkripsi.json';link.click();
+  const link=document.createElement('a');link.href=url;link.download=`${APP_NAME}-Cadangan-Terenkripsi.json`;link.click();
   setTimeout(()=>URL.revokeObjectURL(url),1000);
   setPassword('');
  }

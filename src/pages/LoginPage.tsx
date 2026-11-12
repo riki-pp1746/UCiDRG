@@ -1,7 +1,7 @@
 import BrandLogo from '../components/ui/BrandLogo';
 import { useState, useEffect, type FormEvent } from 'react';
 import { authConfigured, useAuthStore } from '../stores/authStore';
-import { APP_FULL_NAME, APP_METHOD, APP_NAME } from '../lib/appBrand';
+import { APP_METHOD, APP_NAME } from '../lib/appBrand';
 import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 import LoginCaptcha from '../components/auth/LoginCaptcha';
 import LoginDataAgreement from '../components/auth/LoginDataAgreement';
@@ -109,9 +109,8 @@ export default function LoginPage() {
       <circle cx="400" cy="156" r="4" fill="currentColor"/>
      </g>
     </svg>
-    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_FULL_NAME}</small></div></div>
+    <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_METHOD}</small></div></div>
     <div className="uc-login-story-content">
-     <p className="uc-login-method">{APP_METHOD}</p>
      <h1 id="login-story-title">Hitung biaya tiap pasien</h1>
      <p>Hitung biaya pasien JKN dari alokasi biaya rumah sakit. Bandingkan biaya tiap kunjungan atau rawat inap dengan tarif klaim iDRG.</p>
     </div>
@@ -119,7 +118,7 @@ export default function LoginPage() {
    <section className="uc-login-form-panel" aria-labelledby="login-title">
     <div className="uc-login-form-wrap">
      <h2 id="login-title">{registering ? 'Daftar akun' : 'Masuk'}</h2>
-     <p className="uc-login-subtitle">{registering ? 'Akun bisa dipakai setelah disetujui admin.' : 'Gunakan akun SiBiPa Anda untuk membuka ruang analisis.'}</p>
+     <p className="uc-login-subtitle">{registering ? 'Akun bisa dipakai setelah disetujui admin.' : `Gunakan akun ${APP_NAME} Anda untuk membuka ruang analisis.`}</p>
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}

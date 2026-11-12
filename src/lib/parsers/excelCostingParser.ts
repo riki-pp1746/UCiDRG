@@ -16,7 +16,7 @@
 
 import * as XLSX from 'xlsx';
 import { parseNumber } from '../../v4/numbers';
-import {costingWorkbookFormat,workbookSourceIssues,workbookLO,costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
+import {COSTING_METADATA_SHEET,costingWorkbookFormat,workbookSourceIssues,workbookLO,costingSheetName,numericCellValue,isSimulationWorkbook,costingReconciliationIssues} from '../costingWorkbookSchema';
 import {ALL_KOMPONEN_KEYS} from '../../types/tarifPasien.types';
 import { OverheadCenter, IntermediateCenter, FinalCenter, HospitalCostConfig, DEFAULT_DATA_DASAR, DataLayananKelas } from '../../types/hospitalCost.types';
 
@@ -85,7 +85,8 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        if(workbook.Sheets['Metadata SiBiPa']||workbook.Sheets['Metadata UnitCOSt']){const metadata=XLSX.utils.sheet_to_json(workbook.Sheets['Metadata SiBiPa']||workbook.Sheets['Metadata UnitCOSt'],{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
+        const metadataSheet=workbook.Sheets[COSTING_METADATA_SHEET]??workbook.Sheets['Metadata SiBiPa']??workbook.Sheets['Metadata UnitCOSt'];
+        if(metadataSheet){const metadata=XLSX.utils.sheet_to_json(metadataSheet,{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
 
         // Data dasar disimpan pada sheet tersendiri agar template tetap mudah dibaca.
         const dataDasarSheetName = workbook.SheetNames.find(s => /data\s*dasar/i.test(s));
