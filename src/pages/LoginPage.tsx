@@ -111,8 +111,8 @@ export default function LoginPage() {
     </svg>
     <div className="uc-login-brand"><BrandLogo className="size-11"/><div><strong>{APP_NAME}</strong><small>{APP_METHOD}</small></div></div>
     <div className="uc-login-story-content">
-     <h1 id="login-story-title">Hitung biaya tiap pasien</h1>
-     <p>Hitung biaya pasien JKN dari alokasi biaya rumah sakit. Bandingkan biaya tiap kunjungan atau rawat inap dengan tarif klaim iDRG.</p>
+     <h1 id="login-story-title">Analisis biaya layanan JKN</h1>
+     <p>Hitung biaya per episode rawat jalan dan rawat inap, lalu bandingkan dengan tarif iDRG.</p>
     </div>
    </section>
    <section className="uc-login-form-panel" aria-labelledby="login-title">
