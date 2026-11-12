@@ -18,6 +18,24 @@ it.each([undefined,defaultMethodology(),{...defaultMethodology(),compatibility:t
  }
 });
 it('uses LOS instead of tiny room billing and excludes outpatient recipients',()=>{const r=allocateComponents([row(2,{room_amt:1}),row(6,{room_amt:100}),{...row(10,{room_amt:200}),inpatient:false}],{room_amt:800});expect(r.values.map(v=>v.room_amt)).toEqual(['200','600','0']);expect(r.traces[0]).toMatchObject({unit:'hari',denominator:8,outlier:false});});
+it('includes outpatient registration in the default accommodation allocation',()=>{
+ const patients=[row(2,{room_amt:30}),row(6,{room_amt:10}),{...row(1,{room_amt:10}),inpatient:false},{...row(99,{room_amt:30}),inpatient:false},{...row(2,{consul_amt:10}),inpatient:false}];
+ const options=defaultMethodology();
+ const r=allocateComponents(patients,{room_amt:800},true,options);
+ expect(r.values.map(v=>v.room_amt)).toEqual(['100','300','100','300','0']);
+ expect(r.traces[0]).toMatchObject({rate:50,unallocated:'0',basis:'LOS inap + tagihan akomodasi rawat jalan'});
+ const outpatient=allocateComponents(patients.slice(2),{room_amt:800},false,options);
+ expect(outpatient.values.map(v=>v.room_amt)).toEqual(['200','600','0']);
+ expect(outpatient.traces[0]).toMatchObject({unit:'rupiah',unallocated:'0',warning:''});
+ const missing=allocateComponents([row(2,{consul_amt:20}),patients[2]],{room_amt:800},false,options);
+ expect(missing.values.map(v=>v.room_amt)).toEqual(['800','0']);
+ expect(missing.traces[0].warning).toContain('tagihan kamar inap kosong');
+ const disabled=allocateComponents(patients,{room_amt:800},false,{...options,outpatientRoomBilling:false});
+ expect(disabled.values.map(v=>v.room_amt)).toEqual(['200','600','0','0','0']);
+ const reserved=allocateComponents(patients,{room_amt:800},false,{...options,episodeReserves:{room_amt:200},confirmedEpisodes:['3']});
+ expect(reserved.values.map(v=>v.room_amt)).toEqual(['120','360','120','200','0']);
+ expect(reserved.traces[0].unallocated).toBe('0');
+});
 it('uses complete ICU days, never equates general LOS with ICU days',()=>{const patients=[row(10,{intensive_amt:1},1),row(10,{intensive_amt:9},3),row(10,{room_amt:1})];const r=allocateComponents(patients,{intensive_amt:8000});expect(r.values.map(v=>v.intensive_amt)).toEqual(['2000','6000','0']);expect(r.traces[0]).toMatchObject({outlier:true,unit:'hari ICU'});delete patients[1].icuDays;const fallback=allocateComponents(patients,{intensive_amt:8000});expect(fallback.values.map(v=>v.intensive_amt)).toEqual(['4000','4000','0']);expect(fallback.traces[0].warning).toContain('Hari ICU tidak lengkap');});
 it('outlier ratio warns without replacing billing weights or leaking to nonrecipients',()=>{const r=allocateComponents([row(1,{procedure_amt:1}),row(1,{procedure_amt:9}),row(1,{room_amt:20})],{procedure_amt:10000});expect(r.values.map(v=>v.procedure_amt)).toEqual(['1000','9000','0']);expect(r.traces[0]).toMatchObject({outlier:true,unit:'rupiah',denominator:10});expect(r.traces[0].warning).toContain('Bobot alokasi tetap');});
 it('missing denominator stays unallocated and negative billing is ineligible',()=>{const r=allocateComponents([row(1,{procedure_amt:-1}),row(1,{procedure_amt:0})],{procedure_amt:100});expect(r.traces[0].unallocated).toBe('100');expect(sum(r.values.map(v=>v.procedure_amt)).toString()).toBe('0');});

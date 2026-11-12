@@ -39,7 +39,8 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
     if(tab==='basis'){
       const proportion=Number(data.get('jkn'));
       if(!Number.isFinite(proportion)||proportion<0||proportion>100){setSaveError(true);setMessage('Isi porsi biaya JKN antara 0 dan 100%.');return;}
-      update({allocationMethod:data.get('method')==='step-down'?'step-down':'direct'});
+      update({allocationMethod:data.get('method')==='step-down'?'step-down':'direct',
+        outpatientRoomBilling:settings.compatibility?settings.outpatientRoomBilling:data.has('outpatient-room')});
       useCostingStore.setState({jknProportion:proportion,mergeCarePool:data.has('merge')});
     }else if(center){
       const ids=tab==='matrix'?ALL_KOMPONEN_KEYS:recipients.map(item=>item.id);
@@ -76,8 +77,15 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
             <label className="uc-label">Metode alokasi<select name="method" className="uc-input" defaultValue={draft?.method??settings.allocationMethod}><option value="direct">Pemetaan langsung ke komponen</option><option value="step-down">Bertahap antar pusat biaya</option></select></label>
             <label className="uc-label">Porsi biaya JKN (%)<input name="jkn" type="number" min={0} max={100} step="any" required className="uc-input" defaultValue={draft?.jkn??jkn}/></label>
           </div>
+          <label className="uc-report-choice">
+            <input name="outpatient-room" type="checkbox" disabled={settings.compatibility} defaultChecked={draft?Boolean(draft['outpatient-room']):Boolean(settings.outpatientRoomBilling)}/>
+            Estimasi biaya pendaftaran rawat jalan dari tagihan Kamar/Akomodasi
+          </label>
+          <p className="text-sm text-slate-600">{settings.compatibility
+            ?'Nonaktifkan mode kompatibilitas di Pengaturan untuk memakai estimasi ini.'
+            :'Porsi biaya rawat jalan diestimasi dari porsi tagihannya dan dibagi ke episode yang memiliki tagihan. Porsi inap dibagi menurut hari rawat. Nonaktifkan jika pendaftaran dicatat pada komponen lain.'}</p>
           <label className="uc-report-choice"><input name="merge" type="checkbox" defaultChecked={draft?Boolean(draft.merge):merge}/>Gabungkan kamar, ICU, dan keperawatan berdasarkan hari rawat inap</label>
-          <p className="text-sm text-slate-600">Gunakan penggabungan bila ketiga komponen berbagi satu sumber biaya.</p>
+          <p className="text-sm text-slate-600">Gunakan penggabungan bila ketiga komponen berbagi satu sumber biaya. Penggabungan hanya berlaku pada bagian inap.</p>
           <details className="uc-allocation-drivers"><summary>Dasar alokasi {formatNumber(centers.length)} pusat biaya</summary><div className="mt-3"><WorkflowTable label="Dasar per pusat biaya" columns={['Pusat biaya','Dasar alokasi']} rows={centers.map(item=>({key:item.id,cells:[item.nama,driverName(item.dasarAlokasi)]}))}/></div></details>
           <Link className="text-sm font-semibold text-teal-800 underline" to="/alur/pusat-biaya">Ubah dasar per pusat biaya di Tahap 1</Link>
         </>:<>

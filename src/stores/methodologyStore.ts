@@ -3,6 +3,7 @@ import {create} from 'zustand';
 export const CALC_VERSION='18-komponen-5';
 export interface Methodology {
   intensiveBasis?:'days'|'billing';
+  outpatientRoomBilling?:boolean;
   compatibility:boolean; trimming:'log-iqr'|'two-sd'; trimMinimum:number; trimMultiplier:number;
   stabilize:boolean; shrinkage:number; weightMinimum:number; decisionMinimum:number; bep:number;
   ratioMin:number; ratioMax:number; dateThreshold:number; hbrPolicy:'full'|'exclude'; adjustment:number;
@@ -18,7 +19,7 @@ export interface Methodology {
   excludedDischargeStatuses:string[];longStayDays:number;
   excludedComponents:string[]; referenceVerified:boolean; referenceSource:string; referenceFrom:string; referenceUntil:string;
 }
-export const defaultMethodology=():Methodology=>({intensiveBasis:'days',componentVolumes:{},depreciationValues:{},excludedDischargeStatuses:[],longStayDays:30,allocationMethod:'direct',recipients:{},compatibility:false,trimming:'log-iqr',trimMinimum:10,trimMultiplier:1.5,stabilize:false,shrinkage:10,weightMinimum:5,decisionMinimum:10,bep:0.05,ratioMin:0.5,ratioMax:5,dateThreshold:0.05,hbrPolicy:'full',adjustment:1,inflation:null,completenessActive:false,estimatedClaims:null,componentShares:{},variableShares:{},volumeRatios:{},mapping:{},episodeReserves:{},confirmedEpisodes:[],reconciliationTolerance:0.001,reminderMinutes:15,depreciation:'book',parentGroups:{},excludedComponents:[],referenceVerified:false,referenceSource:'Tarif dari kolom total_tarif / tarif_inacbg TXT; kesesuaian pembayaran perlu diverifikasi',referenceFrom:'',referenceUntil:''});
+export const defaultMethodology=():Methodology=>({intensiveBasis:'days',outpatientRoomBilling:true,componentVolumes:{},depreciationValues:{},excludedDischargeStatuses:[],longStayDays:30,allocationMethod:'direct',recipients:{},compatibility:false,trimming:'log-iqr',trimMinimum:10,trimMultiplier:1.5,stabilize:false,shrinkage:10,weightMinimum:5,decisionMinimum:10,bep:0.05,ratioMin:0.5,ratioMax:5,dateThreshold:0.05,hbrPolicy:'full',adjustment:1,inflation:null,completenessActive:false,estimatedClaims:null,componentShares:{},variableShares:{},volumeRatios:{},mapping:{},episodeReserves:{},confirmedEpisodes:[],reconciliationTolerance:0.001,reminderMinutes:15,depreciation:'book',parentGroups:{},excludedComponents:[],referenceVerified:false,referenceSource:'Tarif dari kolom total_tarif / tarif_inacbg TXT; kesesuaian pembayaran perlu diverifikasi',referenceFrom:'',referenceUntil:''});
 export interface AuditEntry {at:string;actor:string;action:string;before:unknown;after:unknown}
 interface State {settings:Methodology;revision:number;role:'Penginput'|'Pemeriksa'|'Pembaca';actor:string;audit:AuditEntry[];lastBackup:number;update:(patch:Partial<Methodology>)=>void;selectRole:(role:State['role'])=>void;}
 export const useMethodologyStore=create<State>((set,get)=>({settings:defaultMethodology(),revision:0,role:'Penginput',actor:'Pengguna lokal',audit:[],lastBackup:0,

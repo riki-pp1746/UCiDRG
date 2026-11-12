@@ -1,5 +1,6 @@
 import {useEffect, useId, useRef} from 'react';
 import {ClipboardList, X} from 'lucide-react';
+import {Link} from 'react-router-dom';
 import type {PatientRecord as Claim} from '../../types/costing.types';
 import type {PatientRecord as CostedPatient} from '../../types/tarifPasien.types';
 import {formatNumber} from '../../lib/calculations/patientLevelCosting';
@@ -37,6 +38,8 @@ export default function PatientEpisodeDialog({episode,costing,components,results
   const totalBilling=components.some(row=>row.billed!=null)?sum(components.flatMap(row=>row.billed==null?[]:[row.billed])).toString():undefined;
   const rawat=episode.ptd===1?'Rawat inap':episode.ptd===2?'Rawat jalan':'Jenis rawat belum tersedia';
   const sep=episode.sep.trim()?maskSEP(episode.sep):'—';
+  const room=components.find(row=>row.id==='room_amt');
+  const roomOutsideAllocation=results&&episode.ptd===2&&(room?.billed??0)>0&&room?.allocated!=null&&dec(room.allocated).isZero();
 
   return <dialog ref={dialog} className="uc-episode-dialog" aria-labelledby={title} aria-describedby={description}
     onCancel={event=>{event.preventDefault();dismiss();}}
@@ -76,6 +79,11 @@ export default function PatientEpisodeDialog({episode,costing,components,results
         <section aria-label="Rincian 18 komponen" className="uc-episode-breakdown">
           <h3>Rincian 18 komponen</h3>
           <p>{results?'Biaya alokasi adalah bagian biaya RS yang dibebankan ke episode ini. Tagihan RS berasal dari E-Klaim.':'Nilai tagihan per komponen pada episode ini berasal dari E-Klaim.'}</p>
+          {roomOutsideAllocation&&<aside aria-label="Catatan alokasi kamar" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <strong>Tagihan kamar pada episode rawat jalan</strong>
+            <div className="mt-1">E-Klaim mencatat tagihan {currency(room?.billed)} pada Kamar/Akomodasi. Alokasi untuk episode ini Rp0. Jika tagihan itu mencakup karcis atau pendaftaran, periksa pengaturan alokasi rawat jalan.</div>
+            <Link to="/alur/dasar-alokasi" className="mt-1 inline-block font-semibold underline" onClick={dismiss}>Buka Dasar Alokasi</Link>
+          </aside>}
           <table className="uc-episode-table">
             <thead><tr><th scope="col">Komponen</th>{results&&<th scope="col">Biaya alokasi (Rp)</th>}<th scope="col">Tagihan RS (Rp)</th></tr></thead>
             <tbody>{components.map(row=><tr key={row.id}>

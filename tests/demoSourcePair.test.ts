@@ -43,7 +43,7 @@ it('calculates distinct daily costs from the imported demo and funds all 18 comp
  } finally { vi.unstubAllGlobals(); }
 });
 it('does not treat outpatient accommodation charges as missing inpatient days',()=>{
- const r=allocateComponents([{inpatient:true,los:2,billing:{room_amt:10000}},{inpatient:false,los:0,billing:{room_amt:10000}}],{room_amt:10000},false,defaultMethodology());expect(r.values.map(v=>v.room_amt)).toEqual(['10000','0']);expect(r.traces[0].warning).toBe('');
+ const r=allocateComponents([{inpatient:true,los:2,billing:{room_amt:10000}},{inpatient:false,los:0,billing:{room_amt:10000}}],{room_amt:10000},false,defaultMethodology());expect(r.values.map(v=>v.room_amt)).toEqual(['5000','5000']);expect(r.traces[0].warning).toBe('');
 });
 it('reads the ICU assumption and complete component mapping from the paired demo workbook',async()=>{
  const b=fs.readFileSync('public/Template_Costing_Demo_RS_ABC_2025_Workshop_DO.xlsx');vi.stubGlobal('FileReader',class{onload:any;readAsBinaryString(){this.onload({target:{result:b.toString('binary')}})}});
