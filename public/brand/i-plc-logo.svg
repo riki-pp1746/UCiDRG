@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 144" fill="none">
-  <title>PLC-Pro</title>
-  <desc>Patient Level Costing Rumah Sakit</desc>
+  <title>i-PLC</title>
+  <desc>Indonesian Patient Level Costing</desc>
   <g transform="translate(8 16) scale(1.75)">
     <rect x="1" y="1" width="62" height="62" rx="17" fill="#124C46" stroke="#BCAC79" stroke-opacity=".45"/>
     <circle cx="23" cy="21" r="6" fill="#F2F6EF"/>
@@ -9,7 +9,7 @@
     <path d="M15 53h35" stroke="#83ADA1" stroke-width="2.5" stroke-linecap="round"/>
   </g>
   <g font-family="Segoe UI,Arial,sans-serif">
-    <text x="146" y="75" fill="#124C46" font-size="58" font-weight="700" letter-spacing="-1.5">PLC-Pro</text>
-    <text x="149" y="105" fill="#536E65" font-size="19" font-weight="500">Patient Level Costing Rumah Sakit</text>
+    <text x="146" y="75" fill="#124C46" font-size="58" font-weight="700" letter-spacing="-1.5">i-PLC</text>
+    <text x="149" y="105" fill="#536E65" font-size="19" font-weight="500">Indonesian Patient Level Costing</text>
   </g>
 </svg>

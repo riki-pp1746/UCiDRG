@@ -490,7 +490,7 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 .uc-jkn-rate-card dd { color:#274F3D; text-align:right; font-weight:550; font-variant-numeric:tabular-nums; }
 @media(max-width:640px) { .uc-jkn-overview { padding:20px; align-items:stretch; flex-direction:column; gap:18px; }.uc-jkn-pool { padding:16px 0 0; border-left:0; border-top:1px solid #47706A; text-align:left; }.uc-jkn-rate-card { padding:20px; }.uc-jkn-rate-value strong { font-size:30px; } }
 
-/* PLC-Pro palette */
+/* Application palette */
 .uc-workspace-frame,
 .uc-login {
   --sip-ink: #153b34;

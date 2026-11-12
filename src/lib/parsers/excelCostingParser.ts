@@ -85,7 +85,7 @@ export async function parseExcelTemplate(file: File): Promise<Partial<HospitalCo
       try {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
-        const metadataSheet=workbook.Sheets[COSTING_METADATA_SHEET]??workbook.Sheets['Metadata SiBiPa']??workbook.Sheets['Metadata UnitCOSt'];
+        const metadataSheet=workbook.Sheets[COSTING_METADATA_SHEET]??workbook.Sheets['Metadata PLC-Pro']??workbook.Sheets['Metadata SiBiPa']??workbook.Sheets['Metadata UnitCOSt'];
         if(metadataSheet){const metadata=XLSX.utils.sheet_to_json(metadataSheet,{header:1}) as unknown[][];const version=metadata.find(r=>r[0]==='templateVersion')?.[1];if(version!=='unitcost-costing-1')throw new Error('Versi template belum didukung. Gunakan template yang diunduh dari aplikasi atau sesuaikan struktur sumber.');}
 
         // Data dasar disimpan pada sheet tersendiri agar template tetap mudah dibaca.

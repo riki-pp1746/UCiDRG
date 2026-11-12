@@ -1,2 +1,2 @@
-export const APP_NAME = 'PLC-Pro';
-export const APP_METHOD = 'Patient Level Costing Rumah Sakit';
+export const APP_NAME = 'i-PLC';
+export const APP_METHOD = 'Indonesian Patient Level Costing';
