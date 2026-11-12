@@ -113,7 +113,7 @@ export default function LoginPage() {
     <div className="uc-login-story-content">
      <p className="uc-login-method">{APP_METHOD}</p>
      <h1 id="login-story-title">Hitung biaya tiap pasien</h1>
-     <p>Biaya rumah sakit dialokasikan ke tiap kunjungan atau rawat inap. Bandingkan hasilnya dengan tarif klaim iDRG.</p>
+     <p>Hitung biaya pasien JKN dari alokasi biaya rumah sakit. Bandingkan biaya tiap kunjungan atau rawat inap dengan tarif klaim iDRG.</p>
     </div>
    </section>
    <section className="uc-login-form-panel" aria-labelledby="login-title">

@@ -25,16 +25,11 @@ it('preserves zero HBR, unavailable HBR and exact-care reference precedence',()=
 });
 it('exports source, validity, method and full precision and renders two accessible cards',()=>{
  const refs=[{...ref(),until:''},{...ref('jalan','500'),until:''}],sheet=baseRateComparisonRows(result,refs,'2025-06-01');expect(JSON.stringify(sheet)).toContain('Dokumen sintetis');expect(JSON.stringify(sheet)).toContain('18 Komponen');
- useBaseRateComparisonStore.setState({date:'2025-06-01'});const html=renderToStaticMarkup(createElement(BaseRateComparisonPanel,{result,references:refs,editable:false}));expect(html).toContain('Rawat inap');expect(html).toContain('Rawat jalan');expect(html.match(/<article/g)).toHaveLength(2);expect(html.match(/>HBR lokal \(pool JKN\)</g)).toHaveLength(2);expect(html).not.toContain('<figure');expect(html).not.toContain('slide 20');expect(html).not.toContain('Kelola referensi NBR');expect(html).toContain('Rancangan NBR iDRG');expect(html).toContain('8.037.060');expect(html).toContain('461.474');expect(html).toContain('Ekspor HBR vs NBR');expect(html).not.toContain('NBR belum tersedia');
+ useBaseRateComparisonStore.setState({date:'2025-06-01'});const html=renderToStaticMarkup(createElement(BaseRateComparisonPanel,{result,references:refs,editable:false}));expect(html).toContain('Rawat inap');expect(html).toContain('Rawat jalan');expect(html.match(/<article/g)).toHaveLength(2);expect(html.match(/>HBR JKN \(CW RS\)</g)).toHaveLength(2);expect(html).not.toContain('<figure');expect(html).not.toContain('slide 20');expect(html).not.toContain('Kelola referensi NBR');expect(html).toContain('Rancangan NBR iDRG');expect(html).toContain('8.037.060');expect(html).toContain('461.474');expect(html).toContain('Ekspor HBR vs NBR');expect(html).not.toContain('NBR belum tersedia');
 });
 
 it('keeps reference management in settings without duplicating result cards or an empty comparison table',()=>{
  useBaseRateComparisonStore.setState({date:'2025-06-01',references:[]});
  const html=renderToStaticMarkup(createElement(BaseRateComparisonPanel,{manageReferences:true}));
  expect(html).toContain('Simpan referensi NBR');expect(html).not.toContain('<article');expect(html).not.toContain('Tidak dapat dihitung');expect(html.match(/<table/g)).toHaveLength(1);
-});
-
-it('uses the selected all-payer HBR and never falls back to JKN HBR when it is unavailable',()=>{
- expect(compareBaseRates(result,[ref()],'2025-06-01',{inap:'900',jalan:null})[0].hbr).toBe('900');
- expect(compareBaseRates(result,[ref()],'2025-06-01',{inap:null,jalan:null})[0].hbr).toBeNull();
 });

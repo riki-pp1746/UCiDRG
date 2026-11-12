@@ -22,9 +22,9 @@ export function validateNBR(r:Reference){
  if(!r.source.trim()||!r.version.trim()||!validComparisonDate(r.from)||r.until&&(!validComparisonDate(r.until)||r.until<r.from))throw Error('Lengkapi sumber, versi, dan tanggal berlaku yang sah.');
  return r;
 }
-export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[],date:string,hbrOverride?:Partial<Record<Care,string|null>>):BaseRateComparison[]{
+export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[],date:string):BaseRateComparison[]{
  return (['inap','jalan'] as const).map(care=>{
-  const value=hbrOverride?hbrOverride[care]:result?.pools?.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
+  const value=result?.pools?.find(p=>p.care===care)?.hbr;const hbr=value!=null&&dec(value).isFinite()&&dec(value).gte(0)?value:null;
   const txt=result?.sourceWeights?.pools?.find(p=>p.care===care)?.hbr;const txtHbr=txt!=null&&dec(txt).isFinite()&&dec(txt).gte(0)?txt:null;
   const row:BaseRateComparison={care,hbr,txtHbr,nbr:null,difference:null,percent:null,ratio:null,status:'NBR belum tersedia',reference:null};
   if(!validComparisonDate(date))return {...row,status:'Pilih tanggal pembanding yang sah'};
@@ -40,6 +40,6 @@ export function compareBaseRates(result:HospitalCostResult|null,refs:Reference[]
   return {...row,nbr,reference,difference:difference.toString(),percent:difference.div(nbr).mul(100).toString(),ratio:ratio.toString(),status:difference.isZero()?'Setara':difference.gt(0)?'HBR di atas NBR':'HBR di bawah NBR'};
  });
 }
-export function baseRateComparisonRows(result:HospitalCostResult,refs:Reference[],date:string,hbrOverride?:Partial<Record<Care,string|null>>):unknown[][]{
- return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan',hbrOverride?'HBR seluruh penjamin: proporsi biaya inap/jalan; casemix diestimasi dari total kasus dan CMI JKN.':result.sourceWeights?'HBR RS memakai CW RS dari unit cost. HBR berbasis CW TXT hanya pembanding (lembar HBR_CW_TXT).':'Perbandingan memakai HBR RS dari unit cost.'],['Rawat',hbrOverride?'HBR seluruh penjamin':'HBR lokal pool JKN','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi','HBR CW TXT (pembanding)'],...compareBaseRates(result,refs,date,hbrOverride).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false,r.txtHbr??''])];
+export function baseRateComparisonRows(result:HospitalCostResult,refs:Reference[],date:string):unknown[][]{
+ return [['Tanggal pembanding',date],['Periode HBR',result.period],['Metode HBR',result.method],['Catatan',result.sourceWeights?'HBR RS memakai CW RS dari unit cost. HBR berbasis CW TXT hanya pembanding (lembar HBR_CW_TXT).':'Perbandingan memakai HBR RS dari unit cost.'],['Rawat','HBR JKN (CW RS)','NBR','Selisih HBR-NBR (Rp)','Selisih (%)','Rasio HBR/NBR','Status','Sumber NBR','Versi','Mulai','Sampai','Terverifikasi','HBR CW TXT (pembanding)'],...compareBaseRates(result,refs,date).map(r=>[r.care,r.hbr,r.nbr,r.difference,r.percent,r.ratio,r.status,r.reference?.source??'',r.reference?.version??'',r.reference?.from??'',r.reference?.until??'',r.reference?.verified??false,r.txtHbr??''])];
 }

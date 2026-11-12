@@ -463,11 +463,30 @@ details > summary { @apply rounded-lg transition-colors hover:text-teal-700; }
 .uc-workspace-shell .uc-primary { background:#164E47; border-color:#164E47; box-shadow:0 2px 5px #0E3E3512; }
 .uc-workspace-shell .uc-primary:hover { background:#103F39; border-color:#103F39; }
 .uc-workspace-shell .uc-secondary { background:#FFFFFF; border-color:#D4DED8; }
-.uc-hbr-card { padding:24px; border:1px solid #DBE6E0; border-top:3px solid #B99D66; border-radius:16px; background:linear-gradient(145deg,#FFFFFF,#F7FAF7); box-shadow:0 5px 18px #183D3405; }
-.uc-hbr-card > h3 { color:#28584D; font-size:13px; letter-spacing:.035em; }
-@media(max-width:640px) { .uc-hbr-card { padding:18px; } }
 
 .uc-login-method { color:#C8D9CF; font-size:12px; font-weight:500; letter-spacing:.02em; margin-bottom:14px; }
 .uc-login-story { background-color:#123F3C; }
 .uc-login-brand strong { letter-spacing:-.04em; font-size:27px; }
 .uc-login-brand small { color:#C8D9CF; }
+
+/* JKN base-rate workspace. */
+.uc-jkn-overview { display:flex; justify-content:space-between; align-items:center; gap:24px; padding:28px; color:#EDF5F0; background:#143F3B; border:1px solid #214E47; border-radius:18px; }
+.uc-jkn-overview h2 { font-size:26px; font-weight:650; letter-spacing:-.025em; margin:5px 0 8px; }
+.uc-jkn-overview p { max-width:540px; color:#CEDFD7; font-size:13px; line-height:1.6; }
+.uc-jkn-overview .uc-jkn-eyebrow { color:#D5C38E; font-size:11px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; }
+.uc-jkn-pool { display:flex; flex-direction:column; gap:5px; padding-left:28px; border-left:1px solid #47706A; text-align:right; flex-shrink:0; }
+.uc-jkn-pool span,.uc-jkn-pool small { color:#BFD5C9; font-size:12px; }
+.uc-jkn-pool strong { font-size:23px; font-weight:600; font-variant-numeric:tabular-nums; }
+.uc-jkn-rate-card { overflow:hidden; border:1px solid #DCE5E0; border-radius:18px; background:#FFFFFF; box-shadow:0 4px 18px #193D3406; padding:24px; }
+.uc-jkn-rate-card header { display:flex; align-items:center; justify-content:space-between; padding-bottom:18px; border-bottom:1px solid #ECF0EB; }
+.uc-jkn-rate-card h3 { color:#1C5147; font-weight:650; font-size:15px; }
+.uc-jkn-rate-card header span { padding:4px 10px; border:1px solid #E5DABB; border-radius:6px; color:#8C7444; background:#FCFAF4; font-size:10px; font-weight:650; letter-spacing:.07em; }
+.uc-jkn-rate-value { display:flex; flex-direction:column; gap:6px; padding:24px 0; }
+.uc-jkn-rate-value > span { color:#6B7F76; font-size:12px; }
+.uc-jkn-rate-value strong { color:#183F37; font-size:34px; font-weight:650; line-height:1.2; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+.uc-jkn-rate-value small { color:#7E8E85; font-size:11px; }
+.uc-jkn-rate-card dl { padding:14px 16px; background:#F6F9F6; border-radius:10px; }
+.uc-jkn-rate-card dl > div { display:flex; justify-content:space-between; gap:16px; padding:6px 0; font-size:13px; }
+.uc-jkn-rate-card dt { color:#657C70; }
+.uc-jkn-rate-card dd { color:#274F3D; text-align:right; font-weight:550; font-variant-numeric:tabular-nums; }
+@media(max-width:640px) { .uc-jkn-overview { padding:20px; align-items:stretch; flex-direction:column; gap:18px; }.uc-jkn-pool { padding:16px 0 0; border-left:0; border-top:1px solid #47706A; text-align:left; }.uc-jkn-rate-card { padding:20px; }.uc-jkn-rate-value strong { font-size:30px; } }

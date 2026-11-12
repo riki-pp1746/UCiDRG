@@ -1,5 +1,3 @@
-import { revenueHbrRows, calculateRevenueHbr } from './calculations/revenueHbr';
-import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import {jsPDF} from 'jspdf';
 import type {AnalysisSnapshot,AnalysisView} from './analysisSnapshot';
 import {methodologyRows} from './analysisExport';
@@ -19,11 +17,9 @@ export function analysisPdf(snapshot:AnalysisSnapshot,view:AnalysisView,hospital
  for(const line of [`Kasus: ${formatNumber(view.rows.length)}; biaya: ${formatRupiah(s.totalBiayaRS)}; tarif: ${formatRupiah(s.totalTarif)}`,`Tarif - biaya: ${formatRupiah(s.totalTarif-s.totalBiayaRS)}; CRR: ${summaryMetricText(s,'crr')}; status: ${financialLabel(s.financialStatus)}`,`ROV ln(UC positif): mentah ${summaryMetricText(s,'rov')}; adjusted ${s.rov?.adjusted==null?'Tidak tersedia':formatNumber(s.rov.adjusted*100,1)+'%'}; validasi silang ${s.rov?.crossValidated==null?'Tidak tersedia':formatNumber(s.rov.crossValidated*100,1)+'%'}`])text(line);
  if(includes('weights'))for(const row of view.weightComparison)text(`CMI iDRG TXT ${row.care===1?'rawat inap':'rawat jalan'}: ${row.source?formatNumber(row.source.average,2):'Tidak tersedia'}; ${row.source?.count??0} / ${row.cases} kasus memiliki CW sumber.`);
  if(includes('hbr')){
-  text('HBR seluruh penjamin (estimasi casemix dari CMI JKN)',12);
-  for(const row of revenueHbrRows(snapshot.annual,useHospitalCostStore.getState().config.dataDasar,snapshot.local.sourceWeights))text(row.join(' | '),9);
 
-  if(snapshot.local.sourceWeights){text('HBR berbasis CW TXT',12);for(const p of snapshot.local.sourceWeights.pools)text(`${p.care}: ${p.hbr===null?'Tidak tersedia':formatRupiah(Number(p.hbr))} (${p.count} dari ${p.cases} kasus dengan CW)`);}
-  text('Pool HBR aktif sebelum penyesuaian',12);for(const p of snapshot.local.pools)text(`${p.care}: pool ${formatRupiah(Number(p.hbrPool??p.total))}; dikecualikan ${formatRupiah(Number(p.policyExcluded||0))}; HBR lokal ${p.hbr===null?'Tidak tersedia':formatRupiah(Number(p.hbr))}`);
+  if(snapshot.local.sourceWeights){text('HBR JKN berbasis CW TXT',12);for(const p of snapshot.local.sourceWeights.pools)text(`${p.care}: ${p.hbr===null?'Tidak tersedia':formatRupiah(Number(p.hbr))} (${p.count} dari ${p.cases} kasus dengan CW)`);}
+  text('Pool biaya JKN dan HBR lokal',12);for(const p of snapshot.local.pools)text(`${p.care}: pool ${formatRupiah(Number(p.hbrPool??p.total))}; dikecualikan ${formatRupiah(Number(p.policyExcluded||0))}; HBR lokal ${p.hbr===null?'Tidak tersedia':formatRupiah(Number(p.hbr))}`);
  }
  if(includes('comparison')){
   text('Prioritas tinjau berdasarkan total dampak dan interval selisih',12);
@@ -31,9 +27,9 @@ export function analysisPdf(snapshot:AnalysisSnapshot,view:AnalysisView,hospital
   for(const g of s.top10Rugi.slice(0,5))text(`${g.group_code} (${g.ptd===1?'Inap':'Jalan'}), n=${g.jumlahKasus}: ${formatRupiah(g.totalTarif-g.totalBiayaRS)}.`);
  }
  if(sections?.includes('nbr')){
-  const ref=useBaseRateComparisonStore.getState();const revenue=calculateRevenueHbr(snapshot.annual,useHospitalCostStore.getState().config.dataDasar,snapshot.local.sourceWeights);const override=Object.fromEntries(revenue.rows.map(r=>[r.care,r.hbr===null?null:String(r.hbr)]));
+  const ref=useBaseRateComparisonStore.getState();
   text('HBR vs Rancangan NBR iDRG',12);
-  for(const row of compareSimulationBaseRates(compareBaseRates(snapshot.local,ref.references,ref.date,override)))text(`${row.care}: HBR ${row.hbr===null?'tidak tersedia':formatRupiah(Number(row.hbr))} / NBR ${formatRupiah(Number(row.nbr))} / selisih ${row.percent===null?'tidak tersedia':formatNumber(Number(row.percent),1)+'%'}`);
+  for(const row of compareSimulationBaseRates(compareBaseRates(snapshot.local,ref.references,ref.date)))text(`${row.care}: HBR ${row.hbr===null?'tidak tersedia':formatRupiah(Number(row.hbr))} / NBR ${formatRupiah(Number(row.nbr))} / selisih ${row.percent===null?'tidak tersedia':formatNumber(Number(row.percent),1)+'%'}`);
  }
  if(sections?.includes('groups')){
   text('Unit cost per kelompok DRG (10 kelompok dengan kasus terbanyak)',12);
