@@ -72,7 +72,7 @@ export function WorkflowHome() {
             <li>Data LO Lapkeu untuk beban dan pendapatan.</li>
             <li>Costing Template untuk biaya dan dasar alokasi per unit.</li>
           </ol>
-          <div className="flex flex-wrap gap-2"><a className="uc-primary" href={template} download>Unduh template Excel</a><a className="uc-secondary" href={example} download>Unduh contoh RS ABC</a></div>
+          <div className="flex flex-wrap gap-2"><a className="uc-primary" href={template} download>Unduh template Excel</a><a className="uc-secondary" href={example} download="Template_Costing_RS_ABC_Demo_Lengkap_2025.xlsx">Unduh contoh RS ABC</a></div>
         </div> : <div className="uc-home-tab-content">
           <div className="uc-section-heading"><h2>{tab==='guide' ? 'Panduan per tahap' : 'Tahapan analisis'}</h2>{tab==='progress'&&<span className="uc-completion">{completed} dari {stages.length} selesai</span>}</div>
           {blockers>0&&<Link to="/alur/pemeriksaan" className="inline-flex rounded-md bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">{formatNumber(blockers)} temuan memblokir · Buka pemeriksaan</Link>}

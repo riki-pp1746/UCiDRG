@@ -30,9 +30,9 @@ it('keeps the JKN demo share and removes the all-payer input block from the down
   vi.stubGlobal('FileReader', class { onload: any; readAsBinaryString() { this.onload({ target:{ result:bytes.toString('binary') } }); } });
   try {
     const config = await parseExcelTemplate({ name:'demo.xlsx' } as File);
-    expect(config.workbookSource?.demoJknProportion).toBe(85); expect(config.importIssues).toEqual([]);
-    expect(config.workbookSource?.lo).toContainEqual({ label:'Beban Persediaan', value:8657510213 });
-    expect(operatingExpenseTotal(config.workbookSource?.lo)).toBe(161494999999);
+    expect(config.workbookSource?.demoJknProportion).toBe(95); expect(config.importIssues).toEqual([]);
+    expect(config.workbookSource?.lo).toContainEqual({ label:'Beban Persediaan', value:7338337222 });
+    expect(operatingExpenseTotal(config.workbookSource?.lo)).toBe(136500000000);
     expect(config.intermediateCenters?.find(center=>center.nama==='Farmasi')?.jumlahKunjungan).toBe(320000);
     expect(config.intermediateCenters?.find(center=>center.nama==='Instalasi Gizi')?.jumlahKunjungan).toBe(47645);
     const workbook = XLSX.read(bytes, { type:'buffer' });
@@ -48,7 +48,7 @@ it('ignores retired all-payer HBR rows in older demo workbooks', async () => {
   vi.stubGlobal('FileReader', class { onload: any; readAsBinaryString() { this.onload({ target:{ result:bytes.toString('binary') } }); } });
   try {
     const config = await parseExcelTemplate({ name:'old-demo.xlsx' } as File);
-    expect(config.workbookSource?.demoJknProportion).toBe(85);
+    expect(config.workbookSource?.demoJknProportion).toBe(95);
     expect(Object.keys(config.dataDasar!)).not.toContain('hbrPendapatanInap');
     expect(config.importIssues).toEqual([]);
   } finally { vi.unstubAllGlobals(); }

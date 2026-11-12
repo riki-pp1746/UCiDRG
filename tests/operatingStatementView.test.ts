@@ -19,15 +19,15 @@ async function demo(){
 it('keeps actual salary and expenses separate from zero reconciliation differences',async()=>{
  const config=await demo();
  const view=operatingStatementView(config);
- expect(view.source.find(row=>row.label==='Biaya Gaji')?.value).toBe(88822249999);
+ expect(view.source.find(row=>row.label==='Biaya Gaji')?.value).toBe(74983665055);
  expect(view.source.some(row=>row.label==='Biaya gaji')).toBe(false);
  expect(view.source.some(row=>/^selisih|^catatan reklasifikasi/i.test(row.label))).toBe(false);
  expect(view.comparisons).toHaveLength(7);
  expect(view.comparisons.every(row=>Math.abs(row.difference)<=1)).toBe(true);
- expect(view.comparisons.find(row=>row.label==='Total biaya')?.actual).toBe(161494999999);
+ expect(view.comparisons.find(row=>row.label==='Total biaya')?.actual).toBe(136500000000);
  const html=renderToStaticMarkup(createElement(WorkflowOperatingStatement,{config}));
  expect(html).toContain('Selisih Rp0 berarti cocok');
- expect(html).toContain('88.822.249.999');
+ expect(html).toContain('74.983.665.055');
  expect(html).not.toContain('details open=""');
 });
 
