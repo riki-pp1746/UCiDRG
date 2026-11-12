@@ -4,6 +4,7 @@ const sdk = vi.hoisted(() => ({
   createClient: vi.fn(),
   rpc: vi.fn(),
   maybeSingle: vi.fn(),
+  sessionCheck:vi.fn(),
   auth: {
     signInWithPassword: vi.fn(),
     signUp: vi.fn(),
@@ -20,12 +21,16 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   vi.stubEnv('VITE_SUPABASE_PUBLISHABLE_KEY', 'sb_publishable_test');
-  sdk.rpc.mockReturnValue({ maybeSingle: sdk.maybeSingle });
+  sdk.sessionCheck.mockResolvedValue({data:true,error:null});
+  sdk.rpc.mockImplementation((name:string)=>{
+    if(name!=='unitcost_session_is_active')return {maybeSingle:sdk.maybeSingle};
+    const promise=sdk.sessionCheck();return Object.assign(promise,{abortSignal:()=>promise});
+  });
   sdk.maybeSingle.mockResolvedValue({
     data: { role: 'user', status: 'active', expires_at: '2027-02-11T00:00:00Z' },
     error: null,
   });
-  sdk.createClient.mockReturnValue({ auth: sdk.auth, rpc: sdk.rpc });
+  sdk.createClient.mockImplementation(()=>({ auth: sdk.auth, rpc: sdk.rpc }));
 });
 
 afterEach(() => {
@@ -139,4 +144,66 @@ it('requires a fresh local puzzle before submitting the password', async () => {
       .resolves.toMatchObject({ status: 'error' });
   }
   expect(sdk.auth.signInWithPassword).not.toHaveBeenCalled();
+});
+
+it('clears local analysis when the server replaces this device session',async()=>{
+ sdk.auth.signInWithPassword.mockResolvedValueOnce({data:{session:{user:{email:'user@example.test',user_metadata:{}}}},error:null});
+ const {useAuthStore,verifyActiveSession}=await import('../src/stores/authStore');
+ await useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()});
+ const {useCostingStore}=await import('../src/stores/costingStore');
+ useCostingStore.setState({rawRecords:[{internalId:'private-case'} as never]});
+ sdk.sessionCheck.mockResolvedValue({data:false,error:null});
+ await expect(verifyActiveSession()).resolves.toBe(false);
+ expect(useAuthStore.getState()).toMatchObject({isAuthenticated:false,user:null});
+ expect(useAuthStore.getState().sessionNotice).toContain('perangkat lain');
+ expect(useCostingStore.getState().rawRecords).toEqual([]);
+ expect(sdk.auth.signOut).toHaveBeenCalledWith({scope:'local'});
+});
+
+it('fails closed when session verification is missing during login',async()=>{
+ sdk.auth.signInWithPassword.mockResolvedValueOnce({data:{session:{user:{email:'user@example.test'}}},error:null});
+ sdk.sessionCheck.mockResolvedValue({data:null,error:{code:'PGRST202'}});
+ const {useAuthStore}=await import('../src/stores/authStore');
+ await expect(useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()})).resolves.toMatchObject({status:'error'});
+ expect(useAuthStore.getState().isAuthenticated).toBe(false);
+});
+
+it('does not open a displaced session and reports the reason',async()=>{
+ sdk.auth.signInWithPassword.mockResolvedValueOnce({data:{session:{user:{email:'user@example.test'}}},error:null});
+ sdk.maybeSingle.mockResolvedValueOnce({data:{role:'user',status:'session_replaced',expires_at:null},error:null});
+ const {useAuthStore}=await import('../src/stores/authStore');
+ await expect(useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()})).resolves.toMatchObject({status:'error',message:expect.stringContaining('perangkat atau browser lain')});
+ expect(useAuthStore.getState().isAuthenticated).toBe(false);
+});
+
+it('allows a brief connection retry and ends an unverifiable session after 45 seconds',async()=>{
+ vi.useFakeTimers();
+ try{
+  sdk.auth.signInWithPassword.mockResolvedValueOnce({data:{session:{user:{email:'user@example.test'}}},error:null});
+  const {useAuthStore,verifyActiveSession}=await import('../src/stores/authStore');
+  await useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()});
+  sdk.sessionCheck.mockResolvedValue({data:null,error:{message:'network'}});
+  await verifyActiveSession();
+  expect(useAuthStore.getState().isAuthenticated).toBe(true);
+  vi.advanceTimersByTime(45001);
+  await verifyActiveSession();
+  expect(useAuthStore.getState().isAuthenticated).toBe(false);
+  expect(useAuthStore.getState().sessionNotice).toContain('Periksa koneksi');
+ }finally{vi.useRealTimers();}
+});
+
+it('ignores an old device check arriving after a new login',async()=>{
+ sdk.auth.signInWithPassword.mockImplementation(async()=>({data:{session:{user:{email:'user@example.test'}}},error:null}));
+ const {useAuthStore,verifyActiveSession}=await import('../src/stores/authStore');
+ await useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()});
+ let finish!:(result:{data:boolean;error:null})=>void;
+ const pending=new Promise<{data:boolean;error:null}>(resolve=>{finish=resolve;});
+ sdk.sessionCheck.mockReturnValueOnce(pending);
+ const oldCheck=verifyActiveSession();
+ useAuthStore.getState().logout();
+ await useAuthStore.getState().login('user@example.test','test-password',{completedAt:Date.now()});
+ finish({data:false,error:null});
+ await oldCheck;
+ expect(useAuthStore.getState().isAuthenticated).toBe(true);
+ useAuthStore.getState().logout();
 });

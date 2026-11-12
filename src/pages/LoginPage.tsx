@@ -24,6 +24,7 @@ export default function LoginPage() {
  const [agreementOpen, setAgreementOpen] = useState(false);
  const login = useAuthStore(state => state.login);
  const register = useAuthStore(state => state.register);
+ const sessionNotice = useAuthStore(state => state.sessionNotice);
  const registering = mode === 'register';
 
  useEffect(() => {
@@ -122,6 +123,7 @@ export default function LoginPage() {
      <form onSubmit={handleSubmit} className="uc-login-form" aria-busy={busy}>
       {!authConfigured && <div className="uc-error" role="alert">Akses akun belum dikonfigurasi. Hubungi pengelola aplikasi.</div>}
       {error && <div className="uc-error" role="alert">{error}</div>}
+      {sessionNotice && !error && <p className="uc-notice" role="alert">{sessionNotice}</p>}
       {notice && <p role="status" className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">{notice}</p>}
       {registering && <>
        <div>

@@ -14,7 +14,7 @@ type AccountRole = 'admin' | 'user';
 type AccountStatus = 'pending' | 'active' | 'expired';
 interface AccountAccess {
   role: AccountRole;
-  status: AccountStatus;
+  status: AccountStatus | 'session_replaced';
   expires_at: string | null;
 }
 
@@ -38,6 +38,7 @@ interface AuthState {
   isAuthenticated: boolean;
   user: { username: string; namaRS: string; role: AccountRole; expiresAt: string | null; hospitalClass?: HospitalClass } | null;
   lastActivity: number;
+  sessionNotice: string | null;
   touch: () => void;
   login: (email: string, password: string, proof?: LoginCaptchaProof) => Promise<AuthResult>;
   register: (email: string, password: string, name: string, hospital: string, phone: string, hospitalCode: string) => Promise<AuthResult>;
@@ -45,10 +46,18 @@ interface AuthState {
 }
 
 let client: SupabaseClient | undefined;
+let verifiedAt = 0;
+let verification: {connection:SupabaseClient;promise:Promise<boolean>} | undefined;
+
+function endRemoteSession(message:string){
+  useAuthStore.getState().logout();
+  useAuthStore.setState({sessionNotice:message});
+}
 
 function clearLocalLogin() {
   clearAnalysisSession();
-  useAuthStore.setState({ isAuthenticated: false, user: null, lastActivity: 0 });
+  verifiedAt=0;
+  useAuthStore.setState({ isAuthenticated: false, user: null, lastActivity: 0, sessionNotice:null });
 }
 
 function getClient() {
@@ -112,9 +121,19 @@ async function authenticate(request: AuthRequest, registration = false): Promise
       useAuthStore.getState().logout();
       const message = access?.status === 'expired'
         ? 'Masa aktif akun sudah habis. Hubungi admin untuk perpanjangan.'
+        : access?.status === 'session_replaced'
+        ? 'Akun ini sudah masuk pada perangkat atau browser lain. Silakan masuk kembali.'
         : 'Akun belum disetujui admin.';
       return { status: 'error', message: accessError ? 'Status akun tidak dapat diperiksa. Coba lagi.' : message };
     }
+
+    const {data:sessionActive,error:sessionError}=await connection.rpc('unitcost_session_is_active');
+    if(client!==connection)return {status:'error',message:'Sesi sudah berakhir. Silakan masuk kembali.'};
+    if(sessionError||sessionActive!==true){
+      useAuthStore.getState().logout();
+      return {status:'error',message:sessionError?'Sesi perangkat belum dapat diverifikasi. Coba lagi.':'Akun ini sudah masuk pada perangkat atau browser lain. Silakan masuk kembali.'};
+    }
+    verifiedAt=Date.now();
 
     const account = data.session.user;
     const metadata = account.user_metadata;
@@ -129,6 +148,7 @@ async function authenticate(request: AuthRequest, registration = false): Promise
         role: access.role, expiresAt: access.expires_at,
       },
       lastActivity: Date.now(),
+      sessionNotice:null,
     });
     return { status: 'authenticated' };
   } catch {
@@ -141,6 +161,7 @@ export const useAuthStore = create<AuthState>(set => ({
   isAuthenticated: false,
   user: null,
   lastActivity: 0,
+  sessionNotice:null,
   touch: () => set({ lastActivity: Date.now() }),
   login: (identity, password, proof) => {
     const trimmed = identity.trim();
@@ -181,7 +202,31 @@ export const useAuthStore = create<AuthState>(set => ({
   },
 }));
 
+/** Check the server lease without opening/reclaiming a session. */
+export function verifyActiveSession():Promise<boolean>{
+  const connection=client;
+  if(!connection||!useAuthStore.getState().isAuthenticated)return Promise.resolve(false);
+  if(verification?.connection===connection)return verification.promise;
+  const promise=(async()=>{
+    try{
+      const {data,error}=await connection.rpc('unitcost_session_is_active').abortSignal(AbortSignal.timeout(10000));
+      if(client!==connection)return false;
+      if(error)throw error;
+      if(data!==true){endRemoteSession('Sesi berakhir karena akun masuk di perangkat lain atau akses akun sudah tidak aktif.');return false;}
+      verifiedAt=Date.now();
+      return true;
+    }catch{
+      if(client===connection&&Date.now()-verifiedAt>=45000)endRemoteSession('Sesi tidak dapat diverifikasi. Periksa koneksi lalu masuk kembali.');
+      return false;
+    }
+  })();
+  verification={connection,promise};
+  void promise.finally(()=>{if(verification?.promise===promise)verification=undefined;});
+  return promise;
+}
+
 export async function listManagedAccounts(): Promise<ManagedAccount[]> {
+  if(!await verifyActiveSession())throw new Error('Sesi perangkat tidak aktif. Silakan masuk kembali.');
   const { data, error } = await getClient().rpc('unitcost_list_users');
   if (error || !Array.isArray(data)) throw new Error('Daftar akun tidak dapat dimuat. Pastikan akses admin masih aktif.');
   return data;
@@ -190,6 +235,7 @@ export async function listManagedAccounts(): Promise<ManagedAccount[]> {
 export async function saveHospitalClass(hospitalClass: HospitalClass) {
   if (!isHospitalClass(hospitalClass)) throw new Error('Pilih kelas RS A, B, C, atau D.');
   if (!useAuthStore.getState().isAuthenticated || !client) throw new Error('Silakan masuk kembali untuk menyimpan profil.');
+  if(!await verifyActiveSession())throw new Error('Sesi perangkat tidak aktif. Silakan masuk kembali.');
   const connection = client;
   const { data, error } = await connection.auth.updateUser({ data: { hospital_class: hospitalClass } });
   if (connection !== client || !useAuthStore.getState().user) throw new Error('Sesi sudah berakhir. Silakan masuk kembali.');
@@ -200,6 +246,7 @@ export async function saveHospitalClass(hospitalClass: HospitalClass) {
 }
 
 export async function updateManagedAccount(account: ManagedAccount, action: 'approve' | 'extend') {
+  if(!await verifyActiveSession())throw new Error('Sesi perangkat tidak aktif. Silakan masuk kembali.');
   const { error } = await getClient().rpc('unitcost_update_user', {
     target_id: account.user_id,
     action,

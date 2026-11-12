@@ -13,3 +13,12 @@ it('distinguishes disclosed simulation assumptions from warnings on real inputs'
     expect(checks.find(c => c.id === 'simulation')?.severity).toBe(origin === 'simulasi' ? 'info' : undefined);
   }
 });
+
+it('never labels uploaded or manually entered real costs as demo data',()=>{
+ const config=useHospitalCostStore.getInitialState().config;
+ for(const origin of ['diunggah','diketik']){
+  const checks=inputQuality(config,[],defaultMethodology(),origin);
+  expect(checks.some(check=>check.id==='simulation'||check.id==='example')).toBe(false);
+  expect(checks.some(check=>/sintetis|latihan|data contoh/i.test(check.message))).toBe(false);
+ }
+});

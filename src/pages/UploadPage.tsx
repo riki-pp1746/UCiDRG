@@ -277,11 +277,12 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
             </p>
           )}
         </div>
-        <label className="uc-label font-semibold">Cara memasukkan TXT/CSV/Excel
-          <select className="uc-input" value={claimMode} disabled={disabled || uploadState === 'parsing'} onChange={event => setClaimMode(event.target.value === 'replace' ? 'replace' : 'append')}>
-            <option value="append">Tambah ke sumber klaim bersama</option>
-            <option value="replace">Ganti seluruh sumber klaim bersama</option>
+        <label className="uc-label font-semibold">Cara memperbarui klaim
+          <select aria-label="Cara memperbarui klaim" aria-describedby="claim-upload-mode-help" className="uc-input" value={claimMode} disabled={disabled || uploadState === 'parsing'} onChange={event => setClaimMode(event.target.value === 'replace' ? 'replace' : 'append')}>
+            <option value="append">Tambah Data</option>
+            <option value="replace">Ganti Seluruh Data</option>
           </select>
+          <span id="claim-upload-mode-help" className="text-xs font-normal leading-5 text-slate-600">{claimMode==='append'?'Tambahkan berkas ke klaim yang sudah ada, misalnya bulan berikutnya.':'Saat unggah berhasil, seluruh klaim lama diganti dengan berkas unggahan ini. Cocok untuk data lengkap yang sudah dikoreksi.'} Pilihan berlaku saat berkas diunggah.</span>
         </label>
       </section>
       {claimsOnly&&rawRecords.length>0&&periodNormalization&&<section className="uc-panel space-y-3">

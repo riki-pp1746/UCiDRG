@@ -26,4 +26,14 @@ it('opening another integrated page does not cancel a running calculation',async
 it('claim-only updates preserve specialized cost drivers and references',async()=>{useCostingStore.setState({rawRecords:[record()]});await useV4Store.getState().initialize();const c=newCenter('final');c.driverUnit='hari';c.jknVolume='5';c.totalVolume='10';await useV4Store.getState().update(i=>({...i,centers:[c]}),'test');await shareSourceData({claims:true});expect(useV4Store.getState().workspace!.input.centers[0]).toEqual(c);});
 it('reads additional Excel sheets while preserving claims on an Excel-only upload',async()=>{useCostingStore.setState({rawRecords:[record()]});await shareSourceData({claims:true});const input=initialInput();const c=newCenter('final');c.id='source-center';c.costs.pegawai='100';c.jknVolume='10';c.totalVolume='20';c.driverUnit='kunjungan';c.care='jalan';c.assets=[{id:'ASSET',name:'Source asset',value:'1000',years:'8'}];input.centers=[c];const bytes=XLSX.write(templateWorkbook(input),{type:'array',bookType:'xlsx'});const file={arrayBuffer:async()=>bytes} as File;await shareSourceData({costs:true,excel:file});const w=useV4Store.getState().workspace!;expect(w.input.claims).toHaveLength(1);expect(w.input.centers[0]).toMatchObject({id:'source-center',jknVolume:'10',totalVolume:'20',driverUnit:'kunjungan'});expect(w.input.centers[0].assets[0].years).toBe('8');});
 it('deleting shared claims prevents them returning after changing analysis rooms',async()=>{useCostingStore.setState({rawRecords:[record()]});await shareSourceData({claims:true});await useV4Store.getState().clearInput('claims');expect(useCostingStore.getState().rawRecords).toEqual([]);await shareSourceData({onlyEmpty:true});expect(useV4Store.getState().workspace!.input.claims).toEqual([]);});
-it('both upload menus expose the same shared-source controls',async()=>{await useV4Store.getState().initialize();for(const component of [createElement(UploadPage),createElement(V4Page,{view:'upload'})]){const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/upload']},component));expect(html).toContain('Unggah sekali untuk kedua ruang analisis');expect(html).toContain('Cara memasukkan TXT/CSV');expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');}});
+it('both upload menus expose the same shared-source controls',async()=>{
+ await useV4Store.getState().initialize();
+ for(const component of [createElement(UploadPage),createElement(V4Page,{view:'upload'})]){
+  const html=renderToStaticMarkup(createElement(MemoryRouter,{initialEntries:['/revisi4/upload']},component));
+  expect(html).toContain('Unggah sekali untuk kedua ruang analisis');
+  expect(html).toContain('Cara memperbarui klaim');
+  expect(html).toMatch(/<option value="append"[^>]*>Tambah Data<\/option>/);
+  expect(html).toMatch(/<option value="replace"[^>]*>Ganti Seluruh Data<\/option>/);
+  expect(html).toContain('accept=".txt,.csv,.xlsx,.xls"');
+ }
+});
