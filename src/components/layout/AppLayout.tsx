@@ -143,7 +143,7 @@ export default function AppLayout() {
           <BrandLogo className="size-8 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-base font-bold tracking-tight text-white" title={APP_METHOD}>{APP_NAME}</p>
-            <p className="truncate text-xs text-[#b9c8d6]">Costing rumah sakit</p>
+            <p className="truncate text-xs text-[#cfe5e0]">Costing rumah sakit</p>
           </div>
           <button ref={closeButton} type="button" aria-label="Tutup menu" onClick={closeMobileMenu} className="grid size-11 shrink-0 place-items-center rounded-md text-white hover:bg-white/10 lg:hidden">
             <X size={18} />
