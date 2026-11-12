@@ -4,7 +4,7 @@ import {sum} from '../../v4/numbers';
 import {calculateIDRGTariff,neutralAdjustment} from './idrgTariff';
 import type {Methodology} from '../../stores/methodologyStore';
 import {financialStatus,meanCI} from './revisionMath';
-import {calculateInaCbgCaseMix,type InaCbgCaseMix} from './inaCbgCaseMix';
+import {collectInaCbgCaseMix,type InaCbgCaseMix} from './inaCbgCaseMix';
 // ============================================================
 // CALCULATION ENGINE: patientLevelCosting.ts
 // Metode: Patient Level Costing + Step-Down
@@ -307,7 +307,7 @@ export function generateSummary(
   inaCbg?: InaCbgCaseMix,
 ): CostingSummary {
   const records=type==='INACBG'&&!inaCbg?results.map(r=>r.patient):[];
-  const cohorts=type==='INACBG'?(inaCbg??calculateInaCbgCaseMix(records)).cohorts:[];
+  const cohorts=type==='INACBG'?(inaCbg??collectInaCbgCaseMix(records)).cohorts:[];
   const inaCmi=cohorts.length===1?cohorts[0].cmi:null;
   const inaMetrics=type==='INACBG'?{cmiBasis:'INA-CBG' as const,cmiAvailable:inaCmi!==null}:{};
   if (results.length === 0) {

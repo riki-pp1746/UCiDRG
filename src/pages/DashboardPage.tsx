@@ -34,7 +34,7 @@ const COLORS = {
 
 export default function DashboardPage() {
   const viewMode = useCostingStore(s => s.viewMode);
-  const view=useAnalysisView();
+  const view=useAnalysisView(true);
 
   const drgResults=view.groups;
   const summary=view.summary;

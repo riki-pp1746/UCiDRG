@@ -11,6 +11,7 @@ import {formatCostingWorkbook} from '../lib/costingWorkbookFormat';
 import {maskSEP} from '../v4/numbers';
 import {hospitalBaseRateSheets} from '../lib/calculations/hospitalBaseRate';
 import AnalysisFilters from '../components/ui/AnalysisFilters';
+import CmiComparison from '../components/costing/CmiComparison';
 import InaCbgCaseMixPanel from '../components/costing/InaCbgCaseMixPanel';
 import SourceCaseMixIndex from '../components/costing/SourceCaseMixIndex';
 import ReportDataChecks from '../components/reports/ReportDataChecks';
@@ -20,7 +21,7 @@ import ExecutiveGroupingQuality from '../components/workflow/ExecutiveGroupingQu
 import {reportPlots} from '../lib/analysisPlots';
 import {analysisStale} from '../lib/analysisController';
 import {reportChecks} from '../lib/reportChecks';
-import {inaCbgCareLabel,inaCbgCohortLabel} from '../lib/calculations/inaCbgCaseMix';
+import {inaCbgCareLabel} from '../lib/calculations/inaCbgCaseMix';
 import {Link} from 'react-router-dom';
 // ============================================================
 // PAGE: ReportPage.tsx
@@ -70,7 +71,7 @@ const BILLING_EXPORT: { key: keyof BillingGroup; label: string }[] = [
 export default function ReportPage({variant}:{variant?:'summary'|'print'|'export'}={}) {
   const viewMode = useCostingStore(s => s.viewMode);
   const filterCount=useCostingStore(s=>Number(Boolean(s.filterPTD))+Number(Boolean(s.searchTerm))+Number(s.filterStatus!=='ALL'));
-  const view=useAnalysisView();
+  const view=useAnalysisView(true);
   const filteredResults=view.rows;
   const drgResults=view.groups;
   const [groupPagination,setGroupPagination]=useState<{groups:typeof drgResults;page:number}|null>(null);
@@ -152,17 +153,11 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
     const traces=useTarifPasienStore.getState().distribusi;XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([['Komponen','Biaya','Tagihan','Rasio biaya/tagihan','Di luar batas','Pembagi','Volume','Satuan','Tarif per satuan','Sisa','Peringatan'],...traces.map(d=>[d.label,d.totalBiayaRS,d.totalEKlaim,d.rasio,d.outlier,d.metodeAlokasi,d.denominator,d.unit,d.rate,d.unallocated,d.warning])]),'Jejak Distribusi 18');
     const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, ws1, 'Summary');
-    const cohortsByKey=new Map(view.inaCbg.cohorts.map(row=>[row.key,row]));
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
       ['RS','Kelas RS','Kode tarif','Kepemilikan','Regional','Jenis rawat','Versi grouper','Klaim unik','Klaim terpetakan','Cakupan (%)','Casemix INA-CBG','CMI INA-CBG','Konflik kelas dan kode tarif'],
       ...view.inaCbg.cohorts.map(row=>[row.hospital,row.hospitalClass,row.tariffCode,row.ownership,row.region,inaCbgCareLabel(row.care),
-        row.version,row.cases,row.mapped,row.mapped/row.cases*100,row.mapped?row.casemix:null,row.cmi,row.profileConflict?'Ya':'Tidak']),
+        row.version,row.cases,view.inaCbg.status==='ready'?row.mapped:null,view.inaCbg.status==='ready'?row.mapped/row.cases*100:null,row.mapped?row.casemix:null,row.cmi,row.profileConflict?'Ya':'Tidak']),
     ]),'CMI INA-CBG');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Kelompok klaim','Kode INA-CBG','Deskripsi','Klaim unik','Klaim terpetakan','CW referensi INA-CBG','Casemix INA-CBG'],
-      ...view.inaCbg.groups.map(row=>[inaCbgCohortLabel(cohortsByKey.get(row.cohortKey)!),row.code,row.description,
-        row.cases,row.mapped,row.cw,row.mapped?row.casemix:null]),
-    ]),'CW INA-CBG');
     if(user?.hospitalClass){
       const study=cmiStudyReport(view,user.hospitalClass);
       const sheet=XLSX.utils.aoa_to_sheet([[study.title],...study.results.map(result=>[result]),study.headers,...study.rows,[],[study.note],[study.source]]);
@@ -338,6 +333,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
           </dl>
         </div>
         <p className="px-1 text-sm text-slate-600">Biaya seluruh RS pada periode ini {formatRupiah(totalBiayaLaporan)}. Pool JKN {formatRupiah(poolJKN)}{totalBiayaLaporan>0?` (${formatNumber(poolJKN/totalBiayaLaporan*100,2)}% dari biaya RS periode)` : ''}. HBR dan CRR menggunakan pool biaya JKN.</p>
+        <CmiComparison rows={view.weightComparison} inaCbg={view.inaCbg}/>
         <InaCbgCaseMixPanel result={view.inaCbg}/>
         <ExecutiveGroupingQuality view={view} mode={viewMode}/>
         <details className="uc-panel space-y-4">

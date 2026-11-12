@@ -1,3 +1,4 @@
+import {useInaCbgTotals} from '../../hooks/useInaCbgTotals';
 import { FinancialBadge, FinancialValue } from '../ui/FinancialStatus';
 import JknHospitalBaseRate from '../costing/JknHospitalBaseRate';
 import { useMemo, useState } from 'react';
@@ -128,7 +129,7 @@ export default function WorkflowResults({section,snapshot}:{section:string;snaps
   const [tab,setTab]=useState<'cw'|'proxy'|'cmi'>(params.get('tab')==='proxy'?'proxy':'cw');
   const raw=useCostingStore(s=>s.rawRecords);
   const editable=useMethodologyStore(s=>s.role!=='Pembaca');
-  const view=analysisView(snapshot,'IDRG');
+  const view=useInaCbgTotals(analysisView(snapshot,'IDRG'),section==='cost-weight'&&tab==='cmi');
   const result=snapshot.local;
   if(section==='unit-cost-drg')return <GroupResults snapshot={snapshot} kind="cost"/>;
   if(section==='tarif-idrg')return <GroupResults snapshot={snapshot} kind="comparison"/>;
