@@ -1,8 +1,4 @@
 import {beforeEach,describe,it,expect} from 'vitest';
-import {createElement} from 'react';
-import {renderToStaticMarkup} from 'react-dom/server';
-import {MemoryRouter} from 'react-router-dom';
-import ExecutiveGroupingQuality from '../src/components/workflow/ExecutiveGroupingQuality';
 import {defaultMethodology,useMethodologyStore} from '../src/stores/methodologyStore';
 import {largestRemainder,monthlyFactor,rovMetrics,financialStatus,meanCI} from '../src/lib/calculations/revisionMath';
 import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
@@ -50,7 +46,7 @@ it('plots filtered DRGs and includes only the selected charts in the PDF',async(
  expect(pdf).not.toContain('Unit cost vs tarif iDRG');
  expect(pdf).not.toContain('Sebaran CoV biaya per DRG');
 });
-it('shows CoV and RIV charts and tables for the filtered executive report',async()=>{
+it('plots filtered CoV and RIV for the selected PDF attachment',async()=>{
  await setup();
  const original=useTarifPasienStore.getState().snapshot!;
  const snapshot={...original,rows:original.rows.map((row,index)=>({
@@ -63,8 +59,6 @@ it('shows CoV and RIV charts and tables for the filtered executive report',async
  expect(riv.marks.some(mark=>mark.type==='bar')).toBe(true);
  const negative=rivPlot({...view.summary!.rov!,crossValidated:-.25});
  expect(negative.marks).toContainEqual(expect.objectContaining({type:'bar',color:'#b42337',detail:'Validasi silang -25,0%'}));
- const markup=renderToStaticMarkup(createElement(MemoryRouter,null,createElement(ExecutiveGroupingQuality,{view,mode:'IDRG'})));
- for(const label of ['Sebaran CoV biaya per DRG','RIV (ROV) pengelompokan biaya','Tabel CoV per DRG','Tabel RIV (ROV)','Tidak tersedia'])expect(markup).toContain(label);
  const filtered=analysisView(snapshot,'IDRG',{care:'2',search:'Satu kasus'});
  expect(reportPlots(snapshot,filtered,'IDRG',['quality']).every(plot=>!plot.marks.length)).toBe(true);
  const pdf=analysisPdf(snapshot,view,'RS uji','IDRG',undefined,['quality']).output();
