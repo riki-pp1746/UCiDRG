@@ -24,6 +24,12 @@ const regionalCmiByYear = {
  ],
 } as const;
 
+// Table 2: sample CMI by hospital type, pooled across regions and ownership.
+export const inpatientCmiByHospitalClass = {
+  2019:{A:1.372,B:1.161,C:0.944,D:0.815},
+  2020:{A:1.688,B:1.117,C:0.939,D:0.805},
+} as const;
+
 export const inpatientCmiStudy = {
  reference: cmiReferences[1],
  years: [2019,2020],
@@ -54,7 +60,7 @@ export const analysisFormulaRows:string[][]=[
  ['Casemix TXT','Jumlah CW asli pada klaim berkode dengan UC valid'],
  ['HBR berbasis CW TXT','Pool HBR aktif ÷ casemix TXT, per jenis rawat. Cakupan CW ditampilkan bersama hasil'],
  ['CMI iDRG dari TXT','Jumlah CW sumber tersedia / jumlah klaim dengan CW sumber tersedia, per jenis rawat; total CW diprioritaskan, CW dasar sebagai cadangan; cakupan dilaporkan'],
- ['CW INA-CBG','Bobot relatif per kode dan jenis rawat dari tabel referensi Akurat iDRG (inaCbgRelativeWeights.json)'],
+ ['CW INA-CBG','Bobot relatif per kode dan jenis rawat dari tabel Akurat iDRG yang digunakan untuk menghitung agregat di server'],
  ['Casemix dan CMI INA-CBG','Casemix menjumlahkan CW klaim unik yang terpetakan. CMI membagi casemix dengan jumlah klaim terpetakan. Hasil dihitung per profil RS, jenis rawat dan versi grouper dari klaim pada cakupan laporan, termasuk klaim tanpa unit cost.'],
  ...cmiReferences.map(ref=>['Referensi CMI — '+ref.authors,ref.title+'. '+ref.journal+'. https://doi.org/'+ref.doi]),
  ['CMI lokal (CW RS)','Jumlah CW aktif pada kasus filter yang memiliki CW / jumlah kasus filter yang memiliki CW; tidak memakai cost weight tarif nasional'],

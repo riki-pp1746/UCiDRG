@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { histogramColor, plotTextColor, plotWidth } from '../../lib/analysisPlots';
 import type { AnalysisPlot } from '../../lib/analysisPlots';
 
-export default function AnalysisCharts({ plots }:{plots:AnalysisPlot[]}) {
-  return <div className="space-y-5">{plots.map(plot=><Plot key={plot.title} plot={plot}/>)}</div>;
+export default function AnalysisCharts({ plots, compactControls=false }:{plots:AnalysisPlot[];compactControls?:boolean}) {
+  return <div className="space-y-5">{plots.map(plot=><Plot key={plot.title} plot={plot} compactControls={compactControls}/>)}</div>;
 }
 
-function Plot({plot}:{plot:AnalysisPlot}) {
+function Plot({plot,compactControls}:{plot:AnalysisPlot;compactControls:boolean}) {
   const [active,setActive] = useState('');
   const dots = plot.marks.filter(mark=>mark.type==='dot');
   const selection = dots.find(dot=>dot.id===active);
@@ -28,7 +28,7 @@ function Plot({plot}:{plot:AnalysisPlot}) {
         </svg>
       </div>
       {plot.legend&&<ul className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-700">{plot.legend.map(item=><li key={item.label} className="flex items-center gap-1.5"><span className="size-2.5 rounded-full" style={{backgroundColor:item.color}} aria-hidden/>{item.label}</li>)}</ul>}
-      {dots.length>0&&<div className="uc-inset space-y-2">
+      {dots.length>0&&<div className={compactControls?'space-y-2 border-t border-slate-200 pt-3':'uc-inset space-y-2'}>
         <label className="uc-label max-w-sm">Rincian titik DRG
           <select className="uc-input" value={selection?.id??''} onChange={event=>setActive(event.target.value)}>
             <option value="">Pilih DRG atau klik titik</option>

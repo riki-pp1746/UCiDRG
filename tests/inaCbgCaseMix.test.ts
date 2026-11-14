@@ -1,6 +1,16 @@
 import {expect,it} from 'vitest';
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import InaCbgCaseMixPanel from '../src/components/costing/InaCbgCaseMixPanel';
 import {analysisView,buildAnalysisSnapshot} from '../src/lib/analysisSnapshot';
-import {calculateInaCbgCaseMix} from '../src/lib/calculations/inaCbgCaseMix';
+import {collectInaCbgCaseMix} from '../src/lib/calculations/inaCbgCaseMix';
+import {calculateInaCbgTotals} from '../server/inaCbgTotals.mjs';
+import {applyInaCbgTotals,inaCbgRequest} from '../src/hooks/useInaCbgTotals';
+import CmiComparison from '../src/components/costing/CmiComparison';
+
+const resolveCmi=(source:ReturnType<typeof collectInaCbgCaseMix>)=>
+  applyInaCbgTotals(source,calculateInaCbgTotals(inaCbgRequest(source).cohorts));
+const calculateInaCbgCaseMix=(claims:readonly PatientRecord[])=>resolveCmi(collectInaCbgCaseMix(claims));
 import {calculateHospitalBaseRate} from '../src/lib/calculations/hospitalBaseRate';
 import {prepareIdentities} from '../src/lib/analysisIdentity';
 import {mergeClaimSources} from '../src/lib/mergeClaimSources';
@@ -37,7 +47,30 @@ it('uses the Akurat lookup and counts only mapped unique claims in the CMI denom
   expect(cohorts[0].casemix).toBeCloseTo(2.28);
   expect(cohorts[0].cmi).toBeCloseTo(1.14);
   expect(cohorts[1]).toMatchObject({care:2,cases:2,mapped:1,casemix:3.95,cmi:3.95});
-  expect(groups.find(group=>group.code==='A-4-10-I'&&group.cohortKey===cohorts[0].key)).toMatchObject({cw:0.68,mapped:1});
+  expect(groups.find(group=>group.code==='A-4-10-I'&&group.cohortKey===cohorts[0].key)).toMatchObject({cases:5,eligible:1});
+});
+
+it('only transmits valid aggregated codes and counts to the backend',()=>{
+  const source=collectInaCbgCaseMix([
+    claim('1','A-4-10-I',{diaglist:''}),claim('2','N-3-15-0'),claim('3','A-4-10-III'),
+  ]);
+  const body=inaCbgRequest(source);
+  expect(body).toEqual({cohorts:[{care:1,groups:[['A-4-10-III',1],['N-3-15-0',1]]}]});
+  const result=calculateInaCbgTotals(body.cohorts);
+  expect(result).toEqual([{mapped:1,casemix:1.6}]);
+  expect(source.groups.every(row=>!('cw' in row))).toBe(true);
+  expect(()=>calculateInaCbgTotals([{care:1,groups:[['A-4-10-I',0]]}])).toThrow();
+});
+
+it('displays the two system CMIs and the applicable national sample without exposing CW',()=>{
+  const inaCbg=calculateInaCbgCaseMix([claim('1','A-4-10-I')]);
+  const markup=renderToStaticMarkup(createElement(CmiComparison,{inaCbg,rows:[
+    {care:1,cases:1,source:{average:1.4,count:1,min:1.4,max:1.4},sourceBaseCount:0,local:null},
+  ]}));
+  for(const item of ['CMI INA-CBG RS','CMI iDRG RS','Rerata sampel nasional','0,680','1,400','1,117','-0,437'])expect(markup).toContain(item);
+  const details=renderToStaticMarkup(createElement(InaCbgCaseMixPanel,{result:inaCbg}));
+  expect(details).not.toContain('Referensi CW');
+  expect(details).not.toContain('A-4-10-I');
 });
 
 it('keeps hospital and grouper cohorts separate through claim merge',async()=>{
@@ -77,10 +110,10 @@ it('uses claims without unit cost for INA-CBG CMI and follows report filters',()
   const snapshot=buildAnalysisSnapshot(records,local,options,0,null,[],'diunggah','');
   const view=analysisView(snapshot,'INACBG',{care:'1'});
   expect(view.rows).toHaveLength(1);
-  expect(view.summary?.cmiAvailable).toBe(true);
-  expect(view.summary?.cmi).toBeCloseTo(1.14);
+  expect(view.summary?.cmiAvailable).toBe(false);
+  expect(resolveCmi(view.inaCbg).cohorts[0].cmi).toBeCloseTo(1.14);
   expect(analysisView(snapshot,'INACBG').summary?.cmiAvailable).toBe(false);
   const filtered=analysisView(snapshot,'INACBG',{care:'1',search:'A-4-10-III'});
   expect(filtered.rows).toHaveLength(0);
-  expect(filtered.summary?.cmi).toBe(1.6);
+  expect(resolveCmi(filtered.inaCbg).cohorts[0].cmi).toBe(1.6);
 });

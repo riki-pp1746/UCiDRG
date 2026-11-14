@@ -5,17 +5,18 @@ import {formatNumber} from '../../lib/calculations/patientLevelCosting';
 import {inpatientCmiStudy,inpatientCmiStudyRows} from '../../lib/analysisFormulas';
 import {useAuthStore} from '../../stores/authStore';
 import {EmptyState,StatCard} from '../ui/Kit';
+import CmiComparison from './CmiComparison';
 import InaCbgCaseMixPanel from './InaCbgCaseMixPanel';
 import {inaCbgCohortLabel} from '../../lib/calculations/inaCbgCaseMix';
 
 const careName=(care:number)=>care===1?'Rawat inap':'Rawat jalan';
 
 /** CMI uses original TXT weights; local cost weights retain their separate cost basis. */
-export default function SourceCaseMixIndex({rows,inaCbg}:{rows:AnalysisView['weightComparison'];inaCbg:AnalysisView['inaCbg']}){
+export default function SourceCaseMixIndex({rows,inaCbg,showInaCbg=true}:{showInaCbg?:boolean;rows:AnalysisView['weightComparison'];inaCbg:AnalysisView['inaCbg']}){
   const hospitalClass=useAuthStore(state=>state.user?.hospitalClass);
   const [year,setYear]=useState<2019|2020>(2020);
   return <section aria-label="Case Mix Index" className="space-y-5">
-    <InaCbgCaseMixPanel result={inaCbg}/>
+    {showInaCbg&&<><CmiComparison rows={rows} inaCbg={inaCbg}/><InaCbgCaseMixPanel result={inaCbg}/></>}
     <div>
       <h2 className="text-lg font-semibold text-teal-950">Casemix Index iDRG</h2>
       <p className="mt-1 text-sm text-slate-600">CMI iDRG = jumlah CW iDRG dari TXT ÷ jumlah klaim yang memiliki CW iDRG, per jenis rawat.</p>

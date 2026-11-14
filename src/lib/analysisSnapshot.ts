@@ -7,7 +7,7 @@ import {aggregateByDRG,generateSummary,formatNumber} from './calculations/patien
 import {rovMetrics,financialStatus} from './calculations/revisionMath';
 import {dec,sum} from '../v4/numbers';
 import type {QualityIssue} from './analysisQuality';
-import {calculateInaCbgCaseMix, type InaCbgCaseMix} from './calculations/inaCbgCaseMix';
+import {collectInaCbgCaseMix, type InaCbgCaseMix} from './calculations/inaCbgCaseMix';
 
 export interface AnalysisSnapshot {mapping?:import('./calculations/componentMapping').MappingPlan;version:string;at:string;revision:number;options:Methodology;local:HospitalCostResult;rows:PatientCostResult[];issues:QualityIssue[];period:PeriodNormalization|null;pool:number;annual:number;origin:string;inputSignature:string;}
 const claimsBySnapshot=new WeakMap<AnalysisSnapshot,PatientRecord[]>();
@@ -55,7 +55,7 @@ export function analysisView(snapshot:AnalysisSnapshot|null,mode:'INACBG'|'IDRG'
  if(filter.status&&filter.status!=='ALL'){const keys=new Set(groups.filter(g=>filter.status==='DATA_TIDAK_CUKUP'?g.statisticalLabel==='Data tidak cukup':(g.decisionStatus||g.status)===filter.status).map(g=>g.ptd+'|'+g.group_code));statusKeys=keys;rows=rows.filter(r=>keys.has(statusKey(r.patient)));groups=build(rows);}
  const full=!filter.care&&!q&&!statusKeys;
  const claims=claimsBySnapshot.get(snapshot)??snapshot.rows.map(r=>r.patient);
- const inaCbg=(full?fullInaCbgBySnapshot.get(snapshot):undefined)??calculateInaCbgCaseMix(claims,full?undefined:p=>matchesClaim(p)&&(!statusKeys||statusKeys.has(statusKey(p))));
+ const inaCbg=(full?fullInaCbgBySnapshot.get(snapshot):undefined)??collectInaCbgCaseMix(claims,full?undefined:p=>matchesClaim(p)&&(!statusKeys||statusKeys.has(statusKey(p))));
  if(full)fullInaCbgBySnapshot.set(snapshot,inaCbg);
  const summary=generateSummary(rows,groups,mode,snapshot.period,snapshot.annual,0,full?snapshot.pool:undefined,inaCbg);
  const localById=new Map(snapshot.local.patients.map(p=>[p.id,p]));

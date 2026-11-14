@@ -166,7 +166,13 @@ export function covPlot(groups:DRGGroupResult[]):AnalysisPlot {
     marks.push(line(left,py(value),right,py(value)),label(left-8,py(value)+4,plotLabel(value),'end'));
   }
   const caseTicks=[...new Set(logTicks(min,max).map(Math.round))].filter(n=>n>0&&px(n)>=left&&px(n)<=right);
-  for(const value of caseTicks)marks.push(line(px(value),top,px(value),bottom),label(px(value),246,formatNumber(value)));
+  let lastTickX=-Infinity;
+  for(const value of caseTicks){
+    const x=px(value);
+    if(x-lastTickX<48)continue;
+    marks.push(line(x,top,x,bottom),label(x,246,formatNumber(value)));
+    lastTickX=x;
+  }
   marks.push(line(left,top,left,bottom,gray),line(left,bottom,right,bottom,gray),line(left,py(100),right,py(100),gray,true));
   for(const group of eligible){
     const name=group.group_code+' · '+(group.ptd===1?'Rawat inap':'Rawat jalan');
@@ -193,12 +199,16 @@ export function rivPlot(rov:NonNullable<AnalysisView['summary']>['rov']):Analysi
   if(!values.length)return {title,height,marks:[],description:'RIV belum dapat dihitung pada cakupan ini. '+(rov?.reason??'Periksa jumlah kasus dengan unit cost positif.')};
   const description='RIV mengukur pengurangan variasi log unit cost setelah kasus dikelompokkan. Garis vertikal menandai 0%.';
   const left=125,right=plotWidth-68;
-  const min=Math.min(0,...values),max=Math.max(0,...values);
+  const min=Math.min(0,...values),max=100;
   const span=max-min||1;
   const start=min<0?left+65:left;
   const px=(value:number)=>start+(value-min)/span*(right-start);
   const zero=px(0);
   const marks:PlotMark[]=[line(zero,20,zero,154,gray,true),label(zero,173,'0%')];
+  for(const percent of [25,50,75,100]){
+    if(px(percent)-zero<26)continue;
+    marks.push(line(px(percent),20,px(percent),154),label(px(percent),173,percent+'%'));
+  }
   for(const [index,row] of variants.entries()){
     const y=44+index*45;
     marks.push(label(left-12,y+4,row.label,'end'));

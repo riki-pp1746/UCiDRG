@@ -20,7 +20,8 @@ export function analysisPdf(snapshot:AnalysisSnapshot,view:AnalysisView,hospital
  if(includes('weights'))for(const row of view.weightComparison)text(`CMI iDRG TXT ${row.care===1?'rawat inap':'rawat jalan'}: ${row.source?formatNumber(row.source.average,2):'Tidak tersedia'}; ${row.source?.count??0} / ${row.cases} kasus memiliki CW sumber.`);
  if(includes('weights')&&view.inaCbg.cohorts.length){
   text('CMI INA-CBG berdasarkan bobot Akurat iDRG',12);
-  for(const row of view.inaCbg.cohorts){
+  if(view.inaCbg.status!=='ready')text('Hasil CMI INA-CBG belum tersedia.');
+  for(const row of view.inaCbg.status==='ready'?view.inaCbg.cohorts:[]){
    text(`${inaCbgCohortLabel(row)} | CMI ${row.cmi===null?'Tidak tersedia':formatNumber(row.cmi,3)} | Casemix ${row.mapped?formatNumber(row.casemix,3):'Tidak tersedia'} | ${formatNumber(row.mapped)} dari ${formatNumber(row.cases)} klaim unik terpetakan.`);
   }
  }

@@ -1,8 +1,6 @@
 import type {PatientRecord} from '../../types/costing.types';
-import referenceWeights from './inaCbgRelativeWeights.json';
 import {claimSepKey,cleanClaimValue as clean,presentClaimValue as present} from '../analysisIdentity';
 
-const weights: Readonly<Record<string,{service:string;weight:number;description:string}>> = referenceWeights;
 export const inaCbgCareLabel = (care:1|2) => care===1?'Rawat inap':'Rawat jalan';
 
 function claimDate(value:string) {
@@ -34,18 +32,17 @@ export type InaCbgCaseMixCohort = ReturnType<typeof cohort> & {
   casemix:number;
   cmi:number|null;
 };
-interface InaCbgWeightGroup {
+interface InaCbgClaimGroup {
   cohortKey:string;
   code:string;
   description:string;
   cases:number;
-  mapped:number;
-  cw:number|null;
-  casemix:number;
+  eligible:number;
 }
 export interface InaCbgCaseMix {
   cohorts:InaCbgCaseMixCohort[];
-  groups:InaCbgWeightGroup[];
+  groups:InaCbgClaimGroup[];
+  status?:'ready'|'loading'|'error';
 }
 
 export function inaCbgCohortLabel(row:InaCbgCaseMixCohort) {
@@ -58,10 +55,10 @@ export function inaCbgCohortLabel(row:InaCbgCaseMixCohort) {
 }
 
 /** Match the INA-CBG RW scorecard in Akurat iDRG (txtRiskAnalysis.js). */
-export function calculateInaCbgCaseMix(claims:readonly PatientRecord[], include?:(claim:PatientRecord)=>boolean):InaCbgCaseMix {
+export function collectInaCbgCaseMix(claims:readonly PatientRecord[], include?:(claim:PatientRecord)=>boolean):InaCbgCaseMix {
   const seen=new Set<string>();
   const cohorts=new Map<string,InaCbgCaseMixCohort>();
-  const groups=new Map<string,InaCbgWeightGroup>();
+  const groups=new Map<string,InaCbgClaimGroup>();
   for(const patient of claims) {
     const hospital=present(patient.kode_rs)?clean(patient.kode_rs):'';
     const identity=claimSepKey(patient);
@@ -81,30 +78,22 @@ export function calculateInaCbgCaseMix(claims:readonly PatientRecord[], include?
     totals.cases++;
     const code=present(patient.inacbg)?clean(patient.inacbg).toUpperCase():'';
     if(!code)continue;
-    const reference=Object.prototype.hasOwnProperty.call(weights,code)?weights[code]:undefined;
     const admission=claimDate(patient.admission_date);
     const discharge=claimDate(patient.discharge_date);
     const hasDiagnosis=present(patient.diaglist)&&clean(patient.diaglist).split(/[;,|\s]+/).some(present);
     const hasIdentity=patient.inaCbgSource?.hasPatientIdentity??present(patient.mrn);
     const eligible=Boolean(identity&&hasIdentity&&hasDiagnosis&&admission!==null&&discharge!==null&&discharge>=admission);
-    const cw=eligible&&reference?.service===(care===1?'RI':'RJ')&&Number.isFinite(reference.weight)&&reference.weight>0?reference.weight:null;
     const groupKey=JSON.stringify([profile.key,code]);
     let group=groups.get(groupKey);
     if(!group) {
-      group={cohortKey:profile.key,code,description:clean(patient.deskripsi_inacbg)||reference?.description||'',cases:0,mapped:0,cw:null,casemix:0};
+      group={cohortKey:profile.key,code,description:clean(patient.deskripsi_inacbg),cases:0,eligible:0};
       groups.set(groupKey,group);
     }
     group.cases++;
-    if(cw!==null) {
-      group.cw=cw;
-      group.mapped++;
-      group.casemix+=cw;
-      totals.mapped++;
-      totals.casemix+=cw;
-    }
+    if(eligible)group.eligible++;
   }
-  for(const row of cohorts.values())if(row.mapped)row.cmi=row.casemix/row.mapped;
   return {
+    status:cohorts.size?'loading':'ready',
     cohorts:[...cohorts.values()].sort((a,b)=>a.care-b.care||a.hospital.localeCompare(b.hospital)||a.key.localeCompare(b.key)),
     groups:[...groups.values()].sort((a,b)=>a.code.localeCompare(b.code)),
   };
