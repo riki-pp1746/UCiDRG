@@ -18,6 +18,7 @@ import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
 import {readExcelClaims} from '../lib/excelClaimsJob';
 import { detectPeriodNormalizationAsync, overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { UploadSession } from '../types/costing.types';
+import { calculateJknRevenueShare } from '../types/hospitalCost.types';
 import { Upload, FileText, CheckCircle, AlertCircle, ArrowRight, FileSpreadsheet, Loader2, Trash2, History, Clock, PlayCircle } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -117,7 +118,7 @@ export default function UploadPage({disabled=false,claimsOnly=false}:{disabled?:
               finalCenters: parsedData.finalCenters || s.config.finalCenters,
             })
           }));
-          const demoShare=parsedData.workbookSource?.demoJknProportion;
+          const demoShare=calculateJknRevenueShare(parsedData.dataDasar)??parsedData.workbookSource?.demoJknProportion;
           if(demoShare!==undefined)useCostingStore.setState({jknProportion:demoShare});
           processResult.excelFiles.push(file.name);
         } catch (e: any) {

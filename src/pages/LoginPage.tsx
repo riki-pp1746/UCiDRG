@@ -111,6 +111,14 @@ export default function LoginPage() {
     <div className="uc-login-story-content">
      <h1 id="login-story-title">Analisis biaya layanan JKN</h1>
      <p>Hitung biaya per episode rawat jalan dan rawat inap, lalu bandingkan dengan tarif iDRG.</p>
+     <figure className="uc-login-hero-card">
+      <img
+       src="/brand/login-hero.jpg"
+       alt="Tim medis dan analis costing rumah sakit mengevaluasi biaya layanan dan tarif iDRG"
+       className="uc-login-hero-img"
+       loading="eager"
+      />
+     </figure>
     </div>
    </section>
    <section className="uc-login-form-panel" aria-labelledby="login-title">

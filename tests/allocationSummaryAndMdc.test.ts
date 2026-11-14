@@ -4,10 +4,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { mdcLabel, parseRow } from '../src/lib/parsers/inacbgParser';
 import { workflowSection, workflowStages } from '../src/lib/workflowNavigation';
-import WorkflowAllocation from '../src/components/workflow/WorkflowAllocation';
+import WorkflowAllocation, { AllocationSettings } from '../src/components/workflow/WorkflowAllocation';
 import CovRivGuide from '../src/components/ui/CovRivGuide';
 import type { AnalysisWorkflow } from '../src/hooks/useAnalysisWorkflow';
 import { useTarifPasienStore } from '../src/stores/tarifPasienStore';
+import { useHospitalCostStore } from '../src/stores/hospitalCostStore';
+import { useCostingStore } from '../src/stores/costingStore';
+import { calculateJknRevenueShare, parsePercentInput } from '../src/types/hospitalCost.types';
 
 it('maps MDC 10 with empty or dash description to Pre MDC while preserving existing descriptions', () => {
   expect(mdcLabel(10, '')).toBe('Pre MDC');
@@ -79,4 +82,24 @@ it('renders CoV ideal bounds and RIV-CoV relationship guide', () => {
   expect(html).toContain('Hubungan RIV (ROV) dan CoV dalam Evaluasi Tarif');
   expect(html).toContain('Identifikasi Masalah dengan CoV.');
   expect(html).toContain('Perbaikan &amp; Validasi dengan RIV (ROV).');
+});
+
+it('syncs JKN cost share with JKN revenue share to 2 decimal places', () => {
+  expect(calculateJknRevenueShare({ pendapatanJKN: 129000000000, pendapatanNonJKN: 6000000000 })).toBe(95.56);
+  expect(calculateJknRevenueShare({ pendapatanJKN: 142115599999, pendapatanNonJKN: 35528900000 })).toBe(80);
+  expect(parsePercentInput('95,56')).toBe(95.56);
+  expect(parsePercentInput('80,00')).toBe(80);
+
+  useHospitalCostStore.getState().updateDataDasar({
+    pendapatanJKN: 129000000000,
+    pendapatanNonJKN: 6000000000,
+  });
+  expect(useCostingStore.getState().jknProportion).toBe(95.56);
+
+  const workflow = {
+    config: useHospitalCostStore.getState().config,
+  } as unknown as AnalysisWorkflow;
+  const html = renderToStaticMarkup(createElement(MemoryRouter, null, createElement(AllocationSettings, { workflow })));
+  expect(html).toContain('value="95,56"');
+  expect(html).toContain('Porsi pendapatan JKN: 95,56%');
 });

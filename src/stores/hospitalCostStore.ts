@@ -12,7 +12,9 @@ import {
   DataDasarRS,
   DEFAULT_OVERHEAD_CENTERS, DEFAULT_INTERMEDIATE_CENTERS, DEFAULT_FINAL_CENTERS,
   DEFAULT_DATA_DASAR,
+  calculateJknRevenueShare,
 } from '../types/hospitalCost.types';
+import { useCostingStore } from './costingStore';
 
 // ============================================================
 // Engine Perhitungan Biaya RS — distribusi langsung
@@ -141,12 +143,19 @@ export const useHospitalCostStore = create<HospitalCostState>()(
       },
 
       updateDataDasar: (data) => {
+        const nextDataDasar = { ...get().config.dataDasar, ...data };
         set(s => ({
           config: runStepDownCalculation({
             ...s.config,
-            dataDasar: { ...s.config.dataDasar, ...data },
+            dataDasar: nextDataDasar,
           }),
         }));
+        if ('pendapatanJKN' in data || 'pendapatanNonJKN' in data) {
+          const share = calculateJknRevenueShare(nextDataDasar);
+          if (share !== undefined) {
+            useCostingStore.setState({ jknProportion: share });
+          }
+        }
       },
 
       updateOverhead: (id, data) => {

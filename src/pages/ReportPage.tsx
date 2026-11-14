@@ -221,7 +221,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       ['Total Biaya Laporan Operasional/Keuangan', totalBiayaTahunan, totalBiayaLaporan, `Faktor ${periodNormalization?.effectiveMonths || 12}/12`],
       ['Total Biaya yang Dipetakan ke 18 Variabel E-Klaim', '', totalBiaya18Variabel, 'Distribusi berdasarkan proporsi TXT E-Klaim'],
       ['Biaya Non-JKN', '', totalBiayaLaporan-poolJKN, 'Terpisah dari pool JKN'],
-      ['Pool JKN', '', poolJKN, jknProportion+'%'],
+      ['Pool JKN', '', poolJKN, formatNumber(jknProportion, 2)+'%'],
       ['Selisih Rekonsiliasi Pool JKN', '', selisihRekonsiliasi, selisihRekonsiliasi > 0 ? 'Sisa pool JKN' : selisihRekonsiliasi < 0 ? 'Kelebihan alokasi 18 variabel' : 'Sesuai'],
     ];
     const ws5 = XLSX.utils.aoa_to_sheet(reconciliationData);

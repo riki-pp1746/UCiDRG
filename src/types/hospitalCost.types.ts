@@ -262,6 +262,40 @@ export const DEFAULT_DATA_DASAR: DataDasarRS = {
   pendapatanLain: 0, subsidiPemerintah: 0,
 };
 
+export function calculateJknRevenueShare(
+  dataDasar?: Pick<DataDasarRS, 'pendapatanJKN' | 'pendapatanNonJKN'> | null,
+): number | undefined {
+  if (!dataDasar) return undefined;
+  const jkn = Number(dataDasar.pendapatanJKN) || 0;
+  const nonJkn = Number(dataDasar.pendapatanNonJKN) || 0;
+  const total = jkn + nonJkn;
+  if (!Number.isFinite(total) || total <= 0 || jkn < 0 || nonJkn < 0) return undefined;
+  return Number(((jkn / total) * 100).toFixed(2));
+}
+
+export function effectiveJknProportion(
+  config?: Pick<HospitalCostConfig, 'dataDasar' | 'workbookSource'> | null,
+  storeProportion = 100,
+): number {
+  const revenueShare = calculateJknRevenueShare(config?.dataDasar);
+  if (
+    revenueShare !== undefined &&
+    (storeProportion === 100 || storeProportion === config?.workbookSource?.demoJknProportion)
+  ) {
+    return revenueShare;
+  }
+  return storeProportion;
+}
+
+export function parsePercentInput(raw: string): number {
+  const clean = raw.trim().replace(/%/g, '').trim();
+  if (!clean) return NaN;
+  if (clean.includes(',')) {
+    return Number(clean.replace(/\./g, '').replace(',', '.'));
+  }
+  return Number(clean);
+}
+
 // Overhead sesuai Hal 41 Materi Workshop
 export const DEFAULT_OVERHEAD_CENTERS: OverheadCenter[] = [
   mkOverhead('oh-1',  1,  'Manajemen & Administrasi',              'jumlah_staf',  0, 0, 0, 0, 0, 0),

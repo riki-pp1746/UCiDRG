@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { operatingExpenseTotal } from '../lib/costingWorkbookSchema';
 import { inputQuality, type QualityIssue } from '../lib/analysisQuality';
 import { snapshotSourcesMatch } from '../lib/analysisSources';
@@ -6,6 +6,7 @@ import { useCostingStore } from '../stores/costingStore';
 import { useHospitalCostStore } from '../stores/hospitalCostStore';
 import { effectiveMethodology, useMethodologyStore } from '../stores/methodologyStore';
 import { useTarifPasienStore } from '../stores/tarifPasienStore';
+import { calculateJknRevenueShare } from '../types/hospitalCost.types';
 
 export function useAnalysisWorkflow() {
   const raw = useCostingStore(s => s.rawRecords);
@@ -17,6 +18,16 @@ export function useAnalysisWorkflow() {
   const revision = useMethodologyStore(s => s.revision);
   const snapshot = useTarifPasienStore(s => s.snapshot);
   const costs = useTarifPasienStore(s => s.biayaRSMap);
+  useEffect(() => {
+    const revenueShare = calculateJknRevenueShare(config.dataDasar);
+    if (
+      revenueShare !== undefined &&
+      jkn !== revenueShare &&
+      (jkn === 100 || jkn === config.workbookSource?.demoJknProportion)
+    ) {
+      useCostingStore.setState({ jknProportion: revenueShare });
+    }
+  }, [config.dataDasar, config.workbookSource?.demoJknProportion, jkn]);
   const annual = [...config.overheadCenters,...config.intermediateCenters,...config.finalCenters].reduce((total,center)=>
     total+(center.biayaPegawai||0)+(center.biayaJasaMedis||0)+(center.biayaJasaMedisLain||0)+(center.biayaOperasional||0)
     +(center.bookDepreciationEquipment??center.depresiasiPeralatan??0)+(center.bookDepreciationBuilding??center.depresiasiGedung??0),0);

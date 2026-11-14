@@ -4,10 +4,13 @@ import {useCostingStore} from '../../stores/costingStore';
 import {useTarifPasienStore} from '../../stores/tarifPasienStore';
 import {useHospitalCostStore} from '../../stores/hospitalCostStore';
 import {useMethodologyStore} from '../../stores/methodologyStore';
+import {formatNumber} from '../../lib/calculations/patientLevelCosting';
+import {parsePercentInput} from '../../types/hospitalCost.types';
 export default function JKNProportionControl(){
  const proportion=useCostingStore(s=>s.jknProportion);
- const [edit,setEdit]=useState({base:proportion,value:String(proportion)});
- const draft=edit.base===proportion?edit.value:String(proportion);
+ const formatted=formatNumber(proportion,2);
+ const [edit,setEdit]=useState({base:proportion,value:formatted});
+ const draft=edit.base===proportion?edit.value:formatted;
  const setDraft=(value:string)=>setEdit({base:proportion,value});
  const [progress,setProgress]=useState<number|null>(null);
  const [message,setMessage]=useState('');
@@ -15,8 +18,9 @@ export default function JKNProportionControl(){
  useEffect(()=>()=>worker.current?.terminate(),[]);
  const cancel=()=>{worker.current?.terminate();worker.current=null;setProgress(null);setMessage('Perhitungan dibatalkan. Hasil sebelumnya tetap digunakan.');};
  const apply=()=>{
-  const p=Number(draft);
-  if(!draft.trim()||!Number.isFinite(p)||p<0||p>100)return;
+  const parsed=parsePercentInput(draft);
+  if(!draft.trim()||!Number.isFinite(parsed)||parsed<0||parsed>100)return;
+  const p=Number(parsed.toFixed(2));
   const source=useCostingStore.getState(),tarif=useTarifPasienStore.getState(),config=useHospitalCostStore.getState().config,policy=useMethodologyStore.getState();
   if(policy.role==='Pembaca'){setMessage('Pembaca tidak dapat mengubah porsi.');return;}
   setMessage('');setProgress(0);
@@ -38,6 +42,7 @@ export default function JKNProportionControl(){
    job.postMessage({settings:policy.settings,revision:policy.revision,config,patients:tarif.patients,proportion:p,costing:{rawRecords:source.rawRecords,periodNormalization:source.periodNormalization,overheadConfig:source.overheadConfig,tarifIDRGConfig:source.tarifIDRGConfig,mergeCarePool:source.mergeCarePool,sessions:source.sessions,activeSessionId:source.activeSessionId}});
   }catch{worker.current?.terminate();worker.current=null;setProgress(null);setMessage('Proses latar belakang tidak tersedia. Silakan coba lagi.');}
  };
- const valid=draft.trim()!==''&&Number.isFinite(Number(draft))&&Number(draft)>=0&&Number(draft)<=100;
- return <div className="space-y-2"><label className="uc-label">Porsi JKN (%)<input className="uc-input" type="number" min="0" max="100" step="0.1" value={draft} disabled={progress!==null} onChange={e=>setDraft(e.target.value)}/></label><p className="text-sm">Proporsi aktif: JKN {proportion}% · Non-JKN {100-proportion}%</p><button className="uc-btn-primary" disabled={!valid||progress!==null||Number(draft)===proportion} onClick={apply}>Terapkan proporsi & hitung ulang</button>{progress!==null&&<><p role="status">Menghitung di latar belakang… {progress}%</p><button className="uc-btn-secondary" onClick={cancel}>Batalkan</button></>}{message&&<p role="status" className="text-sm">{message}</p>}<p className="text-xs text-slate-500">Mengubah angka belum mengubah hasil. Tekan Terapkan setelah selesai mengisi.</p></div>;
+ const parsedDraft=parsePercentInput(draft);
+ const valid=draft.trim()!==''&&Number.isFinite(parsedDraft)&&parsedDraft>=0&&parsedDraft<=100;
+ return <div className="space-y-2"><label className="uc-label">Porsi biaya JKN (%)<input className="uc-input" type="text" inputMode="decimal" value={draft} disabled={progress!==null} onChange={e=>setDraft(e.target.value)}/></label><p className="text-sm">Proporsi aktif: JKN {formatNumber(proportion,2)}% · Non-JKN {formatNumber(100-proportion,2)}%</p><button className="uc-btn-primary" disabled={!valid||progress!==null||Number(parsedDraft.toFixed(2))===proportion} onClick={apply}>Terapkan proporsi & hitung ulang</button>{progress!==null&&<><p role="status">Menghitung di latar belakang… {progress}%</p><button className="uc-btn-secondary" onClick={cancel}>Batalkan</button></>}{message&&<p role="status" className="text-sm">{message}</p>}<p className="text-xs text-slate-500">Mengubah angka belum mengubah hasil. Tekan Terapkan setelah selesai mengisi.</p></div>;
 }

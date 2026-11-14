@@ -21,7 +21,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useHospitalCostStore, runStepDownCalculation } from '../stores/hospitalCostStore';
 import { useCostingStore } from '../stores/costingStore';
-import { formatRupiah } from '../lib/calculations/patientLevelCosting';
+import { formatNumber, formatRupiah } from '../lib/calculations/patientLevelCosting';
 import { overrideEffectiveMonths } from '../lib/calculations/periodNormalization';
 import { biayaRSMapToRVU, buildBiayaRSMap, useTarifPasienStore } from '../stores/tarifPasienStore';
 import { parseExcelTemplate } from '../lib/parsers/excelCostingParser';
@@ -31,7 +31,7 @@ import {
   FileSpreadsheet, ArrowRight, Layers, Activity, RefreshCw, X, ChevronDown
 } from 'lucide-react';
 import clsx from 'clsx';
-import type { OverheadDasarAlokasi, IntermediateDasarAlokasi, FinalKategori, FinalDasarAlokasi } from '../types/hospitalCost.types';
+import { calculateJknRevenueShare, type OverheadDasarAlokasi, type IntermediateDasarAlokasi, type FinalKategori, type FinalDasarAlokasi } from '../types/hospitalCost.types';
 import type { RVUGlobalCosts } from '../types/costing.types';
 import { ALL_KOMPONEN_KEYS, type KomponenTarif18 } from '../types/tarifPasien.types';
 
@@ -397,8 +397,9 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
         return { config: newConfig };
       });
 
-      if(parsedData.workbookSource?.demoJknProportion!==undefined){
-        useCostingStore.setState({jknProportion:parsedData.workbookSource.demoJknProportion});
+      const nextShare = calculateJknRevenueShare(parsedData.dataDasar) ?? parsedData.workbookSource?.demoJknProportion;
+      if(nextShare!==undefined){
+        useCostingStore.setState({jknProportion:nextShare});
       }
       await shareSourceData({costs:true,excel:file});
       const importedSummary = [
@@ -1231,7 +1232,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
             </div>
           )}
 
-          <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><JKNProportionControl/><p className="text-sm">JKN {displayDecimal(String(jknProportion))}%: {formatRupiah(biayaJKN)} · Non-JKN {displayDecimal(String(100-jknProportion))}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
+          <section className="uc-panel space-y-3"><h3 className="font-semibold">Proporsi biaya JKN / Non-JKN</h3><JKNProportionControl/><p className="text-sm">JKN {formatNumber(jknProportion, 2)}%: {formatRupiah(biayaJKN)} · Non-JKN {formatNumber(100-jknProportion, 2)}%: {formatRupiah(totalBiayaLaporan-biayaJKN)}</p><p className="text-xs text-slate-500">Porsi manual seluruh biaya. Gunakan sumber volume JKN/Non-JKN yang sebanding; 100% bawaan bukan hasil verifikasi data RS.</p><label className="flex gap-2 text-sm"><input type="checkbox" checked={mergeCarePool} onChange={e=>{setMergeCarePool(e.target.checked);calculateDistribution();}}/>Gabungkan Kamar + Intensif + Keperawatan sebagai pool inap berdasarkan LOS</label><p className="text-xs text-amber-700">Aktifkan hanya bila komponen tersebut merupakan satu sumber biaya bersama. Pool tidak menambah biaya, dipisah kembali menurut porsi biaya awal. Semua biaya pool termasuk ICU tersebar ke pasien inap; komponen terpisah tetap pilihan awal.</p></section>
           {pendingAllocation ? (
             <div className="uc-notice" role="status">
               <p>Distribusi belum tersedia untuk sumber aktif. {totalBiayaTahunan > 0 ? <>Gunakan <a href="#hitung-18-komponen" className="font-semibold underline">Hitung 18 komponen</a> untuk memproses semua klaim.</> : 'Unggah workbook costing atau isi biaya RS terlebih dahulu.'}</p>
@@ -1251,7 +1252,7 @@ export default function CostingInputPage({section}:{section?:'profile'|'operatio
             <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4">
               <p className="text-xs text-indigo-600">Total Biaya 18 Variabel</p>
               <p className="font-bold text-indigo-900 mt-1">{formatRupiah(totalBiaya18Variabel)}</p>
-              <p className="text-[11px] text-indigo-500 mt-1">Biaya RS dialokasikan ke JKN ({jknProportion}%)</p>
+              <p className="text-[11px] text-indigo-500 mt-1">Biaya RS dialokasikan ke JKN ({formatNumber(jknProportion, 2)}%)</p>
             </div>
             <div className={clsx('rounded-xl border p-4', Math.abs(selisihNonJKN) < 1 ? 'border-emerald-200 bg-emerald-50' : 'border-amber-200 bg-amber-50')}>
               <p className={clsx('text-xs', Math.abs(selisihNonJKN) < 1 ? 'text-emerald-600' : 'text-amber-700')}>

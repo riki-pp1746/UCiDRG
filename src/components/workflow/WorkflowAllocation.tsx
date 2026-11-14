@@ -6,6 +6,7 @@ import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
 import { useTarifPasienStore } from '../../stores/tarifPasienStore';
 import { ALL_KOMPONEN_KEYS, KOMPONEN_LABELS } from '../../types/tarifPasien.types';
+import { calculateJknRevenueShare, effectiveJknProportion, parsePercentInput } from '../../types/hospitalCost.types';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
 import WorkflowTable, { WorkflowPager } from './WorkflowTable';
 
@@ -14,7 +15,7 @@ const componentName=(key:string)=>KOMPONEN_LABELS[key as keyof typeof KOMPONEN_L
 
 export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
   const {settings,update,role}=useMethodologyStore();
-  const jkn=useCostingStore(s=>s.jknProportion);
+  const storeJkn=useCostingStore(s=>s.jknProportion);
   const merge=useCostingStore(s=>s.mergeCarePool);
   const [tab,setTab]=useState<'basis'|'recipient'|'matrix'>('basis');
   const [selected,setSelected]=useState('');
@@ -24,6 +25,8 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
   const context=tab+'|'+selected;
   const draft=drafts[context];
   const config=workflow.config;
+  const revenueShare=calculateJknRevenueShare(config.dataDasar);
+  const jkn=effectiveJknProportion(config,storeJkn);
   const sources=[...config.overheadCenters,...config.intermediateCenters];
   const centers=[...sources,...config.finalCenters];
   const center=centers.find(item=>item.id===selected);
@@ -37,11 +40,11 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
     setMessage('');
     setSaveError(false);
     if(tab==='basis'){
-      const proportion=Number(data.get('jkn'));
+      const proportion=parsePercentInput(String(data.get('jkn')??''));
       if(!Number.isFinite(proportion)||proportion<0||proportion>100){setSaveError(true);setMessage('Isi porsi biaya JKN antara 0 dan 100%.');return;}
       update({allocationMethod:data.get('method')==='step-down'?'step-down':'direct',
         outpatientRoomBilling:settings.compatibility?settings.outpatientRoomBilling:data.has('outpatient-room')});
-      useCostingStore.setState({jknProportion:proportion,mergeCarePool:data.has('merge')});
+      useCostingStore.setState({jknProportion:Number(proportion.toFixed(2)),mergeCarePool:data.has('merge')});
     }else if(center){
       const ids=tab==='matrix'?ALL_KOMPONEN_KEYS:recipients.map(item=>item.id);
       const values=Object.fromEntries(ids.map(key=>[key,Number(data.get(key)||0)]));
@@ -75,7 +78,7 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
         {tab==='basis'?<>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="uc-label">Metode alokasi<select name="method" className="uc-input" defaultValue={draft?.method??settings.allocationMethod}><option value="direct">Pemetaan langsung ke komponen</option><option value="step-down">Bertahap antar pusat biaya</option></select></label>
-            <label className="uc-label">Porsi biaya JKN (%)<input name="jkn" type="number" min={0} max={100} step="any" required className="uc-input" defaultValue={draft?.jkn??jkn}/></label>
+            <label className="uc-label">Porsi biaya JKN (%)<input key={draft?.jkn===undefined?formatNumber(jkn,2):'draft'} name="jkn" type="text" inputMode="decimal" required className="uc-input" defaultValue={draft?.jkn??formatNumber(jkn,2)}/>{revenueShare!==undefined&&<span className="mt-1 block text-xs font-normal text-slate-500">Porsi pendapatan JKN: {formatNumber(revenueShare,2)}% · Non-JKN: {formatNumber(100-revenueShare,2)}%</span>}</label>
           </div>
           <label className="uc-report-choice">
             <input name="outpatient-room" type="checkbox" disabled={settings.compatibility} defaultChecked={draft?Boolean(draft['outpatient-room']):Boolean(settings.outpatientRoomBilling)}/>
