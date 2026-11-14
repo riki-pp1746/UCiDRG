@@ -61,6 +61,8 @@ export const analysisFormulaRows:string[][]=[
  ['ROV mentah','1−SSW/SST pada ln(UC positif), kelompok menurut jenis rawat dan kode aktif; SST nol: tidak tersedia'],
  ['ROV adjusted','1−[SSW/(n−k)]/[SST/(n−1)]; pembagi tidak valid: tidak tersedia'],
  ['ROV validasi silang','1−galat prediksi kelompok/galat baseline jenis rawat; 5 fold menurut identitas stabil; baseline nol atau data kurang: tidak tersedia'],
+ ['Batasan nilai ideal CoV','< 0,5 (< 50%): Sangat Homogen (ideal, biaya seragam & mudah diprediksi); 0,5–1,0 (50%–100%): Homogen / Dapat Diterima (batas standar layak untuk tarif DRG/iDRG); > 1,0 (> 100%): Heterogen / Tinggi (red flag, kelompok DRG perlu dipecah berdasarkan keparahan/komorbiditas)'],
+ ['Hubungan RIV (ROV) dan CoV','(1) Identifikasi masalah pada kode DRG dengan CoV > 1,0 (biaya sangat murah dan sangat mahal tercampur); (2) Validasi pemecahan sub-kelompok bila CoV tiap sub-kelompok turun di bawah 1,0 dan nilai RIV (ROV) keseluruhan naik'],
  ['Faktor biaya tahunan','Jumlah setiap bulan [(1−phi)+phi×rasio_volume_bulan]/12'],
  ['Kelengkapan opsional','kappa=kasus terunggah/estimasi kasus JKN SIMRS; pool sesudah=pool sebelum×kappa; asumsi biaya terunggah mewakili seluruh kasus'],
  ['Rekonsiliasi alokasi','Alokasi driver utama + alokasi cadangan episode + belum teralokasi = pool komponen'],

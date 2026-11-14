@@ -142,6 +142,14 @@ export function inaCbgRegion(columns:ReadonlyMap<string,number>, row:string[]):s
   return '';
 }
 
+export function mdcLabel(mdcNumber?: number | string | null, mdcDescription?: string | null): string {
+  const cleaned = (mdcDescription || '').trim();
+  if (cleaned && !['-', '—', 'N/A', 'UNKNOWN'].includes(cleaned.toUpperCase())) return cleaned;
+  const num = Number(mdcNumber);
+  if (num === 10) return 'Pre MDC';
+  return cleaned;
+}
+
 export function parseRow(cols: string[], region=''): PatientRecord | null {
   if (!cols || cols.length < 80) return null;
   
@@ -170,11 +178,12 @@ export function parseRow(cols: string[], region=''): PatientRecord | null {
   };
 
   // Parse iDRG info dari flat columns
+  const rawMdcNumber = parseNum(get(COLUMN_MAP.IDRG_MDC_NUMBER));
   const idrg: IDRGInfo = {
     diag_lists: get(COLUMN_MAP.IDRG_DIAG_LISTS),
     proc_lists: get(COLUMN_MAP.IDRG_PROC_LISTS),
-    mdc_number: parseNum(get(COLUMN_MAP.IDRG_MDC_NUMBER)),
-    mdc_description: get(COLUMN_MAP.IDRG_MDC_DESCRIPTION),
+    mdc_number: rawMdcNumber,
+    mdc_description: mdcLabel(rawMdcNumber, get(COLUMN_MAP.IDRG_MDC_DESCRIPTION)),
     drg_code: get(COLUMN_MAP.IDRG_DRG_CODE),
     drg_description: get(COLUMN_MAP.IDRG_DRG_DESCRIPTION),
     cost_weight: parseNum(get(COLUMN_MAP.IDRG_COST_WEIGHT)),
@@ -193,11 +202,12 @@ export function parseRow(cols: string[], region=''): PatientRecord | null {
       const idrgMatch = c2Raw.match(/"idrg":\s*(\{[^}]+\})/);
       if (idrgMatch) {
         const idrgJson = JSON.parse(idrgMatch[1]);
+        const jsonMdcNumber = parseNum(idrgJson.mdc_number);
         Object.assign(idrg, {
           diag_lists: idrgJson.diag_lists || '',
           proc_lists: idrgJson.proc_lists || '',
-          mdc_number: parseNum(idrgJson.mdc_number),
-          mdc_description: idrgJson.mdc_description || '',
+          mdc_number: jsonMdcNumber,
+          mdc_description: mdcLabel(jsonMdcNumber, idrgJson.mdc_description || ''),
           drg_code: idrgJson.drg_code || '',
           drg_description: idrgJson.drg_description || '',
           cost_weight: parseNum(idrgJson.cost_weight),

@@ -175,7 +175,7 @@ export default function ReportPage({variant}:{variant?:'summary'|'print'|'export
       'Selisih (Rp)', 'Selisih (%)', 'CoV', 'Total Biaya RS', `Total Tarif ${viewMode}`, 'Status','CRR','Kepastian statistik','CI selisih bawah','CI selisih atas'
     ];
     const drgData = drgResults.map(d => [
-      d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || '-',
+      d.group_code, d.group_description, d.mdc_number || '-', d.mdc_description || (d.mdc_number === 10 ? 'Pre MDC' : '-'),
       d.jumlahKasus, d.rataUnitCost, d.rataTarif,
       d.selisih, formatNumber(d.selisihPersen,1) + '%', formatNumber(d.cov * 100,2) + '%',
       d.totalBiayaRS, d.totalTarif, statusLabel(d),d.crrAvailable?d.crr:null,d.statisticalLabel,d.ci?.low??null,d.ci?.high??null

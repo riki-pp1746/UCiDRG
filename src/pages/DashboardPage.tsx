@@ -1,4 +1,5 @@
 import { FinancialBadge } from '../components/ui/FinancialStatus';
+import CovRivGuide from '../components/ui/CovRivGuide';
 import { financialTone } from '../lib/financialPresentation';
 import {financialLabel,summaryMetricText} from '../lib/analysisSnapshot';
 import {useAnalysisView} from '../hooks/useAnalysisView';
@@ -243,6 +244,7 @@ export default function DashboardPage() {
         </details>
       )}
 
+      <CovRivGuide/>
       <details className="uc-panel"><summary className="font-semibold">Cara membaca ROV dan variasi biaya</summary><div className="space-y-2 text-sm text-gray-600 mt-3"><p>ROV = 1 − variasi ln(UC) dalam kelompok ÷ variasi ln(UC) seluruh kasus positif. Menggunakan unit cost pasien termasuk outlier; kelompok dipisahkan menurut jenis rawat dan kode DRG. CoV pada grafik memakai UC seluruh kasus valid pada skala rupiah, sehingga skalanya berbeda.</p><p>ROV rendah belum membuktikan data klaim buruk atau tarif tidak adil. Nilai dipengaruhi komposisi kasus, keparahan, variasi layanan, pemetaan biaya, serta kelengkapan data. ROV mengukur pengelompokan biaya, bukan kesesuaian tarif.</p><p>Periksa rawat inap dan jalan secara terpisah melalui filter, lalu tinjau kelompok dengan CoV tinggi: validitas kode dan severity, LOS/ICU, billing negatif atau nol, duplikat serta pembagi alokasi. Koreksi berdasarkan bukti. Trimming untuk CW tidak menghapus biaya dari pool JKN; Tarif RS tidak dipakai untuk menaikkan ROV.</p></div></details>
       {/* Selisih Alert */}
       <div className={clsx(

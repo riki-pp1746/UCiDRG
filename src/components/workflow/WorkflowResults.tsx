@@ -14,6 +14,8 @@ import SourceCaseMixIndex from '../costing/SourceCaseMixIndex';
 import ProxyCostWeightPanel from '../costing/ProxyCostWeightPanel';
 import WorkflowTable, { WorkflowPager } from './WorkflowTable';
 import HelpTip from '../ui/HelpTip';
+import CovRivGuide from '../ui/CovRivGuide';
+import { mdcLabel } from '../../lib/parsers/inacbgParser';
 import { useCostingStore } from '../../stores/costingStore';
 import { useMethodologyStore } from '../../stores/methodologyStore';
 import { dec, money, sum } from '../../v4/numbers';
@@ -70,7 +72,7 @@ function GroupResults({snapshot,kind}:{snapshot:AnalysisSnapshot;kind:'cost'|'co
     const values=kind==='cw'?[weight(c),weight(t),c!=null&&t!=null&&Number(t)>0?formatNumber((Number(c)/Number(t)-1)*100,1):'—']:
       kind==='comparison'?[<FinancialBadge key="status" status={group.decisionStatus||group.status} label={statusLabel(group)}/>,formatNumber(group.rataUnitCost),group.rataTarif>0?formatNumber(group.rataTarif):'—',group.rataTarif>0?<FinancialValue key="difference" value={group.selisih}>{signed(group.selisih)}</FinancialValue>:'—',group.rataTarif>0?<FinancialValue key="impact" value={group.totalTarif-group.totalBiayaRS}>{signed(group.totalTarif-group.totalBiayaRS)}</FinancialValue>:'—',group.crrAvailable?formatNumber(group.crr,1):'—',formatNumber(group.cov*100,1),group.statisticalLabel??'—']:
       [formatNumber(group.rataUnitCost),formatNumber(group.cov*100,1),days?.count?formatNumber(days.days/days.count,1):'—'];
-    return {key:id,cells:[group.group_code,<span key="description" title={group.mdc_description||String(group.mdc_number||'')}>{group.group_description||'—'}</span>,...(kind==='comparison'?[]:[group.mdc_description||group.mdc_number||'—']),careLabel(group.ptd),formatNumber(group.jumlahKasus),...values]};
+    return {key:id,cells:[group.group_code,<span key="description" title={mdcLabel(group.mdc_number,group.mdc_description)||String(group.mdc_number||'')}>{group.group_description||'—'}</span>,...(kind==='comparison'?[]:[mdcLabel(group.mdc_number,group.mdc_description)||group.mdc_number||'—']),careLabel(group.ptd),formatNumber(group.jumlahKasus),...values]};
   });
   return <div className="space-y-4">
     {kind==='cw'&&<section className="uc-panel space-y-3">
@@ -110,11 +112,12 @@ function GroupingQuality({snapshot}:{snapshot:AnalysisSnapshot}) {
     }
     return [...byMdc].sort((a,b)=>Number(a[0])-Number(b[0])).map(([code,items])=>{
       const rov=rovMetrics(items.map((row,index)=>({id:row.patient.internalId??String(index),uc:row.unitCostDihitung,care:String(row.patient.ptd),group:row.patient.idrg.drg_code})));
-      return {key:code,cells:[code,items[0].patient.idrg.mdc_description||'—',formatNumber(rov.n),formatNumber(rov.k),rov.raw==null?'—':formatNumber(rov.raw*100,1),rov.adjusted==null?'—':formatNumber(rov.adjusted*100,1),rov.reason||'Dapat ditinjau']};
+      return {key:code,cells:[code,mdcLabel(code,items[0].patient.idrg.mdc_description)||'—',formatNumber(rov.n),formatNumber(rov.k),rov.raw==null?'—':formatNumber(rov.raw*100,1),rov.adjusted==null?'—':formatNumber(rov.adjusted*100,1),rov.reason||'Dapat ditinjau']};
     });
   },[snapshot]);
   return <section className="space-y-4">
     <div className="flex flex-wrap gap-2"><button type="button" className={tab==='rov'?'uc-primary':'uc-secondary'} aria-pressed={tab==='rov'} onClick={()=>setTab('rov')}>ROV</button><button type="button" className={tab==='cov'?'uc-primary':'uc-secondary'} aria-pressed={tab==='cov'} onClick={()=>setTab('cov')}>CoV</button></div>
+    <CovRivGuide defaultOpen/>
     {tab==='cov'?<GroupResults snapshot={snapshot} kind="cost"/>:<div className="uc-panel space-y-4">
       <p className="text-lg font-semibold text-teal-950">ROV keseluruhan {view.summary?summaryMetricText(view.summary,'rov'):'—'} <HelpTip term="rov"/></p>
       <p className="text-sm text-slate-600">ROV mengukur variasi biaya yang dijelaskan oleh pengelompokan DRG pada kasus dengan unit cost positif.</p>

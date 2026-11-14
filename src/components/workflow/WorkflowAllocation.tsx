@@ -103,13 +103,50 @@ export function AllocationSettings({workflow}:{workflow:AnalysisWorkflow}) {
   </section>;
 }
 
+function centerDirectCost(center:{totalCostDirect?:number;totalCost?:number;biayaPegawai?:number;biayaJasaMedis?:number;biayaJasaMedisLain?:number;biayaOperasional?:number;bookDepreciationEquipment?:number;depresiasiPeralatan?:number;bookDepreciationBuilding?:number;depresiasiGedung?:number}) {
+  const direct='totalCost' in center&&typeof center.totalCost==='number'&&center.totalCost>0?center.totalCost:typeof center.totalCostDirect==='number'&&center.totalCostDirect>0?center.totalCostDirect:0;
+  if(direct>0)return direct;
+  return (center.biayaPegawai||0)+(center.biayaJasaMedis||0)+(center.biayaJasaMedisLain||0)+(center.biayaOperasional||0)+(center.bookDepreciationEquipment??center.depresiasiPeralatan??0)+(center.bookDepreciationBuilding??center.depresiasiGedung??0);
+}
+
+function AllocationSummaryCards({workflow,distribusi}:{workflow:AnalysisWorkflow;distribusi:ReturnType<typeof useTarifPasienStore.getState>['distribusi']}) {
+  const config=workflow.config;
+  const totalOverhead=config.totalOverheadCost>0?config.totalOverheadCost:config.overheadCenters.reduce((sum,center)=>sum+centerDirectCost(center),0);
+  const totalIntermediate=config.totalIntermediateCost>0?config.totalIntermediateCost:config.intermediateCenters.reduce((sum,center)=>sum+centerDirectCost(center),0);
+  const totalFinal=config.totalFinalCost>0?config.totalFinalCost:config.finalCenters.reduce((sum,center)=>sum+centerDirectCost(center),0);
+  const totalBiayaRS=(totalOverhead+totalIntermediate+totalFinal)||workflow.annual||workflow.results?.annual||0;
+  const totalTagihanFromDist=distribusi.reduce((sum,row)=>sum+Number(row.totalEKlaim||0),0);
+  const totalTagihanRS=totalTagihanFromDist>0?totalTagihanFromDist:workflow.raw.reduce((sum,record)=>{
+    const billingTotal=ALL_KOMPONEN_KEYS.reduce((acc,key)=>{
+      const rawKey=key==='chronic_drug_amt'?'drug_chronic_amt':key==='chemo_drug_amt'?'drug_chemo_amt':key;
+      return acc+Number((record.billing as unknown as Record<string,number>)?.[rawKey]||0);
+    },0);
+    return sum+(billingTotal>0?billingTotal:Number(record.tarif_rs||0));
+  },0);
+  const cards=[
+    {label:'Total Overhead',value:formatRupiah(totalOverhead),hint:`${formatNumber(config.overheadCenters.length)} pusat biaya penunjang umum`,tone:'border-slate-200 bg-white text-slate-900',labelTone:'text-slate-600',hintTone:'text-slate-400'},
+    {label:'Total Intermediate / Penunjang',value:formatRupiah(totalIntermediate),hint:`${formatNumber(config.intermediateCenters.length)} pusat biaya penunjang medis`,tone:'border-blue-200 bg-blue-50/70 text-blue-950',labelTone:'text-blue-700',hintTone:'text-blue-600/80'},
+    {label:'Total Layanan Final',value:formatRupiah(totalFinal),hint:`${formatNumber(config.finalCenters.length)} pusat biaya layanan pasien`,tone:'border-amber-200 bg-amber-50/70 text-amber-950',labelTone:'text-amber-800',hintTone:'text-amber-700/80'},
+    {label:'Total Biaya RS',value:formatRupiah(totalBiayaRS),hint:'Baseline laporan keuangan 12 bulan',tone:'border-teal-200 bg-teal-50/70 text-teal-950',labelTone:'text-teal-800',hintTone:'text-teal-700/80'},
+    {label:'Total Tagihan RS',value:formatRupiah(totalTagihanRS),hint:`${formatNumber(workflow.raw.length)} episode klaim sumber`,tone:'border-emerald-200 bg-emerald-50/70 text-emerald-950',labelTone:'text-emerald-800',hintTone:'text-emerald-700/80'},
+  ];
+  return <section aria-label="Ringkasan biaya dan tagihan RS" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    {cards.map(card=><div key={card.label} className={`rounded-xl border p-4 shadow-xs ${card.tone}`}>
+      <p className={`text-xs font-medium ${card.labelTone}`}>{card.label}</p>
+      <p className="mt-1 break-words text-base font-bold tabular-nums sm:text-lg">{card.value}</p>
+      <p className={`mt-1 text-[11px] ${card.hintTone}`}>{card.hint}</p>
+    </div>)}
+  </section>;
+}
+
 export default function WorkflowAllocation({workflow,section}:{workflow:AnalysisWorkflow;section:string}) {
   const distribusi=useTarifPasienStore(s=>s.distribusi);
   const [tab,setTab]=useState<'total'|'matrix'>('total');
   const [page,setPage]=useState(0);
   const result=workflow.results;
   if(section==='dasar-alokasi')return <AllocationSettings workflow={workflow}/>;
-  if(!result)return <p className="uc-notice">Jalankan Hitung unit cost untuk melihat hasil alokasi di halaman ini.</p>;
+  const summaryCards=<AllocationSummaryCards workflow={workflow} distribusi={distribusi}/>;
+  if(!result)return <div className="space-y-4">{summaryCards}<p className="uc-notice">Jalankan Hitung unit cost untuk melihat hasil alokasi di halaman ini.</p></div>;
   const config=workflow.config;
   const mapping=result.mapping;
   if(section==='distribusi'){
@@ -122,31 +159,42 @@ export default function WorkflowAllocation({workflow,section}:{workflow:Analysis
     }
     const entries=[...matrix];
     const safePage=Math.min(page,Math.max(0,Math.ceil(entries.length/25)-1));
-    return <section className="uc-panel space-y-4">
+    const unallocated=distribusi.reduce((sum,row)=>sum+Number(row.unallocated??0),0);
+    return <div className="space-y-4">
+      {summaryCards}
+      <section className="uc-panel space-y-4">
+      <dl className="grid gap-3 sm:grid-cols-3">{[['Biaya tahunan',result.annual||workflow.annual],['Pool JKN periode',result.pool],['Belum teralokasi',unallocated]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="mt-1 text-lg font-semibold">{formatRupiah(Number(value))}</dd></div>)}</dl>
       <nav aria-label="Bagian distribusi" className="flex flex-wrap gap-2">
         <button type="button" className={tab==='matrix'?'uc-primary':'uc-secondary'} aria-pressed={tab==='matrix'} onClick={()=>setTab('matrix')}>Matriks pusat biaya</button>
         <button type="button" className={tab==='total'?'uc-primary':'uc-secondary'} aria-pressed={tab==='total'} onClick={()=>setTab('total')}>Total per komponen</button>
       </nav>
       {tab==='total'?<>
         <p className="text-sm text-slate-600">Sisa belum teralokasi Rp0 berarti seluruh biaya komponen telah dibagikan ke pasien. Jika biaya komponen juga Rp0, tidak ada biaya yang perlu dialokasikan.</p>
-        <WorkflowTable label="Total 18 komponen" columns={['Komponen','Biaya JKN (Rp)','Sudah teralokasi (Rp)','Sisa belum teralokasi (Rp)','Status alokasi','Tagihan (Rp)','Dasar distribusi']} numeric={[1,2,3,5]} rows={distribusi.map(row=>{
+        <WorkflowTable label="Total 18 komponen dan uji kewajaran" columns={['Komponen','Biaya JKN (Rp)','Sudah teralokasi (Rp)','Sisa belum teralokasi (Rp)','Status alokasi','Tagihan (Rp)','Rasio biaya/tagihan','Status rasio','Dasar distribusi']} numeric={[1,2,3,5,6]} rows={distribusi.map(row=>{
           const allocation=allocationPresentation(row.totalBiayaRS,row.unallocated);
-          return {key:row.key,cells:[componentName(row.key),formatNumber(row.totalBiayaRS),allocation.allocated===null?'—':formatNumber(allocation.allocated),row.unallocated===undefined?'—':formatNumber(Number(row.unallocated)),allocation.status,formatNumber(row.totalEKlaim),row.metodeAlokasi]};
+          const hasRatio=row.rasio>0;
+          const ratioStatus=row.outlier?<span className="font-semibold text-amber-800">Perlu diperiksa</span>:hasRatio?'Dalam batas':'Tidak berlaku';
+          return {key:row.key,cells:[componentName(row.key),formatNumber(row.totalBiayaRS),allocation.allocated===null?'-':formatNumber(allocation.allocated),row.unallocated===undefined?'-':formatNumber(Number(row.unallocated)),allocation.status,formatNumber(row.totalEKlaim),hasRatio?formatNumber(row.rasio,2):'-',ratioStatus,row.metodeAlokasi]};
         })}/>
+        <p className="text-sm text-slate-600">Batas peninjauan rasio {formatNumber(result.options.ratioMin,1)}–{formatNumber(result.options.ratioMax,1)}. Biaya per hari menggunakan pembagi hari rawat dan ditinjau terpisah.</p>
       </>:<>
         <p className="text-sm text-slate-600">Nilai tahunan dalam rupiah. Geser tabel untuk melihat seluruh komponen.</p>
         <WorkflowTable label="Matriks pusat biaya dan komponen" columns={['Pusat biaya',...ALL_KOMPONEN_KEYS.map(componentName)]} numeric={ALL_KOMPONEN_KEYS.map((_,index)=>index+1)} rows={entries.slice(safePage*25,safePage*25+25).map(([key,row])=>({key,cells:[row.name,...ALL_KOMPONEN_KEYS.map(component=>formatNumber(row.values[component]??0))]}))}/>
         <WorkflowPager count={entries.length} page={safePage} setPage={setPage}/>
       </>}
-    </section>;
+      </section>
+    </div>;
   }
   if(section==='ringkasan-biaya'){
     const unallocated=distribusi.reduce((sum,row)=>sum+Number(row.unallocated??0),0);
-    return <section className="uc-panel space-y-4">
-      <dl className="grid gap-3 sm:grid-cols-3">{[['Biaya tahunan',result.annual||workflow.annual],['Pool JKN periode',result.pool],['Belum teralokasi',unallocated]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="mt-1 text-lg font-semibold">{formatRupiah(Number(value))}</dd></div>)}</dl>
-      <WorkflowTable label="Uji kewajaran rasio" columns={['Komponen','Dasar distribusi','Rasio biaya/tagihan','Status']} numeric={[2]} rows={distribusi.map(row=>({key:row.key,cells:[componentName(row.key),row.metodeAlokasi,row.rasio>0?formatNumber(row.rasio,2):'—',row.outlier?'Perlu diperiksa':row.rasio>0?'Dalam batas':'Tidak berlaku']}))}/>
-      <p className="text-sm text-slate-600">Batas peninjauan rasio {formatNumber(result.options.ratioMin,1)}–{formatNumber(result.options.ratioMax,1)}. Biaya per hari menggunakan pembagi hari rawat dan ditinjau terpisah.</p>
-    </section>;
+    return <div className="space-y-4">
+      {summaryCards}
+      <section className="uc-panel space-y-4">
+        <dl className="grid gap-3 sm:grid-cols-3">{[['Biaya tahunan',result.annual||workflow.annual],['Pool JKN periode',result.pool],['Belum teralokasi',unallocated]].map(([label,value])=><div className="uc-inset" key={label}><dt className="text-sm text-slate-600">{label}</dt><dd className="mt-1 text-lg font-semibold">{formatRupiah(Number(value))}</dd></div>)}</dl>
+        <WorkflowTable label="Uji kewajaran rasio" columns={['Komponen','Dasar distribusi','Rasio biaya/tagihan','Status']} numeric={[2]} rows={distribusi.map(row=>({key:row.key,cells:[componentName(row.key),row.metodeAlokasi,row.rasio>0?formatNumber(row.rasio,2):'—',row.outlier?'Perlu diperiksa':row.rasio>0?'Dalam batas':'Tidak berlaku']}))}/>
+        <p className="text-sm text-slate-600">Batas peninjauan rasio {formatNumber(result.options.ratioMin,1)}–{formatNumber(result.options.ratioMax,1)}. Biaya per hari menggunakan pembagi hari rawat dan ditinjau terpisah.</p>
+      </section>
+    </div>;
   }
   const group=section==='alokasi-overhead'?'Overhead':section==='alokasi-intermediate'?'Intermediate':'Final';
   const centers=group==='Overhead'?config.overheadCenters:group==='Intermediate'?config.intermediateCenters:config.finalCenters;
@@ -155,7 +203,9 @@ export default function WorkflowAllocation({workflow,section}:{workflow:Analysis
   const effectiveCosts=new Map<string,number>();
   const finalCenters=new Map(config.finalCenters.map(center=>[center.id,center]));
   for(const trace of mapping?.traces??[])effectiveCosts.set(trace.id,(effectiveCosts.get(trace.id)??0)+Number(trace.amount));
-  return <section className="uc-panel space-y-4">
+  return <div className="space-y-4">
+    {summaryCards}
+    <section className="uc-panel space-y-4">
     <p className="text-sm text-slate-600">{result.options.allocationMethod==='direct'?'Metode aktif memetakan biaya langsung ke 18 komponen.':'Metode aktif mengalokasikan biaya antar pusat biaya sebelum pemetaan ke 18 komponen.'}</p>
     {group==='Final'&&<p className="text-sm text-slate-600">Unit cost = biaya dipetakan ÷ volume dasar. Untuk kamar dan ruang intensif, hasilnya adalah biaya per hari rawat.</p>}
     <WorkflowTable label="Biaya pusat biaya" columns={['Pusat biaya','Dasar alokasi','Biaya langsung sumber (Rp)','Biaya dipetakan (Rp)',...(group==='Final'?['Volume dasar','Unit cost per volume (Rp)']:[])]} numeric={[2,3,4,5]} rows={centers.map(center=>{
@@ -166,5 +216,6 @@ export default function WorkflowAllocation({workflow,section}:{workflow:Analysis
       return {key:center.id,cells:[center.nama,driverName(center.dasarAlokasi),formatNumber(cost),effective===undefined?'—':formatNumber(effective),...(group==='Final'?[formatNumber(volume),volume>0&&effective!==undefined?formatNumber(effective/volume):'—']:[])]};
     })}/>
     {traces.length>0&&<details><summary className="cursor-pointer font-semibold">Rincian alokasi antarunit</summary><div className="mt-3"><WorkflowTable label="Jejak alokasi" columns={['Sumber','Penerima','Dasar','Alokasi (Rp)']} numeric={[3]} rows={traces.map((row,index)=>({key:String(index),cells:[row.source,row.recipient,driverName(row.driver),formatNumber(Number(row.amount))]}))}/></div></details>}
-  </section>;
+    </section>
+  </div>;
 }

@@ -6,6 +6,7 @@ import { hasGroupCov } from '../../lib/analysisPlots';
 import { formatNumber, formatRupiah } from '../../lib/calculations/patientLevelCosting';
 import { financialTone } from '../../lib/financialPresentation';
 import { FinancialBadge, FinancialValue } from '../ui/FinancialStatus';
+import CovRivGuide from '../ui/CovRivGuide';
 
 export default function ExecutiveOverview({ summary, groups, mode, filtered }: {
   summary: NonNullable<AnalysisView['summary']>;
@@ -61,6 +62,8 @@ export default function ExecutiveOverview({ summary, groups, mode, filtered }: {
         </ScatterChart>
       </ResponsiveContainer> : <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">CoV memerlukan minimal dua kasus dan rata-rata unit cost positif per kelompok.</p>}
     </section>
+
+    <CovRivGuide/>
 
     <div className="grid gap-4 lg:grid-cols-3">
       <section className="flex min-w-0 flex-col justify-between gap-4 rounded-2xl border border-[#e8e3d9] bg-[#fbf8f1] p-5 shadow-sm">

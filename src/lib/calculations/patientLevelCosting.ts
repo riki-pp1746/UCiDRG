@@ -254,7 +254,7 @@ export function aggregateByDRG(results: PatientCostResult[],options?:Methodology
         idrg_description: first.patient.idrg?.drg_description || 'N/A',
         ptd: first.patient.ptd,
         mdc_number: first.patient.idrg?.mdc_number,
-        mdc_description: first.patient.idrg?.mdc_description,
+        mdc_description: first.patient.idrg?.mdc_description || (first.patient.idrg?.mdc_number === 10 ? 'Pre MDC' : undefined),
         jumlahKasus: n,
         rataUnitCost,
         rataTarif: type === 'INACBG' ? rataINACBG : rataIDRG,
