@@ -5,6 +5,7 @@ import { APP_METHOD, APP_NAME } from '../lib/appBrand';
 import { isLoginCaptchaProofValid, type LoginCaptchaProof } from '../lib/loginCaptcha';
 import LoginCaptcha from '../components/auth/LoginCaptcha';
 import LoginDataAgreement from '../components/auth/LoginDataAgreement';
+import LoginIllustrationSlider from '../components/auth/LoginIllustrationSlider';
 import { registrationPasswordHelp, registrationPasswordMinLength } from '../lib/registrationPassword';
 import { Lock, Mail, UserRound, Building2, Phone, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
@@ -111,14 +112,7 @@ export default function LoginPage() {
     <div className="uc-login-story-content">
      <h1 id="login-story-title">Analisis biaya layanan JKN</h1>
      <p>Hitung biaya per episode rawat jalan dan rawat inap, lalu bandingkan dengan tarif iDRG.</p>
-     <figure className="uc-login-hero-card">
-      <img
-       src="/brand/login-hero.jpg"
-       alt="Tim medis dan analis costing rumah sakit mengevaluasi biaya layanan dan tarif iDRG"
-       className="uc-login-hero-img"
-       loading="eager"
-      />
-     </figure>
+     <LoginIllustrationSlider />
     </div>
    </section>
    <section className="uc-login-form-panel" aria-labelledby="login-title">
