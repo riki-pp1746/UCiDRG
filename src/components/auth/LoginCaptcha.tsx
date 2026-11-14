@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { LOGIN_PUZZLE_TTL, puzzleMatches, type LoginCaptchaProof } from '../../lib/loginCaptcha';
 
+const puzzleImages = ['login-team.webp', 'login-episodes.webp', 'login-comparison.webp'];
+
 function challenge() {
   const values = crypto.getRandomValues(new Uint32Array(2));
   return { x: 100 + values[0] % 241, y: 35 + values[1] % 61 };
@@ -9,6 +11,7 @@ function challenge() {
 export default function LoginCaptcha({ onProof }: { onProof: (proof: LoginCaptchaProof | null) => void }) {
   const id = useId().replace(/:/g, '');
   const [target, setTarget] = useState(challenge);
+  const [imageIndex, setImageIndex] = useState(0);
   const [position, setPosition] = useState(0);
   const [done, setDone] = useState(false);
   const [message, setMessage] = useState('Geser potongan gambar hingga tepat pada bingkainya.');
@@ -23,6 +26,7 @@ export default function LoginCaptcha({ onProof }: { onProof: (proof: LoginCaptch
     setPosition(0);
     started.current = 0;
     setTarget(challenge());
+    setImageIndex(index => (index + 1) % puzzleImages.length);
     setMessage(text);
   }
   function check(value: number) {
@@ -42,14 +46,16 @@ export default function LoginCaptcha({ onProof }: { onProof: (proof: LoginCaptch
     </div>
     <svg viewBox="0 0 400 150" className="w-full overflow-hidden rounded-lg" aria-hidden="true">
       <defs>
-        <linearGradient id={id + '-sky'} x2="0" y2="1"><stop stopColor="#c6e7e3"/><stop offset="1" stopColor="#f5f2dd"/></linearGradient>
+        <linearGradient id={id + '-backdrop'} x2="1" y2="1"><stop stopColor="#256b65"/><stop offset="1" stopColor="#123f3c"/></linearGradient>
+        <pattern id={id + '-grid'} width="28" height="22" patternUnits="userSpaceOnUse">
+          <path d="M0 22V0H28" fill="none" stroke="#a3d9cf" strokeOpacity=".22"/>
+        </pattern>
         <g id={id + '-scene'}>
-          <rect width="400" height="150" fill={'url(#' + id + '-sky)'}/>
-          <circle cx="310" cy="30" r="19" fill="#e6bf72"/>
-          <path d="M0 120 80 40 165 127 255 55 400 125V150H0Z" fill="#90b7a7"/>
-          <path d="M0 135 115 79 230 145 330 88 400 125V150H0Z" fill="#467e74"/>
-          <path d="M0 140Q100 115 210 145T400 130V150H0Z" fill="#245950"/>
-          <path d="M180 150 220 122 230 125 205 150" fill="#d3c6a5"/>
+          <rect width="400" height="150" fill={'url(#' + id + '-backdrop)'}/>
+          <rect width="400" height="150" fill={'url(#' + id + '-grid)'}/>
+          <path d="M0 111H56L91 74H133L168 100H229L277 53H333L367 78H400" fill="none" stroke="#8ed4c8" strokeWidth="2"/>
+          <path d="M0 89H34L83 123H124L163 58H211L250 86H300L336 109H400" fill="none" stroke="#e1bd7a" strokeWidth="2"/>
+          <image href={`${import.meta.env.BASE_URL}brand/${puzzleImages[imageIndex]}`} x="70" y="-4" width="260" height="158"/>
         </g>
       </defs>
       <use href={'#' + id + '-scene'}/>
